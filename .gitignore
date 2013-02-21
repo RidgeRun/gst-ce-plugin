@@ -4,6 +4,8 @@
 # Libraries
 *.lib
 *.a
+*.la
+*.lo
 
 # Shared objects (inc. Windows DLLs)
 *.dll
@@ -15,3 +17,30 @@
 *.exe
 *.out
 *.app
+
+# Autotools files
+aclocal.m4
+autom4te.cache
+config.h*
+config.log
+config.status
+config.guess
+config.sub
+configure
+libtool
+stamp-h
+stamp-h.in
+stamp-h1
+ltmain.sh
+missing
+compile
+install-sh
+depcomp
+autoregen.sh
+
+/m4
+.deps
+.libs
+
+Makefile.in
+Makefile
