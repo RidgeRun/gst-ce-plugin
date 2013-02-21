@@ -1,5 +1,5 @@
 /*
- * gstce.c
+ * gstceutils.h
  *
  * Copyright (C) 2013 RidgeRun, LLC (http://www.ridgerun.com)
  *
@@ -18,16 +18,30 @@
  *
  */
 
-#ifndef __GST_CEPLUGIN_H__
-#define __GST_CEPLUGIN_H__
+#ifndef __GST_CE_UTILS_H__
+#define __GST_CE_UTILS_H__
 
-#include <gst/gst.h>
-#include <config.h>
-#include "gstceutils.h"
 G_BEGIN_DECLS
 
-extern gboolean 
-    gst_cevidenc_register (GstPlugin * plugin, GstCECodecData * codec);
+typedef struct _GstCECodecData GstCECodecData;
 
+struct _GstCECodecData
+{
+  /* Name of the codec implementation */
+  const char *name;
+  /* Descriptive name for the codec */
+  const gchar *long_name;
+  /* Capabilities of the codec's input*/
+  GstStaticCaps *src_caps;
+  /* Capabilities of the codec's output*/
+  GstStaticCaps *sink_caps;
+  /* Functions to provide custom properties */
+  void (*setup)(GObject *);
+  void (*install_properties)(GObjectClass *);
+  void (*set_property) (GObject *,guint,const GValue *,GParamSpec *);
+  void (*get_property)(GObject *,guint,GValue *, GParamSpec *);  
+};
+
+  
 G_END_DECLS
-#endif /* __GST_CEPLUGIN_H__ */
+#endif /*__GST_CE_UTILS_H__*/

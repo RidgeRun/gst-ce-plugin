@@ -1,25 +1,22 @@
 /* GStreamer
- * Copyright (C) 2009 Jan Schmidt <thaytan@noraisin.net>
+ * Copyright (C) 2013 RidgeRun, LLC (http://www.ridgerun.com)
  *
- * Test that the FFmpeg plugin is loadable, and not broken in some stupid
- * way.
+ * Test that the CE plugin is loadable
  *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Library General Public
- * License as published by the Free Software Foundation; either
- * version 2 of the License, or (at your option) any later version.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  *
- * This library is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Library General Public License for more details.
+ * Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU Library General Public
- * License along with this library; if not, write to the
- * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
- * Boston, MA 02111-1307, USA.
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses>.
+ *
  */
-
 
 #include <gst/check/gstcheck.h>
 #include <stdlib.h>
@@ -36,6 +33,31 @@ GST_START_TEST (test_ce_plugin)
 
 GST_END_TEST;
 
+GST_START_TEST (test_ce_update_reg)
+{
+  GstElement *encoder;
+
+  /* Ask for elements the first time */
+  encoder = gst_element_factory_make ("ce_h264enc", "enc");
+  GST_DEBUG ("Creating element ce_h264enc %p", encoder);
+  fail_unless (encoder != NULL);
+
+  gst_object_unref (encoder);
+
+  GST_DEBUG ("calls gst_update_registry");
+  gst_update_registry ();
+
+  /* Ask for elements the second time */
+
+  encoder = gst_element_factory_make ("ce_h264enc", "enc");
+  GST_DEBUG ("Creating element ce_h264enc %p", encoder);
+  fail_unless (encoder != NULL);
+
+  gst_object_unref (encoder);
+}
+
+GST_END_TEST;
+
 static Suite *
 plugin_test_suite (void)
 {
@@ -45,6 +67,7 @@ plugin_test_suite (void)
   suite_add_tcase (s, tc_chain);
 
   tcase_add_test (tc_chain, test_ce_plugin);
+  tcase_add_test (tc_chain, test_ce_update_reg);
 
   return s;
 }

@@ -22,10 +22,24 @@
 
 GST_DEBUG_CATEGORY (ce_debug);
 
+static gboolean
+gst_encoders_register (GstPlugin * plugin)
+{
+  GstCECodecData *codec;
+
+  codec = g_malloc0 (sizeof (GstCECodecData));
+  codec->name = "h264";
+  codec->long_name = "H.264";
+
+  return gst_cevidenc_register (plugin, codec);
+
+}
+
 /* Register of all the elements of the plugin */
 static gboolean
 plugin_init (GstPlugin * plugin)
 {
+  gst_encoders_register (plugin);
 
   GST_DEBUG_CATEGORY_INIT (ce_debug, "ce", 0,
       "TI plugin for CodecEngine debugging");

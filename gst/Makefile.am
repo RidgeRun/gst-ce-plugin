@@ -5,8 +5,9 @@ libgstce_la_SOURCES = gstce.c \
  gstcevidenc.c gstceh264enc.c
 
 # compiler and linker flags used to compile this plugin
-libgstce_la_CFLAGS = $(GST_CFLAGS)
-libgstce_la_LIBADD = $(GST_LIBS) $(GST_BASE_LIBS)
+libgstce_la_CFLAGS = $(GST_PLUGINS_BASE_CFLAGS) $(GST_CFLAGS)
+libgstce_la_LIBADD = $(GST_PLUGINS_BASE_LIBS) $(GST_LIBS) \
+	-lgstvideo-$(GST_API_VERSION) $(GST_BASE_LIBS)
 
 libgstce_la_LDFLAGS = $(GST_PLUGIN_LDFLAGS)
 libgstce_la_LIBTOOLFLAGS = --tag=disable-static
