@@ -17,7 +17,8 @@ CLEANFILES = core.* test-registry.*
 clean-local: clean-local-check
 
 check_PROGRAMS = \
-	generic/plugin-test
+	generic/plugin-test		\
+	generic/states
 
 VALGRIND_TO_FIX =
 #	generic/plugin-test
