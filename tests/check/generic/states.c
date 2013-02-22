@@ -119,17 +119,28 @@ GST_START_TEST (test_state_changes_up_and_down_seq)
       GST_DEBUG ("element %s is a pipeline", name);
     }
 
-    gst_element_set_state (element, GST_STATE_READY);
-    gst_element_set_state (element, GST_STATE_PAUSED);
-    gst_element_set_state (element, GST_STATE_PLAYING);
-    gst_element_set_state (element, GST_STATE_PAUSED);
-    gst_element_set_state (element, GST_STATE_READY);
-    gst_element_set_state (element, GST_STATE_NULL);
-    gst_element_set_state (element, GST_STATE_PAUSED);
-    gst_element_set_state (element, GST_STATE_READY);
-    gst_element_set_state (element, GST_STATE_PLAYING);
-    gst_element_set_state (element, GST_STATE_PAUSED);
-    gst_element_set_state (element, GST_STATE_NULL);
+    fail_unless (gst_element_set_state (element, GST_STATE_READY) ==
+        GST_STATE_CHANGE_SUCCESS, "could not set state from NULL to READY");
+    fail_unless (gst_element_set_state (element, GST_STATE_PAUSED) ==
+        GST_STATE_CHANGE_SUCCESS, "could not set state from READY to PAUSED");
+    fail_unless (gst_element_set_state (element, GST_STATE_PLAYING) ==
+        GST_STATE_CHANGE_SUCCESS, "could not set state from PAUSED to PLAYING");
+    fail_unless (gst_element_set_state (element, GST_STATE_PAUSED) ==
+        GST_STATE_CHANGE_SUCCESS, "could not set state from PLAYING to PAUSED");
+    fail_unless (gst_element_set_state (element, GST_STATE_READY) ==
+        GST_STATE_CHANGE_SUCCESS, "could not set state from PAUSED to READY");
+    fail_unless (gst_element_set_state (element, GST_STATE_NULL) ==
+        GST_STATE_CHANGE_SUCCESS, "could not set state from READY to NULL");
+    fail_unless (gst_element_set_state (element, GST_STATE_PAUSED) ==
+        GST_STATE_CHANGE_SUCCESS, "could not set state from NULL to PAUSED");
+    fail_unless (gst_element_set_state (element, GST_STATE_READY) ==
+        GST_STATE_CHANGE_SUCCESS, "could not set state from PAUSED to READY");
+    fail_unless (gst_element_set_state (element, GST_STATE_PLAYING) ==
+        GST_STATE_CHANGE_SUCCESS, "could not set state from READY to PLAYING");
+    fail_unless (gst_element_set_state (element, GST_STATE_PAUSED) ==
+        GST_STATE_CHANGE_SUCCESS, "could not set state from PLAYING to PAUSED");
+    fail_unless (gst_element_set_state (element, GST_STATE_NULL) ==
+        GST_STATE_CHANGE_SUCCESS, "could not set state from PAUSED to NULL");
     gst_object_unref (GST_OBJECT (element));
   }
 }
@@ -152,17 +163,22 @@ GST_START_TEST (test_state_changes_up_seq)
       GST_DEBUG ("element %s is a pipeline", name);
     }
 
-    gst_element_set_state (element, GST_STATE_READY);
-
-    gst_element_set_state (element, GST_STATE_PAUSED);
-    gst_element_set_state (element, GST_STATE_READY);
-
-    gst_element_set_state (element, GST_STATE_PAUSED);
-    gst_element_set_state (element, GST_STATE_PLAYING);
-    gst_element_set_state (element, GST_STATE_PAUSED);
-    gst_element_set_state (element, GST_STATE_READY);
-
-    gst_element_set_state (element, GST_STATE_NULL);
+    fail_unless (gst_element_set_state (element, GST_STATE_READY) ==
+        GST_STATE_CHANGE_SUCCESS, "could not set state from NULL to READY");
+    fail_unless (gst_element_set_state (element, GST_STATE_PAUSED) ==
+        GST_STATE_CHANGE_SUCCESS, "could not set state from READY to PAUSED");
+    fail_unless (gst_element_set_state (element, GST_STATE_READY) ==
+        GST_STATE_CHANGE_SUCCESS, "could not set state from PAUSED to READY");
+    fail_unless (gst_element_set_state (element, GST_STATE_PAUSED) ==
+        GST_STATE_CHANGE_SUCCESS, "could not set state from READY to PAUSE");
+    fail_unless (gst_element_set_state (element, GST_STATE_PLAYING) ==
+        GST_STATE_CHANGE_SUCCESS, "could not set state from PAUSE to PLAYING");
+    fail_unless (gst_element_set_state (element, GST_STATE_PAUSED) ==
+        GST_STATE_CHANGE_SUCCESS, "could not set state from PLAYING to PAUSED");
+    fail_unless (gst_element_set_state (element, GST_STATE_READY) ==
+        GST_STATE_CHANGE_SUCCESS, "could not set state from PAUSED to READY");
+    fail_unless (gst_element_set_state (element, GST_STATE_NULL) ==
+        GST_STATE_CHANGE_SUCCESS, "could not set state from READY to NULL");
     gst_object_unref (GST_OBJECT (element));
   }
 }
@@ -185,21 +201,30 @@ GST_START_TEST (test_state_changes_down_seq)
       GST_DEBUG ("element %s is a pipeline", name);
     }
 
-    gst_element_set_state (element, GST_STATE_READY);
-    gst_element_set_state (element, GST_STATE_PAUSED);
-    gst_element_set_state (element, GST_STATE_PLAYING);
-
-    gst_element_set_state (element, GST_STATE_PAUSED);
-    gst_element_set_state (element, GST_STATE_PLAYING);
-
-    gst_element_set_state (element, GST_STATE_PAUSED);
-    gst_element_set_state (element, GST_STATE_READY);
-    gst_element_set_state (element, GST_STATE_PAUSED);
-    gst_element_set_state (element, GST_STATE_PLAYING);
-
-    gst_element_set_state (element, GST_STATE_PAUSED);
-    gst_element_set_state (element, GST_STATE_READY);
-    gst_element_set_state (element, GST_STATE_NULL);
+    fail_unless (gst_element_set_state (element, GST_STATE_READY) ==
+        GST_STATE_CHANGE_SUCCESS, "could not set state from NULL to READY");
+    fail_unless (gst_element_set_state (element, GST_STATE_PAUSED) ==
+        GST_STATE_CHANGE_SUCCESS, "could not set state from READY to PAUSED");
+    fail_unless (gst_element_set_state (element, GST_STATE_PLAYING) ==
+        GST_STATE_CHANGE_SUCCESS, "could not set state from PAUSED to PLAYING");
+    fail_unless (gst_element_set_state (element, GST_STATE_PAUSED) ==
+        GST_STATE_CHANGE_SUCCESS, "could not set state from PLAYING to PAUSED");
+    fail_unless (gst_element_set_state (element, GST_STATE_PLAYING) ==
+        GST_STATE_CHANGE_SUCCESS, "could not set state from PAUSED to PLAYING");
+    fail_unless (gst_element_set_state (element, GST_STATE_PAUSED) ==
+        GST_STATE_CHANGE_SUCCESS, "could not set state from PLAYING to PAUSED");
+    fail_unless (gst_element_set_state (element, GST_STATE_READY) ==
+        GST_STATE_CHANGE_SUCCESS, "could not set state from PAUSED to READY");
+    fail_unless (gst_element_set_state (element, GST_STATE_PAUSED) ==
+        GST_STATE_CHANGE_SUCCESS, "could not set state from READY to PAUSED");
+    fail_unless (gst_element_set_state (element, GST_STATE_PLAYING) ==
+        GST_STATE_CHANGE_SUCCESS, "could not set state from PAUSED to PLAYING");
+    fail_unless (gst_element_set_state (element, GST_STATE_PAUSED) ==
+        GST_STATE_CHANGE_SUCCESS, "could not set state from PLAYING to PAUSED");
+    fail_unless (gst_element_set_state (element, GST_STATE_READY) ==
+        GST_STATE_CHANGE_SUCCESS, "could not set state from PAUSED to READY");
+    fail_unless (gst_element_set_state (element, GST_STATE_NULL) ==
+        GST_STATE_CHANGE_SUCCESS, "could not set state from READY to NULL");
     gst_object_unref (GST_OBJECT (element));
   }
 }
