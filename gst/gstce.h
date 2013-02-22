@@ -24,6 +24,10 @@
 #include <gst/gst.h>
 #include <config.h>
 #include "gstceutils.h"
+
+GST_DEBUG_CATEGORY_EXTERN (ce_debug);
+#define GST_CAT_DEFAULT ce_debug
+
 G_BEGIN_DECLS
 
 extern gboolean 

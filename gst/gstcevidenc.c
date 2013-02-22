@@ -34,6 +34,7 @@
 #include <gst/gst.h>
 #include <gst/video/gstvideometa.h>
 
+#include "gstce.h"
 #include "gstcevidenc.h"
 
 
