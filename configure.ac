@@ -156,6 +156,17 @@ dnl whatevertarget_LIBS and -L flags here affect the rest of the linking
 GST_PLUGIN_LDFLAGS="-module -avoid-version -export-symbols-regex '^[_]*gst_plugin_desc.*' $GST_ALL_LDFLAGS"
 AC_SUBST(GST_PLUGIN_LDFLAGS)
 
+AC_MSG_NOTICE([Configuring for DM36x SoC])
+PKG_CHECK_MODULES(CODECS, libdm36x-codecs >= 1.0, HAVE_CODECS=yes, 
+    HAVE_CODECS=no)
+
+if test "x$HAVE_CODECS" = "xno" ; then
+  AC_MSG_ERROR([no DM36x codec libraries found (libdm36x-codecs)])
+fi
+
+AC_SUBST(CODECS_CFLAGS)
+AC_SUBST(CODECS_LIBS)
+  
 dnl *** output files ***
 
 AC_CONFIG_FILES(
