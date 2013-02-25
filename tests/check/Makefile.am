@@ -18,7 +18,13 @@ clean-local: clean-local-check
 
 check_PROGRAMS = \
 	generic/plugin-test		\
-	generic/states
+	generic/states			\
+	libs/cmem
+
+libs_cmem_LDADD = \
+	$(top_builddir)/gst-libs/gst/cmem/libgstcmem-@GST_API_VERSION@.la \
+	$(GST_BASE_LIBS) \
+	$(LDADD)
 
 VALGRIND_TO_FIX =
 #	generic/plugin-test
