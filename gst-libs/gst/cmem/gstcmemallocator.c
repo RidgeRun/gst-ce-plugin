@@ -18,6 +18,7 @@
 
 #include <string.h>
 #include <xdc/std.h>
+#include <ti/sdo/ce/CERuntime.h>
 #include <ti/sdo/ce/osal/Memory.h>
 
 #include "gstcmemallocator.h"
@@ -103,7 +104,9 @@ alloc_failed:
   GST_ERROR ("failed CMEM allocation");
   if (mem != NULL)
     g_slice_free1 (sizeof (GstMemoryContig), mem);
-return NULL}
+  return NULL;
+
+}
 
 static gpointer
 _cmem_map (GstMemoryContig * mem, GstMapFlags flags)
@@ -205,7 +208,7 @@ _cmem_free (GstAllocator * allocator, GstMemory * mem)
 {
   GstMemoryContig *cmem = (GstMemoryContig *) mem;
 
-  GST_CAT_DEBUG ("free memory %p", cmem);
+  GST_CAT_DEBUG (GST_CAT_MEMORY, "free memory %p", cmem);
 
   if (cmem->alloc_size) {
     Memory_cacheWb (cmem->data, cmem->alloc_size);
