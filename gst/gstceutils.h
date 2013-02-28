@@ -21,6 +21,10 @@
 #ifndef __GST_CE_UTILS_H__
 #define __GST_CE_UTILS_H__
 
+#include <gst/gst.h>
+
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof(*(x)));
+
 G_BEGIN_DECLS
 
 typedef struct _GstCECodecData GstCECodecData;
@@ -28,7 +32,7 @@ typedef struct _GstCECodecData GstCECodecData;
 struct _GstCECodecData
 {
   /* Name of the codec implementation */
-  const char *name;
+  const gchar *name;
   /* Descriptive name for the codec */
   const gchar *long_name;
   /* Capabilities of the codec's input*/
@@ -41,7 +45,6 @@ struct _GstCECodecData
   void (*set_property) (GObject *,guint,const GValue *,GParamSpec *);
   void (*get_property)(GObject *,guint,GValue *, GParamSpec *);  
 };
-
-  
+ 
 G_END_DECLS
 #endif /*__GST_CE_UTILS_H__*/

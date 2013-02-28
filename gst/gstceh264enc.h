@@ -22,4 +22,7 @@
 #define __GST_CE_H264ENC_H__
 
 
+#include "gstceutils.h"
+
+extern GstCECodecData gst_ce_h264enc;
 #endif /* __GST_CE_H264ENC_H__ */

@@ -17,3 +17,15 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses>.
  *
  */
+#include "gstceh264enc.h"
+
+GstCECodecData gst_ce_h264enc = {
+  .name = "h264enc",
+  .long_name = "H.264",
+  .src_caps = NULL,
+  .sink_caps = NULL,
+  .setup = NULL,
+  .install_properties = NULL,
+  .set_property = NULL,
+  .get_property = NULL,  
+};
