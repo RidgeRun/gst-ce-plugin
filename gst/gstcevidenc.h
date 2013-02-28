@@ -23,7 +23,10 @@
 
 G_BEGIN_DECLS
 
+#include <xdc/std.h>
+#include <ti/sdo/ce/Engine.h>
 #include <gst/video/gstvideoencoder.h>
+
 #include "gstceutils.h"
 
 typedef struct _GstCEVidEnc GstCEVidEnc;
@@ -47,6 +50,8 @@ struct _GstCEVidEnc
   GstVideoFormat pix_format;
   GstClockTime avg_duration;
 
+  /* Handle to the Codec Engine */
+  Engine_Handle ce_handle;
   /* Codec Private Data */
   void *codec_private;
 };

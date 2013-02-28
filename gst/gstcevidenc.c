@@ -57,6 +57,9 @@ static void gst_cevidenc_base_init (GstCEVidEncClass * klass);
 static void gst_cevidenc_init (GstCEVidEnc * cevidenc);
 static void gst_cevidenc_finalize (GObject * object);
 
+static gboolean gst_cevidenc_open (GstVideoEncoder * encoder);
+static gboolean gst_cevidenc_close (GstVideoEncoder * encoder);
+static gboolean gst_cevidenc_start (GstVideoEncoder * encoder);
 static gboolean gst_cevidenc_stop (GstVideoEncoder * encoder);
 static GstFlowReturn gst_cevidenc_finish (GstVideoEncoder * encoder);
 static gboolean gst_cevidenc_set_format (GstVideoEncoder * encoder,
@@ -165,6 +168,9 @@ gst_cevidenc_class_init (GstCEVidEncClass * klass)
     klass->codec->install_properties (gobject_class);
   }
 
+  venc_class->open = gst_cevidenc_open;
+  venc_class->close = gst_cevidenc_close;
+  venc_class->start = gst_cevidenc_start;
   venc_class->stop = gst_cevidenc_stop;
   venc_class->finish = gst_cevidenc_finish;
   venc_class->handle_frame = gst_cevidenc_handle_frame;
@@ -323,7 +329,7 @@ gst_cevidenc_set_property (GObject * object,
       break;
     case PROP_COPY_OUTPUT:
       cevidenc->copy_output = g_value_get_boolean (value);
-      GST_LOG ("seeting \"copyOutput\" to s",
+      GST_LOG ("seeting \"copyOutput\" to %s",
           cevidenc->copy_output ? "TRUE" : "FALSE");
       break;
     default:
@@ -364,6 +370,44 @@ gst_cevidenc_get_property (GObject * object,
 }
 
 static gboolean
+gst_cevidenc_open (GstVideoEncoder * encoder)
+{
+  GstCEVidEnc *cevidenc = (GstCEVidEnc *) encoder;
+  
+  GST_DEBUG("opening %s Engine", CODEC_ENGINE);
+  /* reset, load, and start DSP Engine */
+  if ((cevidenc->ce_handle = Engine_open(CODEC_ENGINE, NULL, NULL)) == NULL) {
+    GST_ELEMENT_ERROR(cevidenc,STREAM,CODEC_NOT_FOUND,(NULL),
+        ("failed to open codec engine \"%s\"", CODEC_ENGINE));
+    return FALSE;
+  }
+
+  return TRUE;
+}
+
+static gboolean
+gst_cevidenc_close (GstVideoEncoder * encoder)
+{
+  GstCEVidEnc *cevidenc = (GstCEVidEnc *) encoder;
+  
+  if (cevidenc->ce_handle) {
+    GST_DEBUG("closing codec engine %p\n", cevidenc->ce_handle);
+    Engine_close(cevidenc->ce_handle);
+    cevidenc->ce_handle = NULL;
+  }
+  
+  return TRUE;
+}
+
+static gboolean
+gst_cevidenc_start (GstVideoEncoder * encoder)
+{
+  //~ GstCEVidEnc *cevidenc = (GstCEVidEnc *) encoder;
+
+  return TRUE;
+}
+
+static gboolean
 gst_cevidenc_stop (GstVideoEncoder * encoder)
 {
   //~ GstCEVidEnc *cevidenc = (GstCEVidEnc *) encoder;
@@ -399,7 +443,7 @@ gst_cevidenc_register (GstPlugin * plugin, GstCECodecData * codec)
   GST_LOG ("Registering encoder %s [%s]", codec->name, codec->long_name);
 
   /* construct the type */
-  type_name = g_strdup_printf ("ce_%senc", codec->name);
+  type_name = g_strdup_printf ("ce_%s", codec->name);
   type = g_type_from_name (type_name);
 
   if (!type) {
