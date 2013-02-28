@@ -156,6 +156,16 @@ dnl whatevertarget_LIBS and -L flags here affect the rest of the linking
 GST_PLUGIN_LDFLAGS="-module -avoid-version -export-symbols-regex '^[_]*gst_plugin_desc.*' $GST_ALL_LDFLAGS"
 AC_SUBST(GST_PLUGIN_LDFLAGS)
 
+dnl libgstce.la: include dirs
+GST_CE_CFLAGS="-I \$(top_srcdir)/gst-libs/gst/cmem/ \
+               -I \$(top_builddir)/gst-libs/gst/cmem"
+
+dnl libgstce.la: libs to statically link to
+GST_CE_LIBS="\$(top_builddir)/gst-libs/gst/cmem/libgstcmem-\$(GST_API_VERSION).la"
+
+AC_SUBST(GST_CE_CFLAGS)
+AC_SUBST(GST_CE_LIBS)
+
 AC_MSG_NOTICE([Configuring for DM36x SoC])
 PKG_CHECK_MODULES(CODECS, libdm36x-codecs >= 1.0, HAVE_CODECS=yes, 
     HAVE_CODECS=no)
