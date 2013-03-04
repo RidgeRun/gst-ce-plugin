@@ -25,6 +25,8 @@ G_BEGIN_DECLS
 
 #include <xdc/std.h>
 #include <ti/sdo/ce/Engine.h>
+#include <ti/sdo/ce/video1/videnc1.h>
+
 #include <gst/video/gstvideoencoder.h>
 
 #include "gstceutils.h"
@@ -51,7 +53,11 @@ struct _GstCEVidEnc
   GstClockTime avg_duration;
 
   /* Handle to the Codec Engine */
-  Engine_Handle ce_handle;
+  Engine_Handle engine_handle;
+  /* Handle to the Codec*/
+  VIDENC1_Handle codec_handle;
+  VIDENC1_Params *codec_params;
+  VIDENC1_DynamicParams *codec_dyn_params;
   /* Codec Private Data */
   void *codec_private;
 };
