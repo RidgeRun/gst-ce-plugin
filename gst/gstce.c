@@ -38,7 +38,7 @@ gst_encoders_register (GstPlugin * plugin)
   gint i, j;
   gboolean ret;
   /* Get all algorithms configured in the Codec Engine */
-  status = Engine_getNumAlgs (CODEC_ENGINE, &num_algs);
+  status = Engine_getNumAlgs ((Char *) CODEC_ENGINE, &num_algs);
   if (status == Engine_EOK) {
     GST_DEBUG ("%s: number of algorithms = %d", CODEC_ENGINE, num_algs);
   } else {
@@ -49,7 +49,7 @@ gst_encoders_register (GstPlugin * plugin)
 
   alg_info.algInfoSize = sizeof (Engine_AlgInfo);
   for (i = 0; i < num_algs; i++) {
-    status = Engine_getAlgInfo (CODEC_ENGINE, &alg_info, i);
+    status = Engine_getAlgInfo ((Char *) CODEC_ENGINE, &alg_info, i);
     if (status == Engine_EOK) {
       GST_DEBUG ("algorithm[%d] = %s", i, alg_info.name);
     } else {
