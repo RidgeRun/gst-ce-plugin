@@ -42,31 +42,47 @@ gst_ce_h264enc_setup (GObject * object)
   IH264VENC_Params *h264_params;
   IH264VENC_DynamicParams *h264_dyn_params;
 
+  GST_DEBUG ("setup H.264 parameters");
   /* Alloc the params and set a default value */
   h264_params = g_malloc0 (sizeof (IH264VENC_Params));
+  if (!h264_params)
+    goto fail_alloc;
   *h264_params = IH264VENC_PARAMS;
 
   h264_dyn_params = g_malloc0 (sizeof (IH264VENC_DynamicParams));
+  if (!h264_dyn_params)
+    goto fail_alloc;
   *h264_dyn_params = H264VENC_TI_IH264VENC_DYNAMICPARAMS;
 
-  /* Add the extends params to the original params */
-  cevidenc->codec_params->size = sizeof (IH264VENC_Params);
-  cevidenc->codec_dyn_params->size = sizeof (IH264VENC_DynamicParams);
-
-  if (cevidenc->codec_params != NULL) {
-    GST_DEBUG ("Codec params not NULL, copy and free them\n");
+  if (cevidenc->codec_params) {
+    GST_DEBUG ("codec params not NULL, copy and free them");
     h264_params->videncParams = *cevidenc->codec_params;
     g_free (cevidenc->codec_params);
   }
   cevidenc->codec_params = (VIDENC1_Params *) h264_params;
 
-  if (cevidenc->codec_dyn_params != NULL) {
-    GST_DEBUG ("Codec dynamic params not NULL, copy and free them\n");
+  if (cevidenc->codec_dyn_params) {
+    GST_DEBUG ("codec dynamic params not NULL, copy and free them");
     h264_dyn_params->videncDynamicParams = *cevidenc->codec_dyn_params;
     g_free (cevidenc->codec_dyn_params);
   }
   cevidenc->codec_dyn_params = (VIDENC1_DynamicParams *) h264_dyn_params;
 
+  /* Add the extends params to the original params */
+  cevidenc->codec_params->size = sizeof (IH264VENC_Params);
+  cevidenc->codec_dyn_params->size = sizeof (IH264VENC_DynamicParams);
+
+  return;
+
+fail_alloc:
+  {
+    GST_WARNING_OBJECT (cevidenc, "failed to allocate H.264 params");
+    if (h264_params)
+      g_free (h264_params);
+    if (h264_dyn_params)
+      g_free (h264_params);
+    return;
+  }
 }
 
 GstCECodecData gst_ce_h264enc = {
@@ -74,7 +90,7 @@ GstCECodecData gst_ce_h264enc = {
   .long_name = "H.264",
   .src_caps = &gst_ce_h264enc_src_caps,
   .sink_caps = &gst_ce_h264enc_sink_caps,
-  .setup = NULL,
+  .setup = gst_ce_h264enc_setup,
   .install_properties = NULL,
   .set_property = NULL,
   .get_property = NULL,
