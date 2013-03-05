@@ -23,6 +23,9 @@
 
 #include <gst/gst.h>
 
+GST_DEBUG_CATEGORY_EXTERN (ce_debug);
+#define GST_CAT_DEFAULT ce_debug
+
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(*(x)));
 
 G_BEGIN_DECLS
