@@ -22,42 +22,45 @@
 #define __GST_CE_VIDENC_H__
 
 G_BEGIN_DECLS
-
 #include <xdc/std.h>
 #include <ti/sdo/ce/Engine.h>
 #include <ti/sdo/ce/video1/videnc1.h>
-
 #include <gst/video/gstvideoencoder.h>
-
 #include "gstceutils.h"
-
 typedef struct _GstCEVidEnc GstCEVidEnc;
 
 struct _GstCEVidEnc
 {
   GstVideoEncoder parent;
-  /*Properties*/
+  /*Properties */
   gint out_buffer_size;
   gboolean copy_output;
-  
+
   /* Video Data */
   gint fps_num;
   gint fps_den;
-  gint height;
-  gint width;
-  gint pitch;
   gint par_num;
   gint par_den;
   gint bpp;
+
+  gint32 outbuf_size;
   GstVideoFormat pix_format;
-  GstClockTime avg_duration;
+  GstVideoCodecState *input_state;
+
+  /* Handle to the CMEM allocator */
+  GstAllocator *allocator;
+  GstAllocationParams params;
 
   /* Handle to the Codec Engine */
   Engine_Handle engine_handle;
-  /* Handle to the Codec*/
+
+  /* Handle to the Codec */
   VIDENC1_Handle codec_handle;
   VIDENC1_Params *codec_params;
   VIDENC1_DynamicParams *codec_dyn_params;
+  IVIDEO1_BufDescIn inbuf;
+  XDM_BufDesc outbuf;
+
   /* Codec Private Data */
   void *codec_private;
 };
@@ -85,5 +88,4 @@ struct _GstCEVidEncClass
   (G_TYPE_CHECK_CLASS_TYPE((klass),GST_TYPE_CEVIDENC))
 
 G_END_DECLS
-
 #endif /* __GST_CE_VIDENC_H__ */
