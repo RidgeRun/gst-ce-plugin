@@ -19,6 +19,7 @@
  */
 
 #include <xdc/std.h>
+#include <string.h>
 #include <ti/sdo/codecs/h264enc/ih264venc.h>
 
 #include "gstceh264enc.h"
@@ -36,11 +37,92 @@ GstStaticCaps gst_ce_h264enc_src_caps = GST_STATIC_CAPS ("video/x-h264, "
     "   height=(int)[ 96, 4096 ],"
     "   stream-format = (string) { avc, byte-stream }");
 
+enum
+{
+  GST_CE_H264ENC_STREAM_FORMAT_AVC,
+  GST_CE_H264ENC_STREAM_FORMAT_BYTE_STREAM,
+  GST_CE_H264ENC_STREAM_FORMAT_FROM_PROPERTY
+};
+
+typedef struct
+{
+  gint current_stream_format;
+  gboolean byte_stream;
+} h264PrivateData;
+
+static gboolean
+gst_ce_h264enc_set_src_caps (GObject * object, GstCaps * caps)
+{
+  GstCEVidEnc *cevidenc = (GstCEVidEnc *) (object);
+  h264PrivateData *h264enc;
+  GstStructure *s;
+  const gchar *stream_format;
+
+  GST_DEBUG_OBJECT (cevidenc, "setting H.264 caps");
+  if (!cevidenc->codec_private)
+    goto no_private_data;
+
+  h264enc = cevidenc->codec_private;
+
+  caps = gst_caps_make_writable (caps);
+  GST_DEBUG ("caps %s", gst_caps_to_string (caps));
+  s = gst_caps_get_structure (caps, 0);
+
+  stream_format = gst_structure_get_string (s, "stream-format");
+  GST_DEBUG ("stream format %s", stream_format);
+  h264enc->current_stream_format = GST_CE_H264ENC_STREAM_FORMAT_FROM_PROPERTY;
+  if (stream_format) {
+    if (!strcmp (stream_format, "avc")) {
+      GST_DEBUG_OBJECT (cevidenc, "stream format: avc");
+      h264enc->current_stream_format = GST_CE_H264ENC_STREAM_FORMAT_AVC;
+    } else if (!strcmp (stream_format, "byte-stream")) {
+      GST_DEBUG_OBJECT (cevidenc, "stream format: byte-stream");
+      h264enc->current_stream_format = GST_CE_H264ENC_STREAM_FORMAT_BYTE_STREAM;
+    }
+  }
+
+  if (h264enc->current_stream_format ==
+      GST_CE_H264ENC_STREAM_FORMAT_FROM_PROPERTY) {
+    /* means we have both in caps and from property should be the option */
+    GST_DEBUG_OBJECT (cevidenc, "setting stream format from property");
+    if (h264enc->byte_stream) {
+      GST_DEBUG_OBJECT (cevidenc, "stream format: byte-stream");
+      h264enc->current_stream_format = GST_CE_H264ENC_STREAM_FORMAT_BYTE_STREAM;
+    } else {
+      GST_DEBUG_OBJECT (cevidenc, "stream format: avc");
+      h264enc->current_stream_format = GST_CE_H264ENC_STREAM_FORMAT_AVC;
+    }
+  }
+
+  if (h264enc->current_stream_format == GST_CE_H264ENC_STREAM_FORMAT_AVC) {
+    /*$ 
+     * TODO: 
+     * Get codec data
+     */
+    //~ if (buf != NULL) {
+    //~ gst_caps_set_simple (outcaps, "codec_data", GST_TYPE_BUFFER, buf, NULL);
+    //~ gst_buffer_unref (buf);
+    //~ }
+    gst_structure_set (s, "stream-format", G_TYPE_STRING, "avc", NULL);
+  } else {
+    gst_structure_set (s, "stream-format", G_TYPE_STRING, "byte-stream", NULL);
+  }
+
+  return TRUE;
+
+no_private_data:
+  {
+    GST_WARNING_OBJECT (cevidenc, "no codec private data available");
+    return FALSE;
+  }
+
+}
+
 static void
 gst_ce_h264enc_setup (GObject * object)
 {
   GstCEVidEnc *cevidenc = (GstCEVidEnc *) (object);
-
+  h264PrivateData *h264enc;
   IH264VENC_Params *h264_params;
   IH264VENC_DynamicParams *h264_dyn_params;
 
@@ -73,6 +155,18 @@ gst_ce_h264enc_setup (GObject * object)
   /* Add the extends params to the original params */
   cevidenc->codec_params->size = sizeof (IH264VENC_Params);
   cevidenc->codec_dyn_params->size = sizeof (IH264VENC_DynamicParams);
+  GST_DEBUG_OBJECT (cevidenc, "allocating H.264 private data");
+  if (cevidenc->codec_private)
+    g_free (cevidenc->codec_private);
+
+  cevidenc->codec_private = g_malloc0 (sizeof (h264PrivateData));
+  if (!cevidenc->codec_private) {
+    GST_WARNING_OBJECT (cevidenc, "Failed to allocate codec private data");
+    return;
+  }
+  h264enc = (h264PrivateData *) cevidenc->codec_private;
+
+  h264enc->byte_stream = 1;
 
   return;
 
@@ -93,6 +187,7 @@ GstCECodecData gst_ce_h264enc = {
   .src_caps = &gst_ce_h264enc_src_caps,
   .sink_caps = &gst_ce_h264enc_sink_caps,
   .setup = gst_ce_h264enc_setup,
+  .set_src_caps = gst_ce_h264enc_set_src_caps,
   .install_properties = NULL,
   .set_property = NULL,
   .get_property = NULL,
