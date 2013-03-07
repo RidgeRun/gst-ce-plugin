@@ -51,7 +51,7 @@ typedef struct
 } h264PrivateData;
 
 static gboolean
-gst_ce_h264enc_set_src_caps (GObject * object, GstCaps * caps)
+gst_ce_h264enc_set_src_caps (GObject * object, GstCaps ** caps)
 {
   GstCEVidEnc *cevidenc = (GstCEVidEnc *) (object);
   h264PrivateData *h264enc;
@@ -63,13 +63,11 @@ gst_ce_h264enc_set_src_caps (GObject * object, GstCaps * caps)
     goto no_private_data;
 
   h264enc = cevidenc->codec_private;
-
-  caps = gst_caps_make_writable (caps);
-  GST_DEBUG ("caps %s", gst_caps_to_string (caps));
-  s = gst_caps_get_structure (caps, 0);
+  gst_caps_unref (*caps);
+  *caps = gst_caps_make_writable (*caps);
+  s = gst_caps_get_structure (*caps, 0);
 
   stream_format = gst_structure_get_string (s, "stream-format");
-  GST_DEBUG ("stream format %s", stream_format);
   h264enc->current_stream_format = GST_CE_H264ENC_STREAM_FORMAT_FROM_PROPERTY;
   if (stream_format) {
     if (!strcmp (stream_format, "avc")) {
@@ -95,18 +93,11 @@ gst_ce_h264enc_set_src_caps (GObject * object, GstCaps * caps)
   }
 
   if (h264enc->current_stream_format == GST_CE_H264ENC_STREAM_FORMAT_AVC) {
-    /*$ 
-     * TODO: 
-     * Get codec data
-     */
-    //~ if (buf != NULL) {
-    //~ gst_caps_set_simple (outcaps, "codec_data", GST_TYPE_BUFFER, buf, NULL);
-    //~ gst_buffer_unref (buf);
-    //~ }
     gst_structure_set (s, "stream-format", G_TYPE_STRING, "avc", NULL);
   } else {
     gst_structure_set (s, "stream-format", G_TYPE_STRING, "byte-stream", NULL);
   }
+  GST_DEBUG_OBJECT ("H.264 caps %s", gst_caps_to_string (*caps));
 
   return TRUE;
 
