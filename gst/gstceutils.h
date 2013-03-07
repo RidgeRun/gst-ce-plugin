@@ -42,8 +42,11 @@ struct _GstCECodecData
   GstStaticCaps *src_caps;
   /* Capabilities of the codec's output*/
   GstStaticCaps *sink_caps;
-  /* Functions to provide custom properties */
+  /* Fuction to alloc and Initialize resources*/
   void (*setup)(GObject *);
+  /* Function to define element src caps*/
+  gboolean (*set_src_caps)(GObject *, GstCaps *);
+  /* Functions to provide custom properties */
   void (*install_properties)(GObjectClass *);
   void (*set_property) (GObject *,guint,const GValue *,GParamSpec *);
   void (*get_property)(GObject *,guint,GValue *, GParamSpec *);  

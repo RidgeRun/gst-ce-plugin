@@ -189,12 +189,14 @@ gst_cevidenc_init (GstCEVidEnc * cevidenc)
   GST_DEBUG ("initialize encoder");
   /* Allow the codec to allocate any private data it may require 
    * and set defaults */
+  cevidenc->codec_private = NULL;
   if (klass->codec && klass->codec->setup) {
     GST_DEBUG ("Use custom setup params");
     klass->codec->setup ((GObject *) cevidenc);
   } else {
     GST_DEBUG ("No codec data");
   }
+
   /* Allocate the codec params */
   if (!cevidenc->codec_params) {
     GST_DEBUG ("allocating codec params");
@@ -220,7 +222,6 @@ gst_cevidenc_init (GstCEVidEnc * cevidenc)
   cevidenc->copy_output = FALSE;
   cevidenc->engine_handle = NULL;
   cevidenc->codec_handle = NULL;
-  cevidenc->codec_private = NULL;
   cevidenc->allocator = NULL;
 
   /* Set default values for codec static params */
@@ -260,6 +261,11 @@ gst_cevidenc_finalize (GObject * object)
   if (cevidenc->codec_dyn_params) {
     g_free (cevidenc->codec_dyn_params);
     cevidenc->codec_dyn_params = NULL;
+  }
+
+  if (cevidenc->codec_private) {
+    g_free (cevidenc->codec_private);
+    cevidenc->codec_private = NULL;
   }
 
   G_OBJECT_CLASS (parent_class)->finalize (object);
@@ -380,6 +386,7 @@ gst_cevidenc_set_format (GstVideoEncoder * encoder, GstVideoCodecState * state)
   gint i, bpp = 0;
 
   GstCEVidEnc *cevidenc = (GstCEVidEnc *) encoder;
+  GstCEVidEncClass *klass = (GstCEVidEncClass *) G_OBJECT_GET_CLASS (cevidenc);
 
   GST_DEBUG_OBJECT (cevidenc, "Extracting common video information");
 
@@ -418,6 +425,11 @@ gst_cevidenc_set_format (GstVideoEncoder * encoder, GstVideoCodecState * state)
         gst_pad_get_pad_template_caps (GST_VIDEO_ENCODER_SRC_PAD (encoder));
   }
   GST_DEBUG_OBJECT (cevidenc, "chose caps %" GST_PTR_FORMAT, allowed_caps);
+
+  if (klass->codec && klass->codec->set_src_caps) {
+    GST_DEBUG ("Use custom set src caps");
+    klass->codec->set_src_caps ((GObject *) cevidenc, allowed_caps);
+  }
 
   if (gst_caps_get_size (allowed_caps) > 1) {
     GstCaps *newcaps;
