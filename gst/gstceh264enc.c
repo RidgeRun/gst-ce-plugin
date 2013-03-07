@@ -32,7 +32,9 @@ GstStaticCaps gst_ce_h264enc_sink_caps = GST_STATIC_CAPS ("video/x-raw, "
 
 GstStaticCaps gst_ce_h264enc_src_caps = GST_STATIC_CAPS ("video/x-h264, "
     "   framerate=(fraction)[ 0, 120], "
-    "   width=(int)[ 128, 4080 ], " "   height=(int)[ 96, 4096 ]");
+    "   width=(int)[ 128, 4080 ], "
+    "   height=(int)[ 96, 4096 ],"
+    "   stream-format = (string) { avc, byte-stream }");
 
 static void
 gst_ce_h264enc_setup (GObject * object)
