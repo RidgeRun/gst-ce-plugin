@@ -48,7 +48,222 @@ typedef struct
 {
   gint current_stream_format;
   gboolean byte_stream;
+  gint header_size;
 } h264PrivateData;
+
+typedef struct
+{
+  gint type;
+  gint index;
+  gint size;
+} nalUnit;
+
+
+static gboolean
+gst_ce_h264_fetch_header (guint8 * data, gint buffer_size,
+    nalUnit * sps, nalUnit * pps)
+{
+  gint i;
+  gint nal_type;
+  gint found = 0;
+  nalUnit *nalu = NULL;
+
+
+  GST_DEBUG ("fetching header");
+  GST_MEMDUMP ("Header", data, buffer_size);
+  for (i = 0; i < (buffer_size - 5); i++) {
+    /* In bytestream format each NAL si preceded by 
+     * a four byte start code: 0x00 0x00 0x00 0x01.
+     * The byte after this code indicates the NAL type,
+     * we're looking for the SPS(0x07) and PPS(0x08) NAL*/
+    if (data[i] == 0 && data[i + 1] == 0 && data[i + 2] == 0
+        && data[i + 3] == 1) {
+
+      if (nalu) {
+        nalu->size = i - nalu->index;
+        nalu = NULL;
+      }
+
+      if (found == 2)
+        break;
+
+      nal_type = (data[i + 4]) & 0x1f;
+      if (nal_type == 0x07)
+        nalu = sps;
+      else if (nal_type == 0x08)
+        nalu = pps;
+      else
+        continue;
+
+      nalu->type = nal_type;
+      nalu->index = i + 4;
+
+      i += 4;
+      found++;
+    }
+  }
+
+  if (i >= (buffer_size - 5))
+    nalu->size = buffer_size - nalu->index;
+
+}
+
+static gboolean
+gst_ce_h264enc_get_header (GstCEVidEnc * cevidenc, GstBuffer ** buf)
+{
+  h264PrivateData *h264enc = (h264PrivateData *) cevidenc->codec_private;
+  VIDENC1_Status enc_status;
+  VIDENC1_InArgs in_args;
+  VIDENC1_OutArgs out_args;
+  GstBuffer *header_buf;
+  GstMapInfo info;
+  gint ret;
+
+  GST_DEBUG_OBJECT (cevidenc, "get H.264 header");
+  if ((!cevidenc->codec_handle) || (!cevidenc->codec_dyn_params))
+    return FALSE;
+
+  enc_status.size = sizeof (VIDENC1_Status);
+  enc_status.data.buf = NULL;
+
+  cevidenc->codec_dyn_params->generateHeader = XDM_GENERATE_HEADER;
+  ret = VIDENC1_control (cevidenc->codec_handle, XDM_SETPARAMS,
+      cevidenc->codec_dyn_params, &enc_status);
+  if (ret != VIDENC1_EOK)
+    goto control_params_fail;
+
+  /*Allocate an output buffer for the header */
+  header_buf = gst_buffer_new_allocate (cevidenc->allocator, 200,
+      &cevidenc->params);
+  if (!gst_buffer_map (header_buf, &info, GST_MAP_WRITE))
+    return FALSE;
+
+  cevidenc->outbuf.bufs = (XDAS_Int8 **) & (info.data);
+
+  /* Set output and input arguments for the encode process */
+  in_args.size = sizeof (IVIDENC1_InArgs);
+  in_args.inputID = 1;
+  in_args.topFieldFirstFlag = 1;
+
+  out_args.size = sizeof (VIDENC1_OutArgs);
+
+  /* Generate the header */
+  ret =
+      VIDENC1_process (cevidenc->codec_handle, &cevidenc->inbuf,
+      &cevidenc->outbuf, &in_args, &out_args);
+  if (ret != VIDENC1_EOK)
+    goto encode_fail;
+
+  gst_buffer_unmap (header_buf, &info);
+
+  cevidenc->codec_dyn_params->generateHeader = XDM_ENCODE_AU;
+  ret = VIDENC1_control (cevidenc->codec_handle, XDM_SETPARAMS,
+      cevidenc->codec_dyn_params, &enc_status);
+  if (ret != VIDENC1_EOK)
+    goto control_params_fail;
+
+  h264enc->header_size = out_args.bytesGenerated;
+  *buf = header_buf;
+
+  return TRUE;
+
+control_params_fail:
+  {
+    GST_WARNING_OBJECT (cevidenc, "Failed to set dynamic parameters, "
+        "status error %x, %d", (unsigned int) enc_status.extendedError, ret);
+    return FALSE;
+  }
+encode_fail:
+  {
+    GST_WARNING_OBJECT (cevidenc,
+        "Failed header encode process with extended error: 0x%x",
+        (unsigned int) out_args.extendedError);
+    return FALSE;
+  }
+
+}
+
+static gboolean
+gst_ce_h264_get_codec_data (GstCEVidEnc * cevidenc)
+{
+  h264PrivateData *h264enc = (h264PrivateData *) cevidenc->codec_private;
+
+  GstBuffer *buf;
+  GstMapInfo info;
+  nalUnit sps, pps;
+  guint8 *header, *buffer, *sps_ptr;
+  gint codec_data_size;
+  gint num_sps = 1;
+  gint num_pps = 1;
+  gint nal_idx;
+
+  if (!gst_ce_h264enc_get_header (cevidenc, &buf))
+    return FALSE;
+
+  if (!gst_buffer_map (buf, &info, GST_MAP_READ))
+    return FALSE;
+
+  header = info.data;
+  gst_ce_h264_fetch_header (header, h264enc->header_size, &sps, &pps);
+
+  if (sps.type != 7 || pps.type != 8 || sps.size < 4 || pps.size < 1) {
+    GST_WARNING_OBJECT (cevidenc, "unexpected H.264 header");
+    return FALSE;
+  }
+
+  GST_MEMDUMP ("SPS", &header[sps.index], sps.size);
+  GST_MEMDUMP ("PPS", &header[pps.index], pps.size);
+
+  /*
+   *      -: avc codec data:-
+   *  -----------------------------------
+   *  1 byte  - version
+   *  1 byte  - h.264 stream profile
+   *  1 byte  - h.264 compatible profiles
+   *  1 byte  - h.264 stream level
+   *  6 bits  - reserved set to 63
+   *  2 bits  - NAL length
+   *            ( 0 - 1 byte; 1 - 2 bytes; 3 - 4 bytes)
+   *  1 byte  - number of SPS
+   *  2 bytes - SPS length
+   *  for (i=0; i < number of SPS; i++) {
+   *      SPS length bytes - SPS NAL unit
+   *  }
+   *  1 byte  - number of PPS
+   *  2 bytes - PPS length
+   *  for (i=0; i < number of PPS; i++) {
+   *      PPS length bytes - PPS NAL unit
+   *  }
+   * ------------------------------------------
+   */
+  codec_data_size += sps.size + pps.size + 11;
+  buffer = g_malloc (codec_data_size);
+  /* SPS pointer, skip NAL unit type */
+  sps_ptr = &header[sps.index] + 1;
+
+  buffer[0] = 1;
+  buffer[1] = sps_ptr[0];
+  buffer[2] = sps_ptr[1];
+  buffer[3] = sps_ptr[2];
+  buffer[4] = 0xfc | (4 - 1);   /*0xfc for the 6 bits reserved */
+  buffer[5] = 0xe0 | num_sps;   /*0xe0 for the 3 bits reserved */
+
+  nal_idx = 6;
+  GST_WRITE_UINT16_BE (buffer + nal_idx, sps.size);
+  nal_idx += 2;
+  memcpy (buffer + nal_idx, &header[sps.index], sps.size);
+  nal_idx += sps.size;
+
+  buffer[nal_idx++] = 1;        /* number of PPSs */
+  GST_WRITE_UINT16_BE (buffer + nal_idx, pps.size);
+  nal_idx += 2;
+  memcpy (buffer + nal_idx, &header[pps.index], pps.size);
+  nal_idx += pps.size;
+
+  GST_MEMDUMP ("Codec data", buffer, codec_data_size);
+  gst_buffer_unref (buf);
+  g_free (buffer);
+}
 
 static gboolean
 gst_ce_h264enc_set_src_caps (GObject * object, GstCaps ** caps)
@@ -63,7 +278,6 @@ gst_ce_h264enc_set_src_caps (GObject * object, GstCaps ** caps)
     goto no_private_data;
 
   h264enc = cevidenc->codec_private;
-  gst_caps_unref (*caps);
   *caps = gst_caps_make_writable (*caps);
   s = gst_caps_get_structure (*caps, 0);
 
@@ -93,11 +307,12 @@ gst_ce_h264enc_set_src_caps (GObject * object, GstCaps ** caps)
   }
 
   if (h264enc->current_stream_format == GST_CE_H264ENC_STREAM_FORMAT_AVC) {
+    gst_ce_h264_get_codec_data (cevidenc);
     gst_structure_set (s, "stream-format", G_TYPE_STRING, "avc", NULL);
   } else {
     gst_structure_set (s, "stream-format", G_TYPE_STRING, "byte-stream", NULL);
   }
-  GST_DEBUG_OBJECT ("H.264 caps %s", gst_caps_to_string (*caps));
+  GST_DEBUG_OBJECT (cevidenc, "H.264 caps %s", gst_caps_to_string (*caps));
 
   return TRUE;
 
