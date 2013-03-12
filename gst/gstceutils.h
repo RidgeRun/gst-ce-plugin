@@ -45,7 +45,10 @@ struct _GstCECodecData
   /* Fuction to alloc and Initialize resources*/
   void (*setup)(GObject *);
   /* Function to define element src caps*/
-  gboolean (*set_src_caps)(GObject *, GstCaps **);
+  gboolean (*set_src_caps)(GObject *, GstCaps **, GstBuffer** codec_data);
+  /* Functions to run before and after the encoding*/
+  gboolean (*pre_process)(GObject *, GstBuffer*);
+  gboolean (*post_process)(GObject *, GstBuffer*);
   /* Functions to provide custom properties */
   void (*install_properties)(GObjectClass *);
   void (*set_property) (GObject *,guint,const GValue *,GParamSpec *);

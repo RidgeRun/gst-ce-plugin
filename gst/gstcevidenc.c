@@ -216,13 +216,16 @@ gst_cevidenc_init (GstCEVidEnc * cevidenc)
       return;
     }
   }
+
   dyn_params = cevidenc->codec_dyn_params;
 
+  cevidenc->first_buffer = TRUE;
   cevidenc->out_buffer_size = 0;
   cevidenc->copy_output = FALSE;
   cevidenc->engine_handle = NULL;
   cevidenc->codec_handle = NULL;
   cevidenc->allocator = NULL;
+  cevidenc->codec_data = NULL;
 
   /* Set default values for codec static params */
   params->size = sizeof (VIDENC1_Params);
@@ -245,6 +248,12 @@ gst_cevidenc_init (GstCEVidEnc * cevidenc)
   dyn_params->interFrameInterval = 1;
   dyn_params->mbDataFlag = 0;
 
+  /*
+   * $
+   * TODO
+   * Split initalizacion of variables that
+   * need to be reset when stop.
+   */
 }
 
 static void
@@ -343,12 +352,17 @@ gst_cevidenc_configure_codec (GstCEVidEnc * cevidenc)
   if (ret != VIDENC1_EOK)
     goto control_getinfo_fail;
 
-  for (i = 0; i < enc_status.bufInfo.minNumInBufs; i++)
+  for (i = 0; i < enc_status.bufInfo.minNumInBufs; i++) {
     cevidenc->inbuf.bufDesc[i].bufSize = enc_status.bufInfo.minInBufSize[i];
+    GST_DEBUG_OBJECT (cevidenc,
+        "size of input buffer [%d] = %d", i,
+        cevidenc->inbuf.bufDesc[i].bufSize);
+  }
 
   cevidenc->outbuf_size = enc_status.bufInfo.minOutBufSize[0];
   cevidenc->outbuf.numBufs = 1;
   cevidenc->outbuf.bufSizes = (XDAS_Int32 *) & cevidenc->outbuf_size;
+  GST_DEBUG_OBJECT (cevidenc, "output buffer size = %d", cevidenc->outbuf_size);
 
   return TRUE;
 
@@ -412,6 +426,8 @@ gst_cevidenc_set_format (GstVideoEncoder * encoder, GstVideoCodecState * state)
    * TODO: 
    * 1. Average Duration needed??
    */
+  if (!gst_cevidenc_configure_codec (cevidenc))
+    goto fail_set_caps;
 
   /* some codecs support more than one format, first auto-choose one */
   GST_DEBUG_OBJECT (cevidenc, "picking an output format...");
@@ -428,7 +444,9 @@ gst_cevidenc_set_format (GstVideoEncoder * encoder, GstVideoCodecState * state)
 
   if (klass->codec && klass->codec->set_src_caps) {
     GST_DEBUG ("Use custom set src caps");
-    klass->codec->set_src_caps ((GObject *) cevidenc, allowed_caps);
+    if (!klass->codec->set_src_caps ((GObject *) cevidenc, &allowed_caps,
+            &cevidenc->codec_data))
+      goto fail_set_caps;
   }
 
   if (gst_caps_get_size (allowed_caps) > 1) {
@@ -451,12 +469,18 @@ gst_cevidenc_set_format (GstVideoEncoder * encoder, GstVideoCodecState * state)
   /* Set output state */
   output_format =
       gst_video_encoder_set_output_state (encoder, allowed_caps, state);
+
+  if (cevidenc->codec_data) {
+    GST_DEBUG_OBJECT (cevidenc, "setting the codec data");
+    output_format->codec_data = cevidenc->codec_data;
+  }
   gst_video_codec_state_unref (output_format);
 
-  if (!gst_cevidenc_configure_codec (cevidenc))
-    return FALSE;
-
   return TRUE;
+
+fail_set_caps:
+  GST_ERROR_OBJECT (cevidenc, "couldn't set video format");
+  return FALSE;
 }
 
 
@@ -499,6 +523,7 @@ gst_cevidenc_handle_frame (GstVideoEncoder * encoder,
     GstVideoCodecFrame * frame)
 {
   GstCEVidEnc *cevidenc = (GstCEVidEnc *) encoder;
+  GstCEVidEncClass *klass = (GstCEVidEncClass *) G_OBJECT_GET_CLASS (cevidenc);
   GstVideoInfo *info = &cevidenc->input_state->info;
   GstVideoFrame vframe;
   GstMapInfo info_out;
@@ -542,21 +567,32 @@ gst_cevidenc_handle_frame (GstVideoEncoder * encoder,
 
   out_args.size = sizeof (VIDENC1_OutArgs);
 
-  /* Procees la encode and check for errors */
+  /* Process encode and check for errors */
   ret =
       VIDENC1_process (cevidenc->codec_handle, &cevidenc->inbuf,
       &cevidenc->outbuf, &in_args, &out_args);
   if (ret != VIDENC1_EOK)
     goto encode_fail;
 
+  info_out.size = out_args.bytesGenerated;
+  GST_DEBUG ("encoded an output buffer size of %d", info_out.size);
   gst_buffer_unmap (outbuf, &info_out);
   gst_video_codec_frame_unref (frame);
 
   GST_DEBUG ("frame encoded succesfully");
+  gst_buffer_set_size (outbuf, out_args.bytesGenerated);
+  if (klass->codec->post_process)
+    klass->codec->post_process ((GObject *) cevidenc, outbuf);
+
+
+  /*Mark when finish to process the first buffer */
+  if (cevidenc->first_buffer)
+    cevidenc->first_buffer = FALSE;
+
   /* Get oldest frame */
   frame = gst_video_encoder_get_oldest_frame (encoder);
   frame->output_buffer = outbuf;
-
+  GST_DEBUG ("bytesGenerated %d", out_args.bytesGenerated);
   return gst_video_encoder_finish_frame (encoder, frame);
 
 alloc_fail:

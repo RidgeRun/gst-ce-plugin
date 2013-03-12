@@ -32,6 +32,7 @@ typedef struct _GstCEVidEnc GstCEVidEnc;
 struct _GstCEVidEnc
 {
   GstVideoEncoder parent;
+  gboolean first_buffer;
   /*Properties */
   gint out_buffer_size;
   gboolean copy_output;
@@ -46,6 +47,7 @@ struct _GstCEVidEnc
   gint32 outbuf_size;
   GstVideoFormat pix_format;
   GstVideoCodecState *input_state;
+  GstBuffer *codec_data;
 
   /* Handle to the CMEM allocator */
   GstAllocator *allocator;
