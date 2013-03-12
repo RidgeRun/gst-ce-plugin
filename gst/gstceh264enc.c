@@ -83,7 +83,7 @@ gst_ce_h264enc_fetch_header (guint8 * data, gint buffer_size,
   nalUnit *nalu = NULL;
   gint32 state;
 
-  const start_code = 0x00000001;
+  const gint32 start_code = 0x00000001;
 
   GST_DEBUG ("fetching header PPS and SPS");
   GST_MEMDUMP ("Header", data, buffer_size);
@@ -430,7 +430,7 @@ gst_ce_h264enc_post_process (GObject * object, GstBuffer * buffer)
   gint size;
   gint32 state;
 
-  const start_code = 0x00000001;
+  const gint32 start_code = 0x00000001;
 
   if (!h264enc) {
     GST_ERROR_OBJECT (cevidenc, "no H.264 private data, run setup first");
