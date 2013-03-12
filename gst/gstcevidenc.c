@@ -220,13 +220,12 @@ gst_cevidenc_init (GstCEVidEnc * cevidenc)
   dyn_params = cevidenc->codec_dyn_params;
 
   cevidenc->first_buffer = TRUE;
-  cevidenc->out_buffer_size = 0;
-  cevidenc->copy_output = FALSE;
   cevidenc->engine_handle = NULL;
   cevidenc->codec_handle = NULL;
   cevidenc->allocator = NULL;
-  cevidenc->codec_data = NULL;
 
+
+  cevidenc->codec_data = NULL;
   /* Set default values for codec static params */
   params->size = sizeof (VIDENC1_Params);
   params->encodingPreset = XDM_HIGH_SPEED;
@@ -676,9 +675,30 @@ gst_cevidenc_open (GstVideoEncoder * encoder)
   GST_DEBUG ("opening %s Engine", CODEC_ENGINE);
   /* reset, load, and start DSP Engine */
   if ((cevidenc->engine_handle =
-          Engine_open ((Char *) CODEC_ENGINE, NULL, NULL)) == NULL) {
+          Engine_open ((Char *) CODEC_ENGINE, NULL, NULL)) == NULL)
+    goto fail_engine_open;
+
+  if (cevidenc->allocator)
+    gst_object_unref (cevidenc->allocator);
+
+  GST_DEBUG ("getting CMEM allocator");
+  cevidenc->allocator = gst_allocator_find ("ContiguosMemory");
+
+  if (!cevidenc->allocator)
+    goto no_allocator;
+
+  return TRUE;
+
+  /* Errors */
+fail_engine_open:
+  {
     GST_ELEMENT_ERROR (cevidenc, STREAM, CODEC_NOT_FOUND, (NULL),
         ("failed to open codec engine \"%s\"", CODEC_ENGINE));
+    return FALSE;
+  }
+no_allocator:
+  {
+    GST_WARNING_OBJECT (cevidenc, "can't find the buffer allocator");
     return FALSE;
   }
 
@@ -696,6 +716,11 @@ gst_cevidenc_close (GstVideoEncoder * encoder)
     cevidenc->engine_handle = NULL;
   }
 
+  if (cevidenc->allocator) {
+    gst_object_unref (cevidenc->allocator);
+    cevidenc->allocator = NULL;
+  }
+
   return TRUE;
 }
 
@@ -704,22 +729,7 @@ gst_cevidenc_start (GstVideoEncoder * encoder)
 {
   GstCEVidEnc *cevidenc = (GstCEVidEnc *) encoder;
 
-  if (cevidenc->allocator)
-    gst_object_unref (cevidenc->allocator);
-  GST_DEBUG ("getting CMEM allocator");
-  cevidenc->allocator = gst_allocator_find ("ContiguosMemory");
 
-  if (!cevidenc->allocator)
-    goto no_allocator;
-
-  return TRUE;
-
-  /* Errors */
-no_allocator:
-  {
-    GST_WARNING_OBJECT (encoder, "can't find the buffer allocator");
-    return FALSE;
-  }
 }
 
 static gboolean
@@ -730,11 +740,6 @@ gst_cevidenc_stop (GstVideoEncoder * encoder)
   if (cevidenc->codec_handle) {
     VIDENC1_delete (cevidenc->codec_handle);
     cevidenc->codec_handle = NULL;
-  }
-
-  if (cevidenc->allocator) {
-    gst_object_unref (cevidenc->allocator);
-    cevidenc->allocator = NULL;
   }
 
   return TRUE;
