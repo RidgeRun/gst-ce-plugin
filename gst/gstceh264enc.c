@@ -41,6 +41,14 @@ GstStaticCaps gst_ce_h264enc_src_caps = GST_STATIC_CAPS ("video/x-h264, "
 
 enum
 {
+  PROP_BASE = 0,
+  PROP_BYTESTREAM,
+  PROP_HEADERS,
+  PROP_SINGLE_NALU,
+};
+
+enum
+{
   GST_CE_H264ENC_STREAM_FORMAT_AVC,
   GST_CE_H264ENC_STREAM_FORMAT_BYTE_STREAM,
   GST_CE_H264ENC_STREAM_FORMAT_FROM_PROPERTY
@@ -56,12 +64,14 @@ enum
   GST_H264_NAL_PPS = 8,
 };
 
+
 typedef struct
 {
   gint current_stream_format;
   gboolean byte_stream;
+  gboolean headers;
+  gboolean single_nalu;
   gint header_size;
-  gint single_nalu;
 
 } h264PrivateData;
 
@@ -403,7 +413,7 @@ gst_ce_h264enc_setup (GObject * object)
   }
   h264enc = (h264PrivateData *) cevidenc->codec_private;
 
-  h264enc->byte_stream = 1;
+  h264enc->byte_stream = FALSE;
   h264enc->single_nalu = FALSE;
   return;
 
@@ -515,6 +525,86 @@ gst_ce_h264enc_post_process (GObject * object, GstBuffer * buffer)
   return TRUE;
 }
 
+static void
+gst_ce_h264enc_install_properties (GObjectClass * gobject_class, guint base)
+{
+
+  g_object_class_install_property (gobject_class, base + PROP_BYTESTREAM,
+      g_param_spec_boolean ("bytestream",
+          "Byte-stream",
+          "Generate h264 NAL unit stream instead of 'packetized' stream (no codec_data is generated)",
+          FALSE, G_PARAM_READWRITE));
+
+  g_object_class_install_property (gobject_class, base + PROP_HEADERS,
+      g_param_spec_boolean ("headers",
+          "Include on the stream the SPS/PPS headers",
+          "Include on the stream the SPS/PPS headers",
+          FALSE, G_PARAM_READWRITE));
+
+  g_object_class_install_property (gobject_class, base + PROP_SINGLE_NALU,
+      g_param_spec_boolean ("single-nalu",
+          "Buffers contains a single NALU",
+          "Buffers contains a single NALU", FALSE, G_PARAM_READWRITE));
+}
+
+static void
+gst_ce_h264enc_set_property (GObject * object, guint prop_id,
+    const GValue * value, GParamSpec * pspec, guint base)
+{
+  GstCEVidEnc *cevidenc = (GstCEVidEnc *) (object);
+  h264PrivateData *h264enc = (h264PrivateData *) cevidenc->codec_private;
+  guint prop_h264_id = prop_id - base;
+
+  if (!h264enc) {
+    GST_ERROR_OBJECT (cevidenc, "no H.264 private data, run setup first");
+    return;
+  }
+
+  switch (prop_h264_id) {
+    case PROP_BYTESTREAM:
+      h264enc->byte_stream = g_value_get_boolean (value);
+      break;
+    case PROP_HEADERS:
+      h264enc->headers = g_value_get_boolean (value);
+      break;
+    case PROP_SINGLE_NALU:
+      h264enc->single_nalu = g_value_get_boolean (value);
+      break;
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+      break;
+  }
+}
+
+static void
+gst_ce_h264enc_get_property (GObject * object, guint prop_id,
+    GValue * value, GParamSpec * pspec, guint base)
+{
+  GstCEVidEnc *cevidenc = (GstCEVidEnc *) (object);
+  h264PrivateData *h264enc = (h264PrivateData *) cevidenc->codec_private;
+  guint prop_h264_id = prop_id - base;
+
+  if (!h264enc) {
+    GST_ERROR_OBJECT (cevidenc, "no H.264 private data, run setup first");
+    return;
+  }
+
+  switch (prop_h264_id) {
+    case PROP_BYTESTREAM:
+      g_value_set_boolean (value, h264enc->byte_stream);
+      break;
+    case PROP_HEADERS:
+      g_value_set_boolean (value, h264enc->headers);
+      break;
+    case PROP_SINGLE_NALU:
+      g_value_set_boolean (value, h264enc->single_nalu);
+      break;
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+      break;
+  }
+}
+
 GstCECodecData gst_ce_h264enc = {
   .name = "h264enc",
   .long_name = "H.264",
@@ -523,7 +613,7 @@ GstCECodecData gst_ce_h264enc = {
   .setup = gst_ce_h264enc_setup,
   .set_src_caps = gst_ce_h264enc_set_src_caps,
   .post_process = gst_ce_h264enc_post_process,
-  .install_properties = NULL,
-  .set_property = NULL,
-  .get_property = NULL,
+  .install_properties = gst_ce_h264enc_install_properties,
+  .set_property = gst_ce_h264enc_set_property,
+  .get_property = gst_ce_h264enc_get_property,
 };

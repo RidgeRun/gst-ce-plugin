@@ -52,6 +52,7 @@ enum
   PROP_TARGETBITRATE,
   PROP_INTRAFRAMEINTERVAL,
   PROP_FORCE_FRAME,
+  PROP_CODEC_BASE
 };
 
 #define PROP_ENCODINGPRESET_DEFAULT       XDM_HIGH_SPEED
@@ -261,7 +262,7 @@ gst_cevidenc_class_init (GstCEVidEncClass * klass)
 
   /* Register additional properties, dependent on the exact CODEC */
   if (klass->codec->install_properties) {
-    klass->codec->install_properties (gobject_class);
+    klass->codec->install_properties (gobject_class, PROP_CODEC_BASE);
   }
 
   venc_class->open = gst_cevidenc_open;
@@ -727,7 +728,8 @@ gst_cevidenc_set_property (GObject * object,
       break;
     default:
       if (klass->codec->set_property)
-        klass->codec->set_property (object, prop_id, value, pspec);
+        klass->codec->set_property (object, prop_id, value, pspec,
+            PROP_CODEC_BASE);
       else
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
@@ -779,7 +781,8 @@ gst_cevidenc_get_property (GObject * object,
       break;
     default:
       if (klass->codec->get_property)
-        klass->codec->set_property (object, prop_id, value, pspec);
+        klass->codec->set_property (object, prop_id, value, pspec,
+            PROP_CODEC_BASE);
       else
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
