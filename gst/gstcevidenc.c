@@ -225,7 +225,7 @@ gst_cevidenc_class_init (GstCEVidEncClass * klass)
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
   g_object_class_install_property (gobject_class, PROP_ENCODINGPRESET,
-      g_param_spec_enum ("encoding-preset", "Encoding rate control",
+      g_param_spec_enum ("encoding-preset", "Encoding preset",
           "Encoding preset", GST_CE_VIDENC_PRESET_TYPE,
           PROP_ENCODINGPRESET_DEFAULT,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
@@ -250,9 +250,9 @@ gst_cevidenc_class_init (GstCEVidEncClass * klass)
 
   g_object_class_install_property (gobject_class, PROP_FORCE_FRAME,
       g_param_spec_enum ("force-frame",
-          "Force next frame to be encodes as a specific type",
-          "Encoding preset", GST_CE_VIDENC_FORCE_FRAME_TYPE,
-          PROP_FORCE_FRAME_DEFAULT,
+          "Force frame",
+          "Force next frame to be encoded as a specific type",
+          GST_CE_VIDENC_FORCE_FRAME_TYPE, PROP_FORCE_FRAME_DEFAULT,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
   /*$ 
    * TODO: 
