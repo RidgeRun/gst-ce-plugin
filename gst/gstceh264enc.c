@@ -483,7 +483,8 @@ gst_ce_h264enc_post_process (GObject * object, GstBuffer * buffer)
         break;
       } else {
         /*This is the firts start code */
-        if ((nal_type == GST_H264_NAL_SPS || nal_type == GST_H264_NAL_PPS)) {
+        if ((nal_type == GST_H264_NAL_SPS || nal_type == GST_H264_NAL_PPS)
+            && !h264enc->headers) {
           /* Discard anything previous to the SPS and PPS */
           /* Caution: here we are asumming the output buffer  
            * has only one memory block*/
