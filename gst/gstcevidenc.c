@@ -372,6 +372,8 @@ gst_cevidenc_configure_codec (GstCEVidEnc * cevidenc)
 
   fps = (cevidenc->fps_num * 1000) / cevidenc->fps_den;
 
+  GST_OBJECT_LOCK (cevidenc);
+
   params->maxWidth = cevidenc->inbuf.frameWidth;
   params->maxHeight = cevidenc->inbuf.frameHeight;
   params->maxFrameRate = fps;
@@ -399,6 +401,8 @@ gst_cevidenc_configure_codec (GstCEVidEnc * cevidenc)
       dyn_params, &enc_status);
   if (ret != VIDENC1_EOK)
     goto control_params_fail;
+
+  GST_OBJECT_UNLOCK (cevidenc);
 
   /* Get buffer information from video encoder */
   ret = VIDENC1_control (cevidenc->codec_handle, XDM_GETBUFINFO,
@@ -664,6 +668,10 @@ gst_cevidenc_set_property (GObject * object,
   GstCEVidEncClass *klass;
   VIDENC1_Params *params;
   VIDENC1_DynamicParams *dyn_params;
+  VIDENC1_Status enc_status;
+  gboolean set_params = FALSE;
+
+  gint ret;
 
   /* Get a pointer of the right type. */
   cevidenc = (GstCEVidEnc *) (object);
@@ -699,28 +707,19 @@ gst_cevidenc_set_property (GObject * object,
       dyn_params->targetBitRate = g_value_get_int (value);
       GST_LOG_OBJECT (cevidenc,
           "setting target bitrate to %li", dyn_params->targetBitRate);
-      /*$
-       * TODO
-       * Set dynamic params
-       */
+      set_params = TRUE;
       break;
     case PROP_INTRAFRAMEINTERVAL:
       dyn_params->intraFrameInterval = g_value_get_int (value);
       GST_LOG_OBJECT (cevidenc,
           "setting intra frame interval to %li",
           dyn_params->intraFrameInterval);
-      /*$
-       * TODO
-       * Set dynamic params
-       */
+      set_params = TRUE;
       break;
     case PROP_FORCE_FRAME:
       dyn_params->forceFrame = g_value_get_int (value);
       GST_LOG_OBJECT (cevidenc, "forcing frame to %li", dyn_params->forceFrame);
-      /*$
-       * TODO
-       * Set dynamic params
-       */
+      set_params = TRUE;
       break;
     default:
       if (klass->codec->set_property)
@@ -730,6 +729,17 @@ gst_cevidenc_set_property (GObject * object,
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
   }
+
+  if (set_params && cevidenc->codec_handle) {
+    enc_status.size = sizeof (VIDENC1_Status);
+    enc_status.data.buf = NULL;
+    ret = VIDENC1_control (cevidenc->codec_handle, XDM_SETPARAMS,
+        dyn_params, &enc_status);
+    if (ret != VIDENC1_EOK)
+      GST_WARNING_OBJECT (cevidenc, "failed to set dynamic parameters, "
+          "status error %x, %d", (guint) enc_status.extendedError, ret);
+  }
+
   GST_OBJECT_UNLOCK (cevidenc);
 }
 
