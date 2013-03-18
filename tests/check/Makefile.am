@@ -19,7 +19,13 @@ clean-local: clean-local-check
 check_PROGRAMS = \
 	generic/plugin-test		\
 	generic/states			\
+	elements/ce_h264enc		\
 	libs/cmem
+
+elements_ce_h264enc_LDADD = $(GST_PLUGINS_BASE_LIBS) \
+	-lgstapp-@GST_API_VERSION@ \
+	$(GST_BASE_LIBS) \
+	$(LDADD)
 
 libs_cmem_LDADD = \
 	$(top_builddir)/gst-libs/gst/cmem/libgstcmem-@GST_API_VERSION@.la \
