@@ -279,11 +279,11 @@ static void
 gst_cevidenc_init (GstCEVidEnc * cevidenc)
 {
 
-  GST_DEBUG ("initialize encoder");
+  GST_DEBUG_OBJECT (cevidenc, "initialize encoder");
 
   /* Allocate the codec params */
   if (!cevidenc->codec_params) {
-    GST_DEBUG ("allocating codec params");
+    GST_DEBUG_OBJECT (cevidenc, "allocating codec params");
     cevidenc->codec_params = g_malloc0 (sizeof (VIDENC1_Params));
     if (cevidenc->codec_params == NULL) {
       GST_WARNING_OBJECT (cevidenc, "failed to allocate VIDENC1_Params");
@@ -293,7 +293,7 @@ gst_cevidenc_init (GstCEVidEnc * cevidenc)
   }
 
   if (!cevidenc->codec_dyn_params) {
-    GST_DEBUG ("allocating codec dynamic params");
+    GST_DEBUG_OBJECT (cevidenc, "allocating codec dynamic params");
     cevidenc->codec_dyn_params = g_malloc0 (sizeof (VIDENC1_DynamicParams));
     if (cevidenc->codec_dyn_params == NULL) {
       GST_WARNING_OBJECT (cevidenc, "failed to allocate VIDENC1_DynamicParams");
@@ -381,11 +381,11 @@ gst_cevidenc_configure_codec (GstCEVidEnc * cevidenc)
   dyn_params->refFrameRate = dyn_params->targetFrameRate = fps;
 
   if (cevidenc->codec_handle) {
-    GST_DEBUG ("Closing old codec session");
+    GST_DEBUG_OBJECT (cevidenc, "Closing old codec session");
     VIDENC1_delete (cevidenc->codec_handle);
   }
 
-  GST_DEBUG ("Create the codec handle");
+  GST_DEBUG_OBJECT (cevidenc, "Create the codec handle");
   cevidenc->codec_handle = VIDENC1_create (cevidenc->engine_handle,
       (Char *) klass->codec->name, params);
   if (!cevidenc->codec_handle)
@@ -394,7 +394,7 @@ gst_cevidenc_configure_codec (GstCEVidEnc * cevidenc)
   enc_status.size = sizeof (VIDENC1_Status);
   enc_status.data.buf = NULL;
 
-  GST_DEBUG ("Set codec dynamic parameters");
+  GST_DEBUG_OBJECT (cevidenc, "Set codec dynamic parameters");
   ret = VIDENC1_control (cevidenc->codec_handle, XDM_SETPARAMS,
       dyn_params, &enc_status);
   if (ret != VIDENC1_EOK)
@@ -422,24 +422,21 @@ gst_cevidenc_configure_codec (GstCEVidEnc * cevidenc)
 
 open_codec_fail:
   {
-    GST_ERROR_OBJECT (cevidenc, "ce_%s: Failed to open codec",
-        klass->codec->name);
+    GST_ERROR_OBJECT (cevidenc, "Failed to open codec %s", klass->codec->name);
     return FALSE;
   }
 control_params_fail:
   {
-    GST_ERROR_OBJECT (cevidenc, "ce_%s: Failed to set dynamic parameters, "
-        "status error %x, %d", klass->codec->name,
-        (unsigned int) enc_status.extendedError, ret);
+    GST_ERROR_OBJECT (cevidenc, "Failed to set dynamic parameters, "
+        "status error %x, %d", (guint) enc_status.extendedError, ret);
     VIDENC1_delete (cevidenc->codec_handle);
     cevidenc->codec_handle = NULL;
     return FALSE;
   }
 control_getinfo_fail:
   {
-    GST_ERROR_OBJECT (cevidenc, "ce_%s: Failed to get buffer information, "
-        "status error %x, %d", klass->codec->name,
-        (unsigned int) enc_status.extendedError, ret);
+    GST_ERROR_OBJECT (cevidenc, "Failed to get buffer information, "
+        "status error %x, %d", (guint) enc_status.extendedError, ret);
     VIDENC1_delete (cevidenc->codec_handle);
     cevidenc->codec_handle = NULL;
     return FALSE;
@@ -585,23 +582,17 @@ gst_cevidenc_handle_frame (GstVideoEncoder * encoder,
   VIDENC1_InArgs in_args;
   VIDENC1_OutArgs out_args;
 
-  /*$ 
-   * TODO:
-   * Add real code, 
-   * This is just a temporal code for testing purposes 
-   */
-  if (!gst_video_frame_map (&vframe, info, frame->input_buffer, GST_MAP_READ)) {
-    GST_ERROR_OBJECT (encoder, "Failed to map input buffer");
-    return GST_FLOW_ERROR;
-  }
-
   /* Fill planes pointer */
+  if (!gst_video_frame_map (&vframe, info, frame->input_buffer, GST_MAP_READ))
+    goto map_fail;
+
   for (c = 0; c < GST_VIDEO_FRAME_N_PLANES (&vframe); c++) {
     cevidenc->inbuf.bufDesc[c].buf = GST_VIDEO_FRAME_PLANE_DATA (&vframe, c);
   }
 
   gst_video_frame_unmap (&vframe);
 
+  /*Allocate output buffer */
   if (!gst_cevidenc_allocate_output_frame (cevidenc, &outbuf))
     goto alloc_fail;
 
@@ -618,34 +609,38 @@ gst_cevidenc_handle_frame (GstVideoEncoder * encoder,
 
   out_args.size = sizeof (VIDENC1_OutArgs);
 
-  /* Process encode and check for errors */
+  /* Encode process */
   ret =
       VIDENC1_process (cevidenc->codec_handle, &cevidenc->inbuf,
       &cevidenc->outbuf, &in_args, &out_args);
   if (ret != VIDENC1_EOK)
     goto encode_fail;
 
-  info_out.size = out_args.bytesGenerated;
-  GST_DEBUG ("encoded an output buffer size of %d", info_out.size);
+  GST_DEBUG_OBJECT (cevidenc, "encoded an output buffer of size %li",
+      out_args.bytesGenerated);
   gst_buffer_unmap (outbuf, &info_out);
-  gst_video_codec_frame_unref (frame);
 
-  GST_DEBUG ("frame encoded succesfully");
   gst_buffer_set_size (outbuf, out_args.bytesGenerated);
   if (klass->codec->post_process)
     klass->codec->post_process ((GObject *) cevidenc, outbuf);
-
 
   /*Mark when finish to process the first buffer */
   if (cevidenc->first_buffer)
     cevidenc->first_buffer = FALSE;
 
+  GST_DEBUG_OBJECT (cevidenc, "frame encoded succesfully");
+  gst_video_codec_frame_unref (frame);
   /* Get oldest frame */
   frame = gst_video_encoder_get_oldest_frame (encoder);
   frame->output_buffer = outbuf;
 
   return gst_video_encoder_finish_frame (encoder, frame);
 
+map_fail:
+  {
+    GST_ERROR_OBJECT (encoder, "Failed to map input buffer");
+    return GST_FLOW_ERROR;
+  }
 alloc_fail:
   {
     GST_ERROR_OBJECT (cevidenc, "Failed to get output buffer");
@@ -653,6 +648,7 @@ alloc_fail:
   }
 encode_fail:
   {
+    gst_buffer_unmap (outbuf, &info_out);
     GST_ERROR_OBJECT (cevidenc,
         "Failed encode process with extended error: 0x%x",
         (unsigned int) out_args.extendedError);
@@ -795,7 +791,7 @@ gst_cevidenc_open (GstVideoEncoder * encoder)
 {
   GstCEVidEnc *cevidenc = (GstCEVidEnc *) encoder;
 
-  GST_DEBUG ("opening %s Engine", CODEC_ENGINE);
+  GST_DEBUG_OBJECT (cevidenc, "opening %s Engine", CODEC_ENGINE);
   /* reset, load, and start DSP Engine */
   if ((cevidenc->engine_handle =
           Engine_open ((Char *) CODEC_ENGINE, NULL, NULL)) == NULL)
@@ -804,7 +800,7 @@ gst_cevidenc_open (GstVideoEncoder * encoder)
   if (cevidenc->allocator)
     gst_object_unref (cevidenc->allocator);
 
-  GST_DEBUG ("getting CMEM allocator");
+  GST_DEBUG_OBJECT (cevidenc, "getting CMEM allocator");
   cevidenc->allocator = gst_allocator_find ("ContiguosMemory");
 
   if (!cevidenc->allocator)
@@ -834,7 +830,8 @@ gst_cevidenc_close (GstVideoEncoder * encoder)
   GstCEVidEnc *cevidenc = (GstCEVidEnc *) encoder;
 
   if (cevidenc->engine_handle) {
-    GST_DEBUG ("closing codec engine %p\n", cevidenc->engine_handle);
+    GST_DEBUG_OBJECT (cevidenc, "closing codec engine %p\n",
+        cevidenc->engine_handle);
     Engine_close (cevidenc->engine_handle);
     cevidenc->engine_handle = NULL;
   }
@@ -850,7 +847,6 @@ gst_cevidenc_close (GstVideoEncoder * encoder)
 static gboolean
 gst_cevidenc_stop (GstVideoEncoder * encoder)
 {
-
   return gst_cevidenc_reset (encoder);
 }
 
@@ -862,6 +858,8 @@ gst_cevidenc_reset (GstVideoEncoder * encoder)
 
   VIDENC1_Params *params = cevidenc->codec_params;
   VIDENC1_DynamicParams *dyn_params = cevidenc->codec_dyn_params;
+
+
 
   if (cevidenc->input_state) {
     gst_video_codec_state_unref (cevidenc->input_state);
@@ -894,10 +892,8 @@ gst_cevidenc_reset (GstVideoEncoder * encoder)
 
   /* Configure specific codec */
   if (klass->codec && klass->codec->setup) {
-    GST_DEBUG ("Use custom setup params");
+    GST_DEBUG_OBJECT (cevidenc, "configuring codec");
     klass->codec->setup ((GObject *) cevidenc);
-  } else {
-    GST_DEBUG ("No codec data");
   }
 
   return TRUE;
