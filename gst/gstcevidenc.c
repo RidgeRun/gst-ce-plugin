@@ -815,7 +815,7 @@ gst_cevidenc_get_property (GObject * object,
       break;
     default:
       if (klass->codec->get_property)
-        klass->codec->set_property (object, prop_id, value, pspec,
+        klass->codec->get_property (object, prop_id, value, pspec,
             PROP_CODEC_BASE);
       else
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
