@@ -45,6 +45,22 @@ enum
   PROP_BYTESTREAM,
   PROP_HEADERS,
   PROP_SINGLE_NALU,
+  PROP_PROFILE,
+  PROP_LEVEL,
+  PROP_ENTROPYMODE,
+  PROP_T8X8INTRA,
+  PROP_T8X8INTER,
+  PROP_ENCQUALITY,
+  PROP_ENABLETCM,
+  PROP_DDRBUF,
+  PROP_NTEMPLAYERS,
+  PROP_SVCSYNTAXEN,
+  PROP_SEQSCALING,
+  PROP_QPINTRA,
+  PROP_QPINTER,
+  PROP_RCALGO,
+  PROP_AIRRATE,
+  PROP_IDRINTERVAL,
 };
 
 enum
@@ -82,6 +98,258 @@ typedef struct
   gint size;
 } nalUnit;
 
+#define PROP_BYTESTREAM_DEFAULT           FALSE
+#define PROP_HEADERS_DEFAULT              FALSE
+#define PROP_SINGLE_NALU_DEFAULT          FALSE
+#define PROP_PROFILE_DEFAULT              100
+#define PROP_LEVEL_DEFAULT                IH264VENC_LEVEL_40
+#define PROP_ENTROPYMODE_DEFAULT          1
+#define PROP_T8X8INTRA_DEFAULT            TRUE
+#define PROP_T8X8INTER_DEFAULT            FALSE
+#define PROP_ENCQUALITY_DEFAULT           XDM_HIGH_SPEED
+#define PROP_ENABLETCM_DEFAULT            FALSE
+#define PROP_DDRBUF_DEFAULT               FALSE
+#define PROP_NTEMPLAYERS_DEFAULT          0
+#define PROP_SVCSYNTAXEN_DEFAULT          0
+#define PROP_SEQSCALING_DEFAULT           1
+#define PROP_QPINTRA_DEFAULT              28
+#define PROP_QPINTER_DEFAULT              28
+#define PROP_RCALGO_DEFAULT               1
+#define PROP_AIRRATE_DEFAULT              0
+#define PROP_IDRINTERVAL_DEFAULT          0
+
+enum
+{
+  GST_CE_H264ENC_PROFILE_BASE = 66,
+  GST_CE_H264ENC_PROFILE_MAIN = 77,
+  GST_CE_H264ENC_PROFILE_HIGH = 100,
+};
+
+#define GST_CE_H264ENC_PROFILE_TYPE (gst_cevidenc_profile_get_type())
+static GType
+gst_cevidenc_profile_get_type (void)
+{
+  static GType profile_type = 0;
+
+  static const GEnumValue profile_types[] = {
+    {GST_CE_H264ENC_PROFILE_BASE, "Base line", "base"},
+    {GST_CE_H264ENC_PROFILE_MAIN, "Main profile", "main"},
+    {GST_CE_H264ENC_PROFILE_HIGH, "High profile", "high"},
+    {0, NULL, NULL}
+  };
+
+  if (!profile_type) {
+    profile_type =
+        g_enum_register_static ("GstCEH264EncProfile", profile_types);
+  }
+  return profile_type;
+}
+
+#define GST_CE_H264ENC_LEVEL_TYPE (gst_cevidenc_level_get_type())
+static GType
+gst_cevidenc_level_get_type (void)
+{
+  static GType level_type = 0;
+
+  static const GEnumValue level_types[] = {
+    {IH264VENC_LEVEL_10, "Level 1.0", "1.0"},
+    {IH264VENC_LEVEL_1b, "Level 1.b", "1.b"},
+    {IH264VENC_LEVEL_11, "Level 1.1", "1.1"},
+    {IH264VENC_LEVEL_12, "Level 1.2", "1.2"},
+    {IH264VENC_LEVEL_13, "Level 1.3", "1.3"},
+    {IH264VENC_LEVEL_20, "Level 2.0", "2.0"},
+    {IH264VENC_LEVEL_21, "Level 2.1", "2.1"},
+    {IH264VENC_LEVEL_22, "Level 2.2", "2.2"},
+    {IH264VENC_LEVEL_30, "Level 3.0", "3.0"},
+    {IH264VENC_LEVEL_31, "Level 3.1", "3.1"},
+    {IH264VENC_LEVEL_32, "Level 3.2", "3.2"},
+    {IH264VENC_LEVEL_40, "Level 4.0", "4.0"},
+    {IH264VENC_LEVEL_41, "Level 4.1", "4.1"},
+    {IH264VENC_LEVEL_42, "Level 4.2", "4.2"},
+    {IH264VENC_LEVEL_50, "Level 5.0", "5.0"},
+    {IH264VENC_LEVEL_51, "Level 5.1", "5.1"},
+    {0, NULL, NULL}
+  };
+
+  if (!level_type) {
+    level_type = g_enum_register_static ("GstCEH264EncLevel", level_types);
+  }
+  return level_type;
+}
+
+enum
+{
+  GST_CE_H264ENC_ENTROPY_CAVLC = 0,
+  GST_CE_H264ENC_ENTROPY_CABAC = 1,
+};
+
+#define GST_CE_H264ENC_ENTROPY_TYPE (gst_cevidenc_entropy_get_type())
+static GType
+gst_cevidenc_entropy_get_type (void)
+{
+  static GType entropy_type = 0;
+
+  static const GEnumValue entropy_types[] = {
+    {GST_CE_H264ENC_ENTROPY_CAVLC, "CAVLC", "cavlc"},
+    {GST_CE_H264ENC_ENTROPY_CABAC, "CABAC", "cabac"},
+    {0, NULL, NULL}
+  };
+
+  if (!entropy_type) {
+    entropy_type =
+        g_enum_register_static ("GstCEH264EncEntropy", entropy_types);
+  }
+  return entropy_type;
+}
+
+enum
+{
+  GST_CE_H264ENC_SEQSCALING_DISABLE = 0,
+  GST_CE_H264ENC_SEQSCALING_AUTO,
+  GST_CE_H264ENC_SEQSCALING_LOW,
+  GST_CE_H264ENC_SEQSCALING_MODERATE,
+};
+
+#define GST_CE_H264ENC_SEQSCALING_TYPE (gst_cevidenc_seqscaling_get_type())
+static GType
+gst_cevidenc_seqscaling_get_type (void)
+{
+  static GType seqscaling_type = 0;
+
+  static const GEnumValue seqscaling_types[] = {
+    {GST_CE_H264ENC_SEQSCALING_DISABLE, "Disable", "disable"},
+    {GST_CE_H264ENC_SEQSCALING_AUTO, "Auto", "auto"},
+    {GST_CE_H264ENC_SEQSCALING_LOW, "Low", "low"},
+    {GST_CE_H264ENC_SEQSCALING_MODERATE, "Moderate", "moderate"},
+    {0, NULL, NULL}
+  };
+
+  if (!seqscaling_type) {
+    seqscaling_type =
+        g_enum_register_static ("GstCEH264EncSeqScaling", seqscaling_types);
+  }
+  return seqscaling_type;
+}
+
+#define GST_CE_H264ENC_QUALITY_TYPE (gst_cevidenc_quality_get_type())
+static GType
+gst_cevidenc_quality_get_type (void)
+{
+  static GType quality_type = 0;
+
+  static const GEnumValue quality_types[] = {
+    {0, "version 1.1, backward compatible mode", "backward"},
+    {XDM_HIGH_QUALITY, "High quality mode", "quality"},
+    {XDM_HIGH_SPEED, "High speed mode", "speed"},
+    {0, NULL, NULL}
+  };
+
+  if (!quality_type) {
+    quality_type = g_enum_register_static ("GstCEVidEncQuality", quality_types);
+  }
+  return quality_type;
+}
+
+enum
+{
+  GST_CE_H264ENC_LAYERS_ONE = 0,
+  GST_CE_H264ENC_LAYERS_TWO,
+  GST_CE_H264ENC_LAYERS_THREE,
+  GST_CE_H264ENC_LAYERS_FOUR,
+  GST_CE_H264ENC_LAYERS_ALL = 255,
+};
+
+#define GST_CE_H264ENC_LAYERS_TYPE (gst_cevidenc_layers_get_type())
+static GType
+gst_cevidenc_layers_get_type (void)
+{
+  static GType layers_type = 0;
+
+  static const GEnumValue layers_types[] = {
+    {GST_CE_H264ENC_LAYERS_ONE,
+        "One layer (Stream with frame rate: F)", "one"},
+    {GST_CE_H264ENC_LAYERS_TWO,
+        "Two layers (Stream with frame rate: F, F/2)", "two"},
+    {GST_CE_H264ENC_LAYERS_THREE,
+        "Three layers (Stream with frame rate: F, F/2, F/8)", "three"},
+    {GST_CE_H264ENC_LAYERS_ALL,
+          "all P refer to previous I or IDR frame (Stream with frame rate: F)",
+        "three"},
+    {0, NULL, NULL}
+  };
+
+  if (!layers_type) {
+    layers_type = g_enum_register_static ("GstCEH264EncLayers", layers_types);
+  }
+  return layers_type;
+}
+
+enum
+{
+  GST_CE_H264ENC_SVCSYNTAX_SW = 0,
+  GST_CE_H264ENC_SVCSYNTAX_SVC_SW,
+  GST_CE_H264ENC_SVCSYNTAX_MMCO,
+  GST_CE_H264ENC_SVCSYNTAX_SVC_MMCO,
+};
+
+#define GST_CE_H264ENC_SVCSYNTAX_TYPE (gst_cevidenc_svcsyntax_get_type())
+static GType
+gst_cevidenc_svcsyntax_get_type (void)
+{
+  static GType svcsyntax_type = 0;
+
+  static const GEnumValue svcsyntax_types[] = {
+    {GST_CE_H264ENC_SVCSYNTAX_SW,
+        "SVC disabled sliding window enabled", "sw"},
+    {GST_CE_H264ENC_SVCSYNTAX_SVC_SW,
+        "SVC enabled sliding window enabled", "svc-sw"},
+    {GST_CE_H264ENC_SVCSYNTAX_MMCO,
+        "SVC disabled MMCO enabled", "mmco"},
+    {GST_CE_H264ENC_SVCSYNTAX_SVC_MMCO,
+        "SVC enabled MMCO enabled", "svc-mmco"},
+    {0, NULL, NULL}
+  };
+
+  if (!svcsyntax_type) {
+    svcsyntax_type =
+        g_enum_register_static ("GstCEH264EncSeqSvcSyntax", svcsyntax_types);
+  }
+  return svcsyntax_type;
+}
+
+enum
+{
+  GST_CE_H264ENC_RCALGO_CBR = 0,
+  GST_CE_H264ENC_RCALGO_VBR,
+  GST_CE_H264ENC_RCALGO_FIXED_QP,
+  GST_CE_H264ENC_RCALGO_CVBR,
+  GST_CE_H264ENC_RCALGO_RC1,
+  GST_CE_H264ENC_RCALGO_CBR1,
+  GST_CE_H264ENC_RCALGO_VBR1,
+};
+
+#define GST_CE_H264ENC_RCALGO_TYPE (gst_cevidenc_rcalgo_get_type())
+static GType
+gst_cevidenc_rcalgo_get_type (void)
+{
+  static GType rcalgo_type = 0;
+
+  static const GEnumValue rcalgo_types[] = {
+    {GST_CE_H264ENC_RCALGO_CBR, "CBR", "cbr"},
+    {GST_CE_H264ENC_RCALGO_VBR, "VBR", "vbr"},
+    {GST_CE_H264ENC_RCALGO_FIXED_QP, "Fixed QP", "fixedqp"},
+    {GST_CE_H264ENC_RCALGO_CVBR, "CVBR", "cvbr"},
+    {GST_CE_H264ENC_RCALGO_RC1, "RC1", "rc1"},
+    {GST_CE_H264ENC_RCALGO_CBR1, "CBR1", "cbr1"},
+    {GST_CE_H264ENC_RCALGO_VBR1, "VBR1", "vbr1"},
+    {0, NULL, NULL}
+  };
+
+  if (!rcalgo_type) {
+    rcalgo_type = g_enum_register_static ("GstCEH264EncRCAlgo", rcalgo_types);
+  }
+  return rcalgo_type;
+}
 
 static gboolean
 gst_ce_h264enc_fetch_header (guint8 * data, gint buffer_size,
@@ -413,8 +681,29 @@ gst_ce_h264enc_setup (GObject * object)
   }
   h264enc = (h264PrivateData *) cevidenc->codec_private;
 
-  h264enc->byte_stream = FALSE;
-  h264enc->single_nalu = FALSE;
+  /* Setting properties defaults */
+  h264enc->byte_stream = PROP_BYTESTREAM_DEFAULT;
+  h264enc->single_nalu = PROP_SINGLE_NALU_DEFAULT;
+  h264enc->headers = PROP_HEADERS_DEFAULT;
+
+  h264_params->profileIdc = PROP_PROFILE_DEFAULT;
+  h264_params->levelIdc = PROP_LEVEL_DEFAULT;
+  h264_params->entropyMode = PROP_ENTROPYMODE_DEFAULT;
+  h264_params->transform8x8FlagIntraFrame = PROP_T8X8INTRA_DEFAULT;
+  h264_params->transform8x8FlagInterFrame = PROP_T8X8INTER_DEFAULT;
+  h264_params->seqScalingFlag = PROP_SEQSCALING_DEFAULT;
+  h264_params->encQuality = PROP_ENCQUALITY_DEFAULT;
+  h264_params->enableARM926Tcm = PROP_ENABLETCM_DEFAULT;
+  h264_params->enableDDRbuff = PROP_DDRBUF_DEFAULT;
+  h264_params->numTemporalLayers = PROP_NTEMPLAYERS_DEFAULT;
+  h264_params->svcSyntaxEnable = PROP_SVCSYNTAXEN_DEFAULT;
+
+  h264_dyn_params->airRate = PROP_AIRRATE_DEFAULT;
+  h264_dyn_params->intraFrameQP = PROP_QPINTRA_DEFAULT;
+  h264_dyn_params->interPFrameQP = PROP_QPINTER_DEFAULT;
+  h264_dyn_params->rcAlgo = PROP_RCALGO_DEFAULT;
+  h264_dyn_params->idrFrameInterval = PROP_IDRINTERVAL_DEFAULT;
+
   return;
 
 fail_alloc:
@@ -534,18 +823,117 @@ gst_ce_h264enc_install_properties (GObjectClass * gobject_class, guint base)
       g_param_spec_boolean ("bytestream",
           "Byte-stream",
           "Generate h264 NAL unit stream instead of 'packetized' stream (no codec_data is generated)",
-          FALSE, G_PARAM_READWRITE));
+          PROP_BYTESTREAM_DEFAULT, G_PARAM_READWRITE));
 
   g_object_class_install_property (gobject_class, base + PROP_HEADERS,
       g_param_spec_boolean ("headers",
           "Include on the stream the SPS/PPS headers",
           "Include on the stream the SPS/PPS headers",
-          FALSE, G_PARAM_READWRITE));
+          PROP_HEADERS_DEFAULT, G_PARAM_READWRITE));
 
   g_object_class_install_property (gobject_class, base + PROP_SINGLE_NALU,
       g_param_spec_boolean ("single-nalu",
           "Buffers contains a single NALU",
-          "Buffers contains a single NALU", FALSE, G_PARAM_READWRITE));
+          "Buffers contains a single NALU",
+          PROP_SINGLE_NALU_DEFAULT, G_PARAM_READWRITE));
+
+  g_object_class_install_property (gobject_class, base + PROP_PROFILE,
+      g_param_spec_enum ("profile", "Profile",
+          "Profile identification for the encoder", GST_CE_H264ENC_PROFILE_TYPE,
+          PROP_PROFILE_DEFAULT, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property (gobject_class, base + PROP_LEVEL,
+      g_param_spec_enum ("level", "Profile",
+          "Level identification for the encoder", GST_CE_H264ENC_LEVEL_TYPE,
+          PROP_LEVEL_DEFAULT, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
+
+  g_object_class_install_property (gobject_class, base + PROP_ENTROPYMODE,
+      g_param_spec_enum ("entropy", "Entropy",
+          "Flag for Entropy Coding Mode", GST_CE_H264ENC_ENTROPY_TYPE,
+          PROP_ENTROPYMODE_DEFAULT,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+  /*      
+     g_object_class_install_property(gobject_class, base + PROP_T8X8INTRA,
+     g_param_spec_boolean("t8x8intra",
+     "Enable 8x8 Transform for I Frame",
+     "Enable 8x8 Transform for I Frame (only for High Profile)",
+     PROP_T8X8INTRA_DEFAULT, G_PARAM_READWRITE));
+
+     g_object_class_install_property(gobject_class, base + PROP_T8X8INTER,
+     g_param_spec_boolean("t8x8inter",
+     "Enable 8x8 Transform for P Frame",
+     "Enable 8x8 Transform for P Frame (only for High Profile)",
+     PROP_T8X8INTER_DEFAULT, G_PARAM_READWRITE));
+   */
+  g_object_class_install_property (gobject_class, base + PROP_SEQSCALING,
+      g_param_spec_enum ("seqscaling", "Sequence Scaling",
+          "Use of sequence scaling matrix", GST_CE_H264ENC_SEQSCALING_TYPE,
+          PROP_SEQSCALING_DEFAULT, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property (gobject_class, base + PROP_ENCQUALITY,
+      g_param_spec_enum ("encquality", "Encoder quality",
+          "Encoder quality setting", GST_CE_H264ENC_QUALITY_TYPE,
+          PROP_ENCQUALITY_DEFAULT, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property (gobject_class, base + PROP_ENABLETCM,
+      g_param_spec_boolean ("enabletcm",
+          "Enable ARM TCM memory usage",
+          "When encquality is 0, this flag controls if TCM memory "
+          "should be used (otherwise is ignored and default to yes)",
+          PROP_ENABLETCM_DEFAULT, G_PARAM_READWRITE));
+
+  g_object_class_install_property (gobject_class, base + PROP_DDRBUF,
+      g_param_spec_boolean ("ddrbuf",
+          "Use DDR buffers",
+          "Use DDR buffers instead of IMCOP buffers",
+          PROP_DDRBUF_DEFAULT, G_PARAM_READWRITE));
+
+  g_object_class_install_property (gobject_class, base + PROP_NTEMPLAYERS,
+      g_param_spec_enum ("ntemplayers", "Number of temporal Layers for SVC",
+          "Number of temporal Layers for SVC", GST_CE_H264ENC_LAYERS_TYPE,
+          PROP_NTEMPLAYERS_DEFAULT,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property (gobject_class, base + PROP_SVCSYNTAXEN,
+      g_param_spec_enum ("svcsyntaxen", "SVC Syntax Enable",
+          "Control for SVC syntax and DPB management",
+          GST_CE_H264ENC_SVCSYNTAX_TYPE,
+          PROP_SVCSYNTAXEN_DEFAULT,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property (gobject_class, base + PROP_QPINTRA,
+      g_param_spec_int ("qpintra",
+          "qpintra",
+          "Quantization Parameter (QP) for I frames (only valid when "
+          "rate control is disabled or is fixed QP)",
+          1, 51, PROP_QPINTRA_DEFAULT, G_PARAM_READWRITE));
+
+  g_object_class_install_property (gobject_class, base + PROP_QPINTER,
+      g_param_spec_int ("qpinter",
+          "qpinter",
+          "Quantization Parameter (QP) for P frame (only valid when "
+          "rate control is disabled or is fixed QP)",
+          1, 41, PROP_QPINTER_DEFAULT, G_PARAM_READWRITE));
+
+  g_object_class_install_property (gobject_class, base + PROP_RCALGO,
+      g_param_spec_enum ("rcalgo", "Rate control Algorithm",
+          "Rate Control Algorithm (requires ratecontrol set to 5)",
+          GST_CE_H264ENC_RCALGO_TYPE,
+          PROP_RCALGO_DEFAULT, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property (gobject_class, base + PROP_AIRRATE,
+      g_param_spec_int ("airrate",
+          "Adaptive intra refresh",
+          "Adaptive intra refresh. This indicates the maximum number of MBs"
+          "(per frame) that can be refreshed using AIR.",
+          0, G_MAXINT32, PROP_AIRRATE_DEFAULT, G_PARAM_READWRITE));
+
+  g_object_class_install_property (gobject_class, base + PROP_IDRINTERVAL,
+      g_param_spec_int ("idrinterval",
+          "Interval between two consecutive IDR frames",
+          "Interval between two consecutive IDR frames",
+          0, G_MAXINT32, PROP_IDRINTERVAL_DEFAULT, G_PARAM_READWRITE));
 }
 
 static void
@@ -554,7 +942,13 @@ gst_ce_h264enc_set_property (GObject * object, guint prop_id,
 {
   GstCEVidEnc *cevidenc = (GstCEVidEnc *) (object);
   h264PrivateData *h264enc = (h264PrivateData *) cevidenc->codec_private;
-  guint prop_h264_id = prop_id - base;
+  IH264VENC_Params *params;
+  IH264VENC_DynamicParams *dyn_params;
+  guint prop_h264_id;
+
+  params = (IH264VENC_Params *) cevidenc->codec_params;
+  dyn_params = (IH264VENC_DynamicParams *) cevidenc->codec_dyn_params;
+  prop_h264_id = prop_id - base;
 
   if (!h264enc) {
     GST_ERROR_OBJECT (cevidenc, "no H.264 private data, run setup first");
@@ -571,6 +965,54 @@ gst_ce_h264enc_set_property (GObject * object, guint prop_id,
     case PROP_SINGLE_NALU:
       h264enc->single_nalu = g_value_get_boolean (value);
       break;
+    case PROP_PROFILE:
+      params->profileIdc = g_value_get_enum (value);
+      break;
+    case PROP_LEVEL:
+      params->levelIdc = g_value_get_enum (value);
+      break;
+    case PROP_ENTROPYMODE:
+      params->entropyMode = g_value_get_enum (value);
+      break;
+    case PROP_T8X8INTRA:
+      params->transform8x8FlagIntraFrame = g_value_get_boolean (value) ? 1 : 0;
+      break;
+    case PROP_T8X8INTER:
+      params->transform8x8FlagInterFrame = g_value_get_boolean (value) ? 1 : 0;
+      break;
+    case PROP_ENCQUALITY:
+      params->encQuality = g_value_get_enum (value);
+      break;
+    case PROP_ENABLETCM:
+      params->enableARM926Tcm = g_value_get_boolean (value) ? 1 : 0;
+      break;
+    case PROP_DDRBUF:
+      params->enableDDRbuff = g_value_get_boolean (value) ? 1 : 0;
+      break;
+    case PROP_NTEMPLAYERS:
+      params->numTemporalLayers = g_value_get_enum (value);
+      break;
+    case PROP_SVCSYNTAXEN:
+      params->svcSyntaxEnable = g_value_get_enum (value);
+      break;
+    case PROP_SEQSCALING:
+      params->seqScalingFlag = g_value_get_enum (value);
+      break;
+    case PROP_QPINTRA:
+      dyn_params->intraFrameQP = g_value_get_int (value);
+      break;
+    case PROP_QPINTER:
+      dyn_params->interPFrameQP = g_value_get_int (value);
+      break;
+    case PROP_RCALGO:
+      dyn_params->rcAlgo = g_value_get_enum (value);
+      break;
+    case PROP_AIRRATE:
+      dyn_params->airRate = g_value_get_int (value);
+      break;
+    case PROP_IDRINTERVAL:
+      dyn_params->idrFrameInterval = g_value_get_int (value);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
@@ -583,13 +1025,18 @@ gst_ce_h264enc_get_property (GObject * object, guint prop_id,
 {
   GstCEVidEnc *cevidenc = (GstCEVidEnc *) (object);
   h264PrivateData *h264enc = (h264PrivateData *) cevidenc->codec_private;
-  guint prop_h264_id = prop_id - base;
+  IH264VENC_Params *params;
+  IH264VENC_DynamicParams *dyn_params;
+  guint prop_h264_id;
+
+  params = (IH264VENC_Params *) cevidenc->codec_params;
+  dyn_params = (IH264VENC_DynamicParams *) cevidenc->codec_dyn_params;
+  prop_h264_id = prop_id - base;
 
   if (!h264enc) {
     GST_ERROR_OBJECT (cevidenc, "no H.264 private data, run setup first");
     return;
   }
-
   switch (prop_h264_id) {
     case PROP_BYTESTREAM:
       g_value_set_boolean (value, h264enc->byte_stream);
@@ -599,6 +1046,56 @@ gst_ce_h264enc_get_property (GObject * object, guint prop_id,
       break;
     case PROP_SINGLE_NALU:
       g_value_set_boolean (value, h264enc->single_nalu);
+      break;
+    case PROP_PROFILE:
+      g_value_set_enum (value, params->profileIdc);
+      break;
+    case PROP_LEVEL:
+      g_value_set_enum (value, params->levelIdc);
+      break;
+    case PROP_ENTROPYMODE:
+      g_value_set_enum (value, params->entropyMode);
+      break;
+    case PROP_T8X8INTRA:
+      g_value_set_boolean (value,
+          params->transform8x8FlagIntraFrame ? TRUE : FALSE);
+      break;
+    case PROP_T8X8INTER:
+      g_value_set_boolean (value,
+          params->transform8x8FlagInterFrame ? TRUE : FALSE);
+      break;
+    case PROP_ENCQUALITY:
+      g_value_set_enum (value, params->encQuality);
+      break;
+    case PROP_ENABLETCM:
+      g_value_set_boolean (value, params->enableARM926Tcm ? TRUE : FALSE);
+      break;
+    case PROP_DDRBUF:
+      g_value_set_boolean (value, params->enableDDRbuff ? TRUE : FALSE);
+      break;
+    case PROP_NTEMPLAYERS:
+      g_value_set_enum (value, params->numTemporalLayers);
+      break;
+    case PROP_SVCSYNTAXEN:
+      g_value_set_enum (value, params->svcSyntaxEnable);
+      break;
+    case PROP_SEQSCALING:
+      g_value_set_enum (value, params->seqScalingFlag);
+      break;
+    case PROP_QPINTRA:
+      g_value_set_int (value, dyn_params->intraFrameQP);
+      break;
+    case PROP_QPINTER:
+      g_value_set_int (value, dyn_params->interPFrameQP);
+      break;
+    case PROP_RCALGO:
+      g_value_set_enum (value, dyn_params->rcAlgo);
+      break;
+    case PROP_AIRRATE:
+      g_value_set_int (value, dyn_params->airRate);
+      break;
+    case PROP_IDRINTERVAL:
+      g_value_set_int (value, dyn_params->idrFrameInterval);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
