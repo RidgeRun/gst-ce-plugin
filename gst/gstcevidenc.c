@@ -37,6 +37,8 @@
 #include "gstce.h"
 #include "gstcevidenc.h"
 
+#include <ti/sdo/ce/osal/Memory.h>
+
 enum
 {
   /* FILL ME */
@@ -539,7 +541,11 @@ fail_set_caps:
 static gboolean
 gst_cevidenc_propose_allocation (GstVideoEncoder * encoder, GstQuery * query)
 {
+  GstCEVidEnc *cevidenc = (GstCEVidEnc *) encoder;
+  GstAllocationParams params = { 0, 3, 0, 0 };
+
   gst_query_add_allocation_meta (query, GST_VIDEO_META_API_TYPE, NULL);
+  gst_query_add_allocation_param (query, cevidenc->allocator, &params);
 
   return GST_VIDEO_ENCODER_CLASS (parent_class)->propose_allocation (encoder,
       query);
@@ -558,7 +564,7 @@ gst_cevidenc_allocate_output_frame (GstCEVidEnc * cevidenc, GstBuffer ** buf)
   /*Get allocator parameters */
   gst_video_encoder_get_allocator ((GstVideoEncoder *) cevidenc, NULL,
       &cevidenc->params);
-
+  cevidenc->params.align = 3;
   *buf = gst_buffer_new_allocate (cevidenc->allocator, cevidenc->outbuf_size,
       &cevidenc->params);
 
@@ -580,8 +586,10 @@ gst_cevidenc_handle_frame (GstVideoEncoder * encoder,
   GstVideoFrame vframe;
   GstMapInfo info_out;
   GstBuffer *outbuf = NULL;
+  gboolean is_contiguous = FALSE;
   gint ret = 0;
   gint c;
+  gint32 phys;
 
   VIDENC1_InArgs in_args;
   VIDENC1_OutArgs out_args;
@@ -593,10 +601,25 @@ gst_cevidenc_handle_frame (GstVideoEncoder * encoder,
   for (c = 0; c < GST_VIDEO_FRAME_N_PLANES (&vframe); c++) {
     cevidenc->inbuf.bufDesc[c].buf = GST_VIDEO_FRAME_PLANE_DATA (&vframe, c);
   }
+  /* $
+   * TODO
+   * No CMEM contiguous buffers should be registered to Codec Engine
+   * How should we manage the buffer registration?
+   */
+  phys =
+      Memory_getBufferPhysicalAddress (GST_VIDEO_FRAME_PLANE_DATA (&vframe, 0),
+      GST_VIDEO_FRAME_SIZE (&vframe), (Bool *) & is_contiguous);
 
   gst_video_frame_unmap (&vframe);
+  /* $
+   * TODO
+   * Failing if input buffer is not contiguous. Should copy the buffer
+   * instead of fail?
+   */
+  if (!is_contiguous)
+    goto no_contiguous_buffer;
 
-  /*Allocate output buffer */
+  /* Allocate output buffer */
   if (!gst_cevidenc_allocate_output_frame (cevidenc, &outbuf))
     goto alloc_fail;
 
@@ -643,6 +666,11 @@ gst_cevidenc_handle_frame (GstVideoEncoder * encoder,
 map_fail:
   {
     GST_ERROR_OBJECT (encoder, "Failed to map input buffer");
+    return GST_FLOW_ERROR;
+  }
+no_contiguous_buffer:
+  {
+    GST_ERROR_OBJECT (encoder, "Input buffer should be contiguous");
     return GST_FLOW_ERROR;
   }
 alloc_fail:
