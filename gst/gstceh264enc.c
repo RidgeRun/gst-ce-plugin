@@ -37,7 +37,7 @@ GstStaticCaps gst_ce_h264enc_src_caps = GST_STATIC_CAPS ("video/x-h264, "
     "   height=(int)[ 96, 4096 ],"
     "   stream-format = (string) { avc, byte-stream }");
 
-#define NAL_LENGHT 4
+#define NAL_LENGTH 4
 
 enum
 {
@@ -367,7 +367,7 @@ gst_ce_h264enc_fetch_header (guint8 * data, gint buffer_size,
   GST_MEMDUMP ("Header", data, buffer_size);
   /*Initialize to a pattern that does not match the start code */
   state = ~(start_code);
-  for (i = 0; i < (buffer_size - NAL_LENGHT); i++) {
+  for (i = 0; i < (buffer_size - NAL_LENGTH); i++) {
     state = ((state << 8) | data[i]);
 
     /* In bytestream format each NAL si preceded by 
@@ -376,7 +376,7 @@ gst_ce_h264enc_fetch_header (guint8 * data, gint buffer_size,
      * we're looking for the SPS(0x07) and PPS(0x08) NAL*/
     if (state == start_code) {
       if (nalu) {
-        nalu->size = i - nalu->index - NAL_LENGHT + 1;
+        nalu->size = i - nalu->index - NAL_LENGTH + 1;
         nalu = NULL;
       }
 
@@ -725,7 +725,8 @@ gst_ce_h264enc_post_process (GObject * object, GstBuffer * buffer)
   GstMapInfo info;
   guint8 *data;
   gint i, mark = 0;
-  gint nal_type = -1;
+  gint curr_nal_type = -1;
+  gint prev_nal_type = -1;
   gint size;
   gint32 state;
 
@@ -751,13 +752,15 @@ gst_ce_h264enc_post_process (GObject * object, GstBuffer * buffer)
   size = info.size;
   /*Initialize to a pattern that does not match the start code */
   state = ~(start_code);
-  for (i = 0; i < size - NAL_LENGHT; i++) {
+  for (i = 0; i < size - NAL_LENGTH; i++) {
     state = ((state << 8) | data[i]);
     if (state == start_code) {
-      GST_DEBUG_OBJECT (cevidenc, "NAL unit %d", (data[i + 1]) & 0x1f);
+      prev_nal_type = curr_nal_type;
+      curr_nal_type = (data[i + 1]) & 0x1f;
+      GST_DEBUG_OBJECT (cevidenc, "NAL unit %d", curr_nal_type);
       if (h264enc->single_nalu) {
-        nal_type = (data[i + 1]) & 0x1f;
-        if ((nal_type == GST_H264_NAL_SPS) || (nal_type == GST_H264_NAL_PPS)) {
+        if ((curr_nal_type == GST_H264_NAL_SPS)
+            || (curr_nal_type == GST_H264_NAL_PPS)) {
           GST_DEBUG_OBJECT (cevidenc, "single NALU, found a I-frame");
           /* Caution: here we are asumming the output buffer only 
            * has one memory block*/
@@ -768,21 +771,21 @@ gst_ce_h264enc_post_process (GObject * object, GstBuffer * buffer)
           GST_DEBUG_OBJECT (cevidenc, "single NALU, found a P-frame");
           mark = i + 1;
         }
-        i = size - NAL_LENGHT;
+        i = size - NAL_LENGTH;
         break;
       } else {
-        /*This is the firts start code */
-        if ((nal_type == GST_H264_NAL_SPS || nal_type == GST_H264_NAL_PPS)
+        if ((prev_nal_type == GST_H264_NAL_SPS
+                || prev_nal_type == GST_H264_NAL_PPS)
             && !h264enc->headers) {
           /* Discard anything previous to the SPS and PPS */
           /* Caution: here we are asumming the output buffer  
            * has only one memory block*/
-          info.memory->offset = i - NAL_LENGHT + 1;
-          gst_buffer_set_size (buffer, size - (i - NAL_LENGHT + 1));
+          info.memory->offset = i - NAL_LENGTH + 1;
+          gst_buffer_set_size (buffer, size - (i - NAL_LENGTH + 1));
           GST_DEBUG_OBJECT (cevidenc, "SPS and PPS discard");
         } else {
           /* Replace the NAL start code with the length */
-          gint length = i - mark - NAL_LENGHT + 1;
+          gint length = i - mark - NAL_LENGTH + 1;
           gint k;
           for (k = 1; k <= 4; k++) {
             data[mark - k] = length & 0xff;
@@ -792,13 +795,12 @@ gst_ce_h264enc_post_process (GObject * object, GstBuffer * buffer)
       }
       /* Mark where next NALU starts */
       mark = i + 1;
-      nal_type = (data[i + 1]) & 0x1f;
     }
   }
 
   if (i == (size - 4)) {
     /* We reach the end of the buffer */
-    if (nal_type != -1) {
+    if (curr_nal_type != -1) {
       gint k;
       gint length = size - mark;
       GST_DEBUG_OBJECT (cevidenc, "Replace the NAL start code "
@@ -853,19 +855,19 @@ gst_ce_h264enc_install_properties (GObjectClass * gobject_class, guint base)
           "Flag for Entropy Coding Mode", GST_CE_H264ENC_ENTROPY_TYPE,
           PROP_ENTROPYMODE_DEFAULT,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
-  /*      
-     g_object_class_install_property(gobject_class, base + PROP_T8X8INTRA,
-     g_param_spec_boolean("t8x8intra",
-     "Enable 8x8 Transform for I Frame",
-     "Enable 8x8 Transform for I Frame (only for High Profile)",
-     PROP_T8X8INTRA_DEFAULT, G_PARAM_READWRITE));
 
-     g_object_class_install_property(gobject_class, base + PROP_T8X8INTER,
-     g_param_spec_boolean("t8x8inter",
-     "Enable 8x8 Transform for P Frame",
-     "Enable 8x8 Transform for P Frame (only for High Profile)",
-     PROP_T8X8INTER_DEFAULT, G_PARAM_READWRITE));
-   */
+  g_object_class_install_property (gobject_class, base + PROP_T8X8INTRA,
+      g_param_spec_boolean ("t8x8intra",
+          "Enable 8x8 Transform for I Frame",
+          "Enable 8x8 Transform for I Frame (only for High Profile)",
+          PROP_T8X8INTRA_DEFAULT, G_PARAM_READWRITE));
+
+  g_object_class_install_property (gobject_class, base + PROP_T8X8INTER,
+      g_param_spec_boolean ("t8x8inter",
+          "Enable 8x8 Transform for P Frame",
+          "Enable 8x8 Transform for P Frame (only for High Profile)",
+          PROP_T8X8INTER_DEFAULT, G_PARAM_READWRITE));
+
   g_object_class_install_property (gobject_class, base + PROP_SEQSCALING,
       g_param_spec_enum ("seqscaling", "Sequence Scaling",
           "Use of sequence scaling matrix", GST_CE_H264ENC_SEQSCALING_TYPE,

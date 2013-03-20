@@ -22,9 +22,8 @@
 #include <gst/gst.h>
 #include <gst/gstmemory.h>
 
-#define GST_ALLOCATOR_CMEM "ContiguosMemory"
+#define GST_ALLOCATOR_CMEM "ContiguousMemory"
 
 void gst_cmem_init (void);
-
 
 #endif /*_GST_CMEM_ALLOCATOR_H_*/

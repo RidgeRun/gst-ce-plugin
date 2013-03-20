@@ -126,7 +126,6 @@ _cmem_unmap (GstMemoryContig * mem)
   return TRUE;
 }
 
-
 static GstMemoryContig *
 _cmem_copy (GstMemoryContig * mem, gssize offset, gsize size)
 {
@@ -248,8 +247,9 @@ gst_cmem_allocator_init (GstCMemAllocator * allocator)
 /**
  * gst_cmem_init;
  * 
- * Registers a new memory allocator called "ContiguosMemory". The
- * allocator is capable to get contiguos memory (CMEM) using the CE API.
+ * Registers a new memory allocator called "ContiguousMemory". The
+ * allocator is capable to get contiguos memory (CMEM) using the
+ * Codec Engine API.
  */
 void
 gst_cmem_init (void)
