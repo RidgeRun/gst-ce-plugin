@@ -37,7 +37,7 @@ GST_START_TEST (test_cmem_allocator)
   /* memory using the cmem API */
   gst_cmem_init ();
 
-  alloc = gst_allocator_find ("ContiguosMemory");
+  alloc = gst_allocator_find ("ContiguousMemory");
   fail_unless (alloc != NULL);
 
   gst_allocation_params_init (&params);

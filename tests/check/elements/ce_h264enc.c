@@ -22,6 +22,7 @@
 
 #include <unistd.h>
 
+#include <gst/cmem/gstcmemallocator.h>
 #include <gst/check/gstcheck.h>
 #include <gst/app/gstappsink.h>
 
@@ -115,6 +116,30 @@ create_video_buffer (GstCaps * caps)
   return buffer;
 }
 
+static GstBuffer *
+create_cmem_buffer (gint size)
+{
+  GstAllocator *alloc;
+  GstAllocationParams params;
+  GstMapInfo info;
+  GstBuffer *buf;
+
+  /* memory using the cmem API */
+  gst_cmem_init ();
+
+  alloc = gst_allocator_find ("ContiguousMemory");
+  fail_unless (alloc != NULL);
+
+  gst_allocation_params_init (&params);
+  buf = gst_buffer_new_allocate (alloc, size, &params);
+  gst_buffer_memset (buf, 0, 0, -1);
+  GST_BUFFER_TIMESTAMP (buf) = 0;
+
+  gst_object_unref (alloc);
+
+  return buf;
+}
+
 static void
 check_caps (GstCaps * caps, gint profile_id)
 {
@@ -164,6 +189,13 @@ test_video_packetized (gboolean headers, gint profile_id)
   int i, num_buffers;
 
   h264enc = setup_ce_h264enc (&sinktemplate);
+  /* Setting properties that allows any profile */
+  g_object_set (h264enc, "entropy", 0, NULL);
+  g_object_set (h264enc, "t8x8intra", FALSE, NULL);
+  g_object_set (h264enc, "seqscaling", 0, NULL);
+  /* Setting defined profile */
+  g_object_set (h264enc, "profile", profile_id, NULL);
+
   fail_unless (gst_element_set_state (h264enc,
           GST_STATE_PLAYING) == GST_STATE_CHANGE_SUCCESS,
       "could not set to playing");
@@ -180,7 +212,7 @@ test_video_packetized (gboolean headers, gint profile_id)
 
   g_object_set (h264enc, "headers", headers, NULL);
 
-  fail_unless ((inbuffer = create_video_buffer (caps)) != NULL);
+  fail_unless ((inbuffer = create_cmem_buffer (640 * 480 * 3 / 2)) != NULL);
   gst_caps_unref (caps);
 
   ASSERT_BUFFER_REFCOUNT (inbuffer, "inbuffer", 1);
@@ -262,7 +294,6 @@ test_video_packetized (gboolean headers, gint profile_id)
         break;
     }
 
-
     buffers = g_list_remove (buffers, outbuffer);
 
     ASSERT_BUFFER_REFCOUNT (outbuffer, "outbuffer", 1);
@@ -275,10 +306,26 @@ test_video_packetized (gboolean headers, gint profile_id)
   buffers = NULL;
 }
 
-GST_START_TEST (test_ce_h264enc_packetized)
+GST_START_TEST (test_ce_h264enc_packetized_high)
 {
-  test_video_packetized (TRUE, 0x64);
-  test_video_packetized (FALSE, 0x64);
+  /*Test high profile with headers */
+  test_video_packetized (TRUE, 100);
+  /*Test high profile without headers */
+  test_video_packetized (FALSE, 100);
+}
+
+GST_END_TEST;
+
+GST_START_TEST (test_ce_h264enc_packetized_main)
+{
+  test_video_packetized (FALSE, 66);
+}
+
+GST_END_TEST;
+
+GST_START_TEST (test_ce_h264enc_packetized_base)
+{
+  test_video_packetized (FALSE, 77);
 }
 
 GST_END_TEST;
@@ -290,7 +337,9 @@ ce_h264enc_suite (void)
   TCase *tc_chain = tcase_create ("general");
 
   suite_add_tcase (s, tc_chain);
-  tcase_add_test (tc_chain, test_ce_h264enc_packetized);
+  tcase_add_test (tc_chain, test_ce_h264enc_packetized_high);
+  tcase_add_test (tc_chain, test_ce_h264enc_packetized_main);
+  tcase_add_test (tc_chain, test_ce_h264enc_packetized_base);
 
   return s;
 }

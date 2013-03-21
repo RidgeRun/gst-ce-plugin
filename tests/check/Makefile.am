@@ -24,6 +24,7 @@ check_PROGRAMS = \
 
 elements_ce_h264enc_LDADD = $(GST_PLUGINS_BASE_LIBS) \
 	-lgstapp-@GST_API_VERSION@ \
+	$(top_builddir)/gst-libs/gst/cmem/libgstcmem-@GST_API_VERSION@.la \
 	$(GST_BASE_LIBS) \
 	$(LDADD)
 
