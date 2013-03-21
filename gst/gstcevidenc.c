@@ -839,7 +839,7 @@ gst_cevidenc_open (GstVideoEncoder * encoder)
     gst_object_unref (cevidenc->allocator);
 
   GST_DEBUG_OBJECT (cevidenc, "getting CMEM allocator");
-  cevidenc->allocator = gst_allocator_find ("ContiguosMemory");
+  cevidenc->allocator = gst_allocator_find ("ContiguousMemory");
 
   if (!cevidenc->allocator)
     goto no_allocator;
@@ -855,7 +855,7 @@ fail_engine_open:
   }
 no_allocator:
   {
-    GST_WARNING_OBJECT (cevidenc, "can't find the buffer allocator");
+    GST_WARNING_OBJECT (cevidenc, "can't find the CMEM allocator");
     return FALSE;
   }
 
