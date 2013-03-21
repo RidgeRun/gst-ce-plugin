@@ -946,7 +946,9 @@ gst_ce_h264enc_set_property (GObject * object, guint prop_id,
   h264PrivateData *h264enc = (h264PrivateData *) cevidenc->codec_private;
   IH264VENC_Params *params;
   IH264VENC_DynamicParams *dyn_params;
-  guint prop_h264_id;
+  VIDENC1_Status enc_status;
+  gboolean set_params = FALSE;
+  guint prop_h264_id, ret;
 
   params = (IH264VENC_Params *) cevidenc->codec_params;
   dyn_params = (IH264VENC_DynamicParams *) cevidenc->codec_dyn_params;
@@ -1002,23 +1004,41 @@ gst_ce_h264enc_set_property (GObject * object, guint prop_id,
       break;
     case PROP_QPINTRA:
       dyn_params->intraFrameQP = g_value_get_int (value);
+      set_params = TRUE;
       break;
     case PROP_QPINTER:
       dyn_params->interPFrameQP = g_value_get_int (value);
+      set_params = TRUE;
       break;
     case PROP_RCALGO:
       dyn_params->rcAlgo = g_value_get_enum (value);
+      set_params = TRUE;
       break;
     case PROP_AIRRATE:
       dyn_params->airRate = g_value_get_int (value);
+      set_params = TRUE;
       break;
     case PROP_IDRINTERVAL:
       dyn_params->idrFrameInterval = g_value_get_int (value);
+      set_params = TRUE;
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
   }
+
+  /* Set dynamic parameters if needed */
+  if (set_params && cevidenc->codec_handle) {
+    enc_status.size = sizeof (VIDENC1_Status);
+    enc_status.data.buf = NULL;
+    ret = VIDENC1_control (cevidenc->codec_handle, XDM_SETPARAMS,
+        dyn_params, &enc_status);
+    if (ret != VIDENC1_EOK)
+      GST_WARNING_OBJECT (cevidenc, "failed to set dynamic parameters, "
+          "status error %x, %d", (guint) enc_status.extendedError, ret);
+  }
+
+  return;
 }
 
 static void
