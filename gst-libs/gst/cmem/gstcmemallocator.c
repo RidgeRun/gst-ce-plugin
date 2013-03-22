@@ -76,7 +76,7 @@ _cmem_new_mem_block (gsize maxsize, gsize align, gsize offset, gsize size)
 
   GST_DEBUG ("new cmem block");
   mem = g_slice_alloc (sizeof (GstMemoryContig));
-  if (mem == NULL)
+  if (!mem)
     goto alloc_failed;
 
   params = Memory_DEFAULTPARAMS;
@@ -85,12 +85,11 @@ _cmem_new_mem_block (gsize maxsize, gsize align, gsize offset, gsize size)
   params.align = ((UInt) (align - 1));
   data = NULL;
 
-  if (size > 0)
+  if (size > 0) {
     data = (guint8 *) Memory_alloc (maxsize, &params);
-
-
-  if ((data == NULL) && (size > 0))
-    goto alloc_failed;
+    if (!data)
+      goto alloc_failed;
+  }
 
   _cmem_init (mem, 0, NULL, maxsize, data, maxsize,
       align, offset, size, &params);
@@ -101,7 +100,7 @@ _cmem_new_mem_block (gsize maxsize, gsize align, gsize offset, gsize size)
 
 alloc_failed:
   GST_ERROR ("failed CMEM allocation");
-  if (mem != NULL)
+  if (mem)
     g_slice_free1 (sizeof (GstMemoryContig), mem);
   return NULL;
 
@@ -157,11 +156,17 @@ _cmem_copy (GstMemoryContig * mem, gssize offset, gsize size)
   copy =
       _cmem_new_mem_block (mem->mem.maxsize, mem->mem.align,
       mem->mem.offset + offset, size);
+      
+  if (!copy)
+    goto out;
+      
   GST_CAT_DEBUG (GST_CAT_PERFORMANCE,
       "memcpy %" G_GSIZE_FORMAT " memory %p -> %p", mem->mem.maxsize, mem,
       copy);
+      
   memcpy (copy->data, mem->data, mem->mem.maxsize);
 
+out:
   return copy;
 }
 
