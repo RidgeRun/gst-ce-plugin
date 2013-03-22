@@ -58,7 +58,6 @@ _cmem_init (GstMemoryContig * mem, GstMemoryFlags flags, GstMemory * parent,
     gsize alloc_size, gpointer data, gsize maxsize, gsize align, gsize offset,
     gsize size, Memory_AllocParams * alloc_params)
 {
-
   gst_memory_init (GST_MEMORY_CAST (mem),
       flags, _cmem_allocator, parent, maxsize, align, offset, size);
 
@@ -111,6 +110,8 @@ alloc_failed:
 static gpointer
 _cmem_map (GstMemoryContig * mem, GstMapFlags flags)
 {
+  g_return_val_if_fail (mem, NULL);
+  
   if (flags & GST_MAP_READ) {
     GST_DEBUG ("invalidate cache for memory %p", mem);
     Memory_cacheInv (mem->data, mem->mem.maxsize);
@@ -121,6 +122,8 @@ _cmem_map (GstMemoryContig * mem, GstMapFlags flags)
 static gboolean
 _cmem_unmap (GstMemoryContig * mem)
 {
+  g_return_val_if_fail (mem, FALSE);
+  
   GST_DEBUG ("write-back cache for memory %p", mem);
   Memory_cacheWb (mem->data, mem->mem.maxsize);
   return TRUE;
@@ -130,6 +133,8 @@ static GstMemoryContig *
 _cmem_copy (GstMemoryContig * mem, gssize offset, gsize size)
 {
   GstMemoryContig *copy;
+  
+  g_return_val_if_fail (mem, NULL);
 
   if (size == -1)
     size = mem->mem.size > offset ? mem->mem.size - offset : 0;
@@ -150,6 +155,8 @@ _cmem_share (GstMemoryContig * mem, gssize offset, gsize size)
 {
   GstMemoryContig *sub;
   GstMemory *parent;
+
+  g_return_val_if_fail (mem, NULL);
 
   GST_DEBUG ("%p: share %" G_GSSIZE_FORMAT " %" G_GSIZE_FORMAT, mem, offset,
       size);
@@ -177,6 +184,9 @@ _cmem_share (GstMemoryContig * mem, gssize offset, gsize size)
 static gboolean
 _cmem_is_span (GstMemoryContig * mem1, GstMemoryContig * mem2, gsize * offset)
 {
+  g_return_val_if_fail (mem1, FALSE);
+  g_return_val_if_fail (mem2, FALSE);
+  
   if (offset) {
     GstMemoryContig *parent;
 
@@ -255,8 +265,9 @@ void
 gst_cmem_init (void)
 {
   GST_DEBUG_CATEGORY_INIT (cmem, "cmem", 0, "CMEM allocation debugging");
-
   _cmem_allocator = g_object_new (gst_cmem_allocator_get_type (), NULL);
+  if (!_cmem_allocator)
+    GST_ERROR ("failed to create gst_cmem_allocator object");
   gst_allocator_register (GST_ALLOCATOR_CMEM, _cmem_allocator);
   GST_DEBUG ("cmem memory allocator registered!");
 }
