@@ -107,6 +107,11 @@ alloc_failed:
 
 }
 
+/**
+ * _cmem_map:
+ * 
+ * The implementation of the GstMemoryMapFunction.
+ */
 static gpointer
 _cmem_map (GstMemoryContig * mem, GstMapFlags flags)
 {
@@ -119,6 +124,11 @@ _cmem_map (GstMemoryContig * mem, GstMapFlags flags)
   return mem->data;
 }
 
+/**
+ * _cmem_unmap:
+ * 
+ * The implementation of the GstMemoryUnmapFunction.
+ */
 static gboolean
 _cmem_unmap (GstMemoryContig * mem)
 {
@@ -129,6 +139,11 @@ _cmem_unmap (GstMemoryContig * mem)
   return TRUE;
 }
 
+/**
+ * _cmem_copy:
+ * 
+ * The implementation of the GstMemoryCopyFunction.
+ */
 static GstMemoryContig *
 _cmem_copy (GstMemoryContig * mem, gssize offset, gsize size)
 {
@@ -150,6 +165,11 @@ _cmem_copy (GstMemoryContig * mem, gssize offset, gsize size)
   return copy;
 }
 
+/**
+ * _cmem_share:
+ * 
+ * The implementation of the GstMemoryShareFunction.
+ */
 static GstMemoryContig *
 _cmem_share (GstMemoryContig * mem, gssize offset, gsize size)
 {
@@ -181,6 +201,11 @@ _cmem_share (GstMemoryContig * mem, gssize offset, gsize size)
   return sub;
 }
 
+/**
+ * _cmem_is_span:
+ * 
+ * The implementation of the GstMemoryIsSpanFunction.
+ */
 static gboolean
 _cmem_is_span (GstMemoryContig * mem1, GstMemoryContig * mem2, gsize * offset)
 {
@@ -255,7 +280,7 @@ gst_cmem_allocator_init (GstCMemAllocator * allocator)
 }
 
 /**
- * gst_cmem_init;
+ * gst_cmem_init:
  * 
  * Registers a new memory allocator called "ContiguousMemory". The
  * allocator is capable to get contiguos memory (CMEM) using the
