@@ -61,7 +61,7 @@ enum
 #define PROP_MAXBITRATE_DEFAULT           6000000
 #define PROP_TARGETBITRATE_DEFAULT        6000000
 #define PROP_INTRAFRAMEINTERVAL_DEFAULT   30
-#define PROP_FORCE_FRAME_DEFAULT           IVIDEO_NA_FRAME
+#define PROP_FORCE_FRAME_DEFAULT          IVIDEO_NA_FRAME
 
 #define GST_CE_VIDENC_RATE_TYPE (gst_cevidenc_rate_get_type())
 static GType
@@ -72,7 +72,7 @@ gst_cevidenc_rate_get_type (void)
   static const GEnumValue rate_types[] = {
     {IVIDEO_LOW_DELAY, "Constant Bit Rate, for video conferencing", "CBR"},
     {IVIDEO_STORAGE, "Variable Bit Rate, for storage", "VBR"},
-    {IVIDEO_TWOPASS, "Two pass rate, for non real time applications",
+    {IVIDEO_TWOPASS, "Two pass rate, for non real-time applications",
         "Two Pass"},
     {IVIDEO_NONE, "No Rate Control is used", "None"},
     {IVIDEO_USER_DEFINED, "User defined on extended parameters", "User"},
@@ -257,13 +257,9 @@ gst_cevidenc_class_init (GstCEVidEncClass * klass)
           "Force next frame to be encoded as a specific type",
           GST_CE_VIDENC_FORCE_FRAME_TYPE, PROP_FORCE_FRAME_DEFAULT,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
-  /*$ 
-   * TODO: 
-   * Pending to add videnc1 properties
-   */
 
   /* Register additional properties, dependent on the exact CODEC */
-  if (klass->codec->install_properties) {
+  if (klass->codec && klass->codec->install_properties) {
     klass->codec->install_properties (gobject_class, PROP_CODEC_BASE);
   }
 
@@ -287,7 +283,7 @@ gst_cevidenc_init (GstCEVidEnc * cevidenc)
   if (!cevidenc->codec_params) {
     GST_DEBUG_OBJECT (cevidenc, "allocating codec params");
     cevidenc->codec_params = g_malloc0 (sizeof (VIDENC1_Params));
-    if (cevidenc->codec_params == NULL) {
+    if (!cevidenc->codec_params) {
       GST_WARNING_OBJECT (cevidenc, "failed to allocate VIDENC1_Params");
       return;
     }
@@ -297,7 +293,7 @@ gst_cevidenc_init (GstCEVidEnc * cevidenc)
   if (!cevidenc->codec_dyn_params) {
     GST_DEBUG_OBJECT (cevidenc, "allocating codec dynamic params");
     cevidenc->codec_dyn_params = g_malloc0 (sizeof (VIDENC1_DynamicParams));
-    if (cevidenc->codec_dyn_params == NULL) {
+    if (!cevidenc->codec_dyn_params) {
       GST_WARNING_OBJECT (cevidenc, "failed to allocate VIDENC1_DynamicParams");
       return;
     }
