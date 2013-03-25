@@ -431,11 +431,11 @@ gst_ce_h264enc_get_header (GstCEVidEnc * cevidenc, GstBuffer ** buf)
 
   /*Allocate an output buffer for the header */
   header_buf = gst_buffer_new_allocate (cevidenc->allocator, 200,
-      &cevidenc->params);
+      &cevidenc->alloc_params);
   if (!gst_buffer_map (header_buf, &info, GST_MAP_WRITE))
     return FALSE;
 
-  cevidenc->outbuf.bufs = (XDAS_Int8 **) & (info.data);
+  cevidenc->outbuf_desc.bufs = (XDAS_Int8 **) & (info.data);
 
   /* Set output and input arguments for the encode process */
   in_args.size = sizeof (IVIDENC1_InArgs);
@@ -446,8 +446,8 @@ gst_ce_h264enc_get_header (GstCEVidEnc * cevidenc, GstBuffer ** buf)
 
   /* Generate the header */
   ret =
-      VIDENC1_process (cevidenc->codec_handle, &cevidenc->inbuf,
-      &cevidenc->outbuf, &in_args, &out_args);
+      VIDENC1_process (cevidenc->codec_handle, &cevidenc->inbuf_desc,
+      &cevidenc->outbuf_desc, &in_args, &out_args);
   if (ret != VIDENC1_EOK)
     goto encode_fail;
 

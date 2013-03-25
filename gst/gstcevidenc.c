@@ -376,12 +376,12 @@ gst_cevidenc_configure_codec (GstCEVidEnc * cevidenc)
 
   GST_OBJECT_LOCK (cevidenc);
 
-  params->maxWidth = cevidenc->inbuf.frameWidth;
-  params->maxHeight = cevidenc->inbuf.frameHeight;
+  params->maxWidth = cevidenc->inbuf_desc.frameWidth;
+  params->maxHeight = cevidenc->inbuf_desc.frameHeight;
   params->maxFrameRate = fps;
 
-  dyn_params->inputWidth = cevidenc->inbuf.frameWidth;
-  dyn_params->inputHeight = cevidenc->inbuf.frameHeight;
+  dyn_params->inputWidth = cevidenc->inbuf_desc.frameWidth;
+  dyn_params->inputHeight = cevidenc->inbuf_desc.frameHeight;
   dyn_params->refFrameRate = dyn_params->targetFrameRate = fps;
 
   if (cevidenc->codec_handle) {
@@ -413,15 +413,15 @@ gst_cevidenc_configure_codec (GstCEVidEnc * cevidenc)
     goto control_getinfo_fail;
 
   for (i = 0; i < enc_status.bufInfo.minNumInBufs; i++) {
-    cevidenc->inbuf.bufDesc[i].bufSize = enc_status.bufInfo.minInBufSize[i];
-    GST_DEBUG_OBJECT (cevidenc,
-        "size of input buffer [%d] = %li", i,
-        cevidenc->inbuf.bufDesc[i].bufSize);
+    cevidenc->inbuf_desc.bufDesc[i].bufSize =
+        enc_status.bufInfo.minInBufSize[i];
+    GST_DEBUG_OBJECT (cevidenc, "size of input buffer [%d] = %li", i,
+        cevidenc->inbuf_desc.bufDesc[i].bufSize);
   }
 
   cevidenc->outbuf_size = enc_status.bufInfo.minOutBufSize[0];
-  cevidenc->outbuf.numBufs = 1;
-  cevidenc->outbuf.bufSizes = (XDAS_Int32 *) & cevidenc->outbuf_size;
+  cevidenc->outbuf_desc.numBufs = 1;
+  cevidenc->outbuf_desc.bufSizes = (XDAS_Int32 *) & cevidenc->outbuf_size;
   GST_DEBUG_OBJECT (cevidenc, "output buffer size = %d", cevidenc->outbuf_size);
 
   return TRUE;
@@ -463,10 +463,11 @@ gst_cevidenc_set_format (GstVideoEncoder * encoder, GstVideoCodecState * state)
   GST_DEBUG_OBJECT (cevidenc, "Extracting common video information");
 
   /* Prepare the input buffer descriptor */
-  cevidenc->inbuf.frameWidth = GST_VIDEO_INFO_WIDTH (&state->info);
-  cevidenc->inbuf.frameHeight = GST_VIDEO_INFO_HEIGHT (&state->info);
-  cevidenc->inbuf.framePitch = GST_VIDEO_INFO_PLANE_STRIDE (&state->info, 0);
-  cevidenc->inbuf.numBufs = GST_VIDEO_INFO_N_PLANES (&state->info);
+  cevidenc->inbuf_desc.frameWidth = GST_VIDEO_INFO_WIDTH (&state->info);
+  cevidenc->inbuf_desc.frameHeight = GST_VIDEO_INFO_HEIGHT (&state->info);
+  cevidenc->inbuf_desc.framePitch =
+      GST_VIDEO_INFO_PLANE_STRIDE (&state->info, 0);
+  cevidenc->inbuf_desc.numBufs = GST_VIDEO_INFO_N_PLANES (&state->info);
 
   for (i = 0; i < GST_VIDEO_INFO_N_COMPONENTS (&state->info); i++)
     bpp += GST_VIDEO_INFO_COMP_DEPTH (&state->info, i);
@@ -563,10 +564,10 @@ gst_cevidenc_allocate_output_frame (GstCEVidEnc * cevidenc, GstBuffer ** buf)
 
   /*Get allocator parameters */
   gst_video_encoder_get_allocator ((GstVideoEncoder *) cevidenc, NULL,
-      &cevidenc->params);
-  cevidenc->params.align = 3;
+      &cevidenc->alloc_params);
+  cevidenc->alloc_params.align = 3;
   *buf = gst_buffer_new_allocate (cevidenc->allocator, cevidenc->outbuf_size,
-      &cevidenc->params);
+      &cevidenc->alloc_params);
 
   if (!*buf) {
     GST_DEBUG_OBJECT (cevidenc, "Can't alloc output buffer");
@@ -599,7 +600,8 @@ gst_cevidenc_handle_frame (GstVideoEncoder * encoder,
     goto map_fail;
 
   for (c = 0; c < GST_VIDEO_FRAME_N_PLANES (&vframe); c++) {
-    cevidenc->inbuf.bufDesc[c].buf = GST_VIDEO_FRAME_PLANE_DATA (&vframe, c);
+    cevidenc->inbuf_desc.bufDesc[c].buf =
+        GST_VIDEO_FRAME_PLANE_DATA (&vframe, c);
   }
   /* $
    * TODO
@@ -624,10 +626,10 @@ gst_cevidenc_handle_frame (GstVideoEncoder * encoder,
     goto alloc_fail;
 
   if (!gst_buffer_map (outbuf, &info_out, GST_MAP_WRITE)) {
-    goto alloc_fail;
+    goto map_fail;
   }
 
-  cevidenc->outbuf.bufs = (XDAS_Int8 **) & (info_out.data);
+  cevidenc->outbuf_desc.bufs = (XDAS_Int8 **) & (info_out.data);
 
   /* Set output and input arguments for the encode process */
   in_args.size = sizeof (IVIDENC1_InArgs);
@@ -638,8 +640,8 @@ gst_cevidenc_handle_frame (GstVideoEncoder * encoder,
 
   /* Encode process */
   ret =
-      VIDENC1_process (cevidenc->codec_handle, &cevidenc->inbuf,
-      &cevidenc->outbuf, &in_args, &out_args);
+      VIDENC1_process (cevidenc->codec_handle, &cevidenc->inbuf_desc,
+      &cevidenc->outbuf_desc, &in_args, &out_args);
   if (ret != VIDENC1_EOK)
     goto encode_fail;
 

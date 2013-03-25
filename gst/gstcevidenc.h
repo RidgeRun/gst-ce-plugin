@@ -33,9 +33,6 @@ struct _GstCEVidEnc
 {
   GstVideoEncoder parent;
   gboolean first_buffer;
-  /*Properties */
-  gint out_buffer_size;
-  gboolean copy_output;
 
   /* Video Data */
   gint fps_num;
@@ -50,7 +47,7 @@ struct _GstCEVidEnc
 
   /* Handle to the CMEM allocator */
   GstAllocator *allocator;
-  GstAllocationParams params;
+  GstAllocationParams alloc_params;
 
   /* Handle to the Codec Engine */
   Engine_Handle engine_handle;
@@ -59,8 +56,8 @@ struct _GstCEVidEnc
   VIDENC1_Handle codec_handle;
   VIDENC1_Params *codec_params;
   VIDENC1_DynamicParams *codec_dyn_params;
-  IVIDEO1_BufDescIn inbuf;
-  XDM_BufDesc outbuf;
+  IVIDEO1_BufDescIn inbuf_desc;
+  XDM_BufDesc outbuf_desc;
 
   /* Codec Private Data */
   void *codec_private;
