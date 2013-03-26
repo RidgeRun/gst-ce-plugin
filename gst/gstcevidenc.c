@@ -653,6 +653,7 @@ gst_cevidenc_handle_frame (GstVideoEncoder * encoder,
 
   GST_DEBUG_OBJECT (cevidenc, "encoded an output buffer of size %li %p",
       out_args.bytesGenerated, *cevidenc->outbuf_desc.bufs);
+
   gst_buffer_unmap (outbuf, &info_out);
 
   gst_buffer_set_size (outbuf, out_args.bytesGenerated);
@@ -668,6 +669,13 @@ gst_cevidenc_handle_frame (GstVideoEncoder * encoder,
   /* Get oldest frame */
   frame = gst_video_encoder_get_oldest_frame (encoder);
   frame->output_buffer = outbuf;
+
+  /* Mark I and IDR frames */
+  if ((out_args.encodedFrameType == IVIDEO_I_FRAME) ||
+      (out_args.encodedFrameType == IVIDEO_IDR_FRAME)) {
+    GST_DEBUG_OBJECT (cevidenc, "frame type %d", out_args.encodedFrameType);
+    GST_VIDEO_CODEC_FRAME_SET_SYNC_POINT (frame);
+  }
 
   return gst_video_encoder_finish_frame (encoder, frame);
 
