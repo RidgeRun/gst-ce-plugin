@@ -42,7 +42,7 @@ struct _GstCEVidEnc
   gint bpp;
 
   gint32 outbuf_size;
-  GstVideoFormat pix_format;
+  GstVideoFormat video_format;
   GstVideoCodecState *input_state;
 
   /* Handle to the CMEM allocator */

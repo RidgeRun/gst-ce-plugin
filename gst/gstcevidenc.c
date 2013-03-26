@@ -339,7 +339,6 @@ gst_cevidenc_finalize (GObject * object)
 static gboolean
 gst_cevidenc_configure_codec (GstCEVidEnc * cevidenc)
 {
-
   GstCEVidEncClass *klass;
   VIDENC1_Status enc_status;
   VIDENC1_Params *params;
@@ -352,9 +351,11 @@ gst_cevidenc_configure_codec (GstCEVidEnc * cevidenc)
   params = cevidenc->codec_params;
   dyn_params = cevidenc->codec_dyn_params;
 
+  g_return_val_if_fail (params, FALSE);
+  g_return_val_if_fail (dyn_params, FALSE);
 
   /* Set the caps on the parameters of the encoder */
-  switch (cevidenc->pix_format) {
+  switch (cevidenc->video_format) {
     case GST_VIDEO_FORMAT_UYVY:
       params->inputChromaFormat = XDM_YUV_422ILE;
       break;
@@ -364,7 +365,7 @@ gst_cevidenc_configure_codec (GstCEVidEnc * cevidenc)
     default:
       GST_ELEMENT_ERROR (cevidenc, STREAM, NOT_IMPLEMENTED,
           ("unsupported format in video stream: %d\n",
-              cevidenc->pix_format), (NULL));
+              cevidenc->video_format), (NULL));
       return FALSE;
   }
 
@@ -424,20 +425,22 @@ gst_cevidenc_configure_codec (GstCEVidEnc * cevidenc)
 
 open_codec_fail:
   {
-    GST_ERROR_OBJECT (cevidenc, "Failed to open codec %s", klass->codec->name);
+    GST_ERROR_OBJECT (cevidenc, "failed to open codec %s", klass->codec->name);
+    GST_OBJECT_UNLOCK (cevidenc);
     return FALSE;
   }
 control_params_fail:
   {
-    GST_ERROR_OBJECT (cevidenc, "Failed to set dynamic parameters, "
+    GST_ERROR_OBJECT (cevidenc, "failed to set dynamic parameters, "
         "status error %x, %d", (guint) enc_status.extendedError, ret);
+    GST_OBJECT_UNLOCK (cevidenc);
     VIDENC1_delete (cevidenc->codec_handle);
     cevidenc->codec_handle = NULL;
     return FALSE;
   }
 control_getinfo_fail:
   {
-    GST_ERROR_OBJECT (cevidenc, "Failed to get buffer information, "
+    GST_ERROR_OBJECT (cevidenc, "failed to get buffer information, "
         "status error %x, %d", (guint) enc_status.extendedError, ret);
     VIDENC1_delete (cevidenc->codec_handle);
     cevidenc->codec_handle = NULL;
@@ -456,7 +459,7 @@ gst_cevidenc_set_format (GstVideoEncoder * encoder, GstVideoCodecState * state)
   GstCEVidEnc *cevidenc = (GstCEVidEnc *) encoder;
   GstCEVidEncClass *klass = (GstCEVidEncClass *) G_OBJECT_GET_CLASS (cevidenc);
 
-  GST_DEBUG_OBJECT (cevidenc, "Extracting common video information");
+  GST_DEBUG_OBJECT (cevidenc, "extracting common video information");
 
   /* Prepare the input buffer descriptor */
   cevidenc->inbuf_desc.frameWidth = GST_VIDEO_INFO_WIDTH (&state->info);
@@ -467,6 +470,7 @@ gst_cevidenc_set_format (GstVideoEncoder * encoder, GstVideoCodecState * state)
 
   for (i = 0; i < GST_VIDEO_INFO_N_COMPONENTS (&state->info); i++)
     bpp += GST_VIDEO_INFO_COMP_DEPTH (&state->info, i);
+
   cevidenc->bpp = bpp;
 
   cevidenc->fps_num = GST_VIDEO_INFO_FPS_N (&state->info);
@@ -475,20 +479,15 @@ gst_cevidenc_set_format (GstVideoEncoder * encoder, GstVideoCodecState * state)
   cevidenc->par_num = GST_VIDEO_INFO_PAR_N (&state->info);
   cevidenc->par_den = GST_VIDEO_INFO_PAR_D (&state->info);
 
-  cevidenc->pix_format = GST_VIDEO_INFO_FORMAT (&state->info);
+  cevidenc->video_format = GST_VIDEO_INFO_FORMAT (&state->info);
 
-  /*$ 
-   * TODO: 
-   * 1. Average Duration needed??
-   */
   if (!gst_cevidenc_configure_codec (cevidenc))
     goto fail_set_caps;
 
   /* some codecs support more than one format, first auto-choose one */
-  GST_DEBUG_OBJECT (cevidenc, "picking an output format...");
+  GST_DEBUG_OBJECT (cevidenc, "choosing an output format...");
   allowed_caps = gst_pad_get_allowed_caps (GST_VIDEO_ENCODER_SRC_PAD (encoder));
   if (!allowed_caps) {
-
     GST_DEBUG_OBJECT (cevidenc, "... but no peer, using template caps");
     /* we need to copy because get_allowed_caps returns a ref, and
      * get_pad_template_caps doesn't */
@@ -498,7 +497,7 @@ gst_cevidenc_set_format (GstVideoEncoder * encoder, GstVideoCodecState * state)
   GST_DEBUG_OBJECT (cevidenc, "chose caps %" GST_PTR_FORMAT, allowed_caps);
 
   if (klass->codec && klass->codec->set_src_caps) {
-    GST_DEBUG ("Use custom set src caps");
+    GST_DEBUG ("use custom set src caps");
     if (!klass->codec->set_src_caps ((GObject *) cevidenc, &allowed_caps,
             &codec_data))
       goto fail_set_caps;
@@ -521,6 +520,10 @@ gst_cevidenc_set_format (GstVideoEncoder * encoder, GstVideoCodecState * state)
   output_format =
       gst_video_encoder_set_output_state (encoder, allowed_caps, state);
 
+  if (!output_format) {
+    goto fail_set_caps;
+  }
+
   if (codec_data) {
     GST_DEBUG_OBJECT (cevidenc, "setting the codec data");
     output_format->codec_data = codec_data;
@@ -533,7 +536,6 @@ fail_set_caps:
   GST_ERROR_OBJECT (cevidenc, "couldn't set video format");
   return FALSE;
 }
-
 
 static gboolean
 gst_cevidenc_propose_allocation (GstVideoEncoder * encoder, GstQuery * query)
@@ -913,7 +915,8 @@ gst_cevidenc_reset (GstVideoEncoder * encoder)
   VIDENC1_Params *params = cevidenc->codec_params;
   VIDENC1_DynamicParams *dyn_params = cevidenc->codec_dyn_params;
 
-
+  g_return_val_if_fail (params, FALSE);
+  g_return_val_if_fail (dyn_params, FALSE);
 
   if (cevidenc->input_state) {
     gst_video_codec_state_unref (cevidenc->input_state);
@@ -924,6 +927,8 @@ gst_cevidenc_reset (GstVideoEncoder * encoder)
     VIDENC1_delete (cevidenc->codec_handle);
     cevidenc->codec_handle = NULL;
   }
+
+  GST_OBJECT_LOCK (cevidenc);
 
   /* Set default values for codec static params */
   params->encodingPreset = PROP_ENCODINGPRESET_DEFAULT;
@@ -943,6 +948,8 @@ gst_cevidenc_reset (GstVideoEncoder * encoder)
   dyn_params->forceFrame = PROP_FORCE_FRAME_DEFAULT;
   dyn_params->interFrameInterval = 1;
   dyn_params->mbDataFlag = 0;
+
+  GST_OBJECT_UNLOCK (cevidenc);
 
   /* Configure specific codec */
   if (klass->codec && klass->codec->setup) {
