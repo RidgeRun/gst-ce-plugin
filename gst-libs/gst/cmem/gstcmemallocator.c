@@ -103,7 +103,6 @@ alloc_failed:
   if (mem)
     g_slice_free1 (sizeof (GstMemoryContig), mem);
   return NULL;
-
 }
 
 /**
@@ -115,7 +114,7 @@ static gpointer
 _cmem_map (GstMemoryContig * mem, GstMapFlags flags)
 {
   g_return_val_if_fail (mem, NULL);
-  
+
   if (flags & GST_MAP_READ) {
     GST_DEBUG ("invalidate cache for memory %p", mem);
     Memory_cacheInv (mem->data, mem->mem.maxsize);
@@ -132,7 +131,7 @@ static gboolean
 _cmem_unmap (GstMemoryContig * mem)
 {
   g_return_val_if_fail (mem, FALSE);
-  
+
   GST_DEBUG ("write-back cache for memory %p", mem);
   Memory_cacheWb (mem->data, mem->mem.maxsize);
   return TRUE;
@@ -147,7 +146,7 @@ static GstMemoryContig *
 _cmem_copy (GstMemoryContig * mem, gssize offset, gsize size)
 {
   GstMemoryContig *copy;
-  
+
   g_return_val_if_fail (mem, NULL);
 
   if (size == -1)
@@ -156,14 +155,14 @@ _cmem_copy (GstMemoryContig * mem, gssize offset, gsize size)
   copy =
       _cmem_new_mem_block (mem->mem.maxsize, mem->mem.align,
       mem->mem.offset + offset, size);
-      
+
   if (!copy)
     goto out;
-      
+
   GST_CAT_DEBUG (GST_CAT_PERFORMANCE,
       "memcpy %" G_GSIZE_FORMAT " memory %p -> %p", mem->mem.maxsize, mem,
       copy);
-      
+
   memcpy (copy->data, mem->data, mem->mem.maxsize);
 
 out:
@@ -216,7 +215,7 @@ _cmem_is_span (GstMemoryContig * mem1, GstMemoryContig * mem2, gsize * offset)
 {
   g_return_val_if_fail (mem1, FALSE);
   g_return_val_if_fail (mem2, FALSE);
-  
+
   if (offset) {
     GstMemoryContig *parent;
 

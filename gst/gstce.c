@@ -30,13 +30,14 @@ GST_DEBUG_CATEGORY (ce_debug);
 static gboolean
 gst_encoders_register (GstPlugin * plugin)
 {
-  GstCECodecData *codec = NULL;
   Engine_AlgInfo alg_info;
   Engine_Error status;
   gint num_algs = 0;
   gint num_encs = 0;
   gint i, j;
-  gboolean ret;
+  gboolean codec_found = FALSE;
+  gboolean ret = FALSE;
+
   /* Get all algorithms configured in the Codec Engine */
   status = Engine_getNumAlgs ((Char *) CODEC_ENGINE, &num_algs);
   if (status == Engine_EOK) {
@@ -44,35 +45,38 @@ gst_encoders_register (GstPlugin * plugin)
   } else {
     GST_ERROR ("failed to get the number of algorithms "
         "configured into %s: %d\n", CODEC_ENGINE, status);
-    ret = FALSE;
+    goto out;
   }
 
   alg_info.algInfoSize = sizeof (Engine_AlgInfo);
+
   for (i = 0; i < num_algs; i++) {
+
     status = Engine_getAlgInfo ((Char *) CODEC_ENGINE, &alg_info, i);
     if (status == Engine_EOK) {
       GST_DEBUG ("algorithm[%d] = %s", i, alg_info.name);
     } else {
       GST_ERROR ("failed to get %s algorithm[%d] information", CODEC_ENGINE, i);
-      ret = FALSE;
-      break;
+      goto out;
     }
+
+    codec_found = FALSE;
     num_encs = ARRAY_SIZE (gst_cevidenc_list);
-    for (j = 0; j < num_encs; j++) {
+    for (j = 0; j < num_encs && !codec_found; j++) {
       if (!strcmp (alg_info.name, gst_cevidenc_list[j]->name)) {
         GST_DEBUG ("found %s element data", gst_cevidenc_list[j]->name);
-        codec = gst_cevidenc_list[j];
-        break;
+        ret = gst_cevidenc_register (plugin, gst_cevidenc_list[j]);
+        if (!ret) {
+          GST_ERROR ("failed to register codec %s", gst_cevidenc_list[j]->name);
+          goto out;
+        }
+        codec_found = TRUE;
       }
     }
 
-    if (codec == NULL)
-      continue;
-
-    ret = gst_cevidenc_register (plugin, codec);
-    codec = NULL;
   }
 
+out:
   return ret;
 }
 
