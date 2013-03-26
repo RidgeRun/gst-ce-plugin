@@ -783,7 +783,7 @@ gst_ce_h264enc_post_process (GObject * object, GstBuffer * buffer)
           info.memory->offset = i - NAL_LENGTH + 1;
           gst_buffer_set_size (buffer, size - (i - NAL_LENGTH + 1));
           GST_DEBUG_OBJECT (cevidenc, "SPS and PPS discard");
-        } else {
+        } else if (prev_nal_type != -1) {
           /* Replace the NAL start code with the length */
           gint length = i - mark - NAL_LENGTH + 1;
           gint k;
