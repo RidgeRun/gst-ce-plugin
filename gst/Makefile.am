@@ -2,7 +2,7 @@ plugin_LTLIBRARIES = libgstce.la
 
 # sources used to compile this plugin
 libgstce_la_SOURCES = gstce.c \
- gstcevidenc.c gstceh264enc.c
+ gstcevidenc.c gstceh264enc.c gstceutils.c
 
 # compiler and linker flags used to compile this plugin
 libgstce_la_CFLAGS = $(GST_CE_CFLAGS) $(CODECS_CFLAGS) \

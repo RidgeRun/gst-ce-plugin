@@ -28,7 +28,10 @@ GST_DEBUG_CATEGORY_EXTERN (ce_debug);
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(*(x)));
 
-G_BEGIN_DECLS typedef struct _GstCECodecData GstCECodecData;
+G_BEGIN_DECLS 
+
+typedef struct _GstCECodecData GstCECodecData;
+typedef struct _GstCEMeta GstCEMeta;
 
 struct _GstCECodecData
 {
@@ -53,6 +56,28 @@ struct _GstCECodecData
       GParamSpec *, guint base);
   void (*get_property) (GObject *, guint, GValue *, GParamSpec *, guint base);
 };
+
+/**
+ * GstCEMeta:
+ * @meta: parent #GstMeta
+ * @addr: virtual address of the buffer
+ * @size: size of the region
+ *
+ * Extra buffer metadata indicating a contiguous buffer registered
+ * with Codec Engine.
+ */
+struct _GstCEMeta {
+  GstMeta meta;
+
+  guint32 addr;
+  guint32 size;
+};
+
+GType gst_ce_meta_api_get_type (void);
+const GstMetaInfo * gst_ce_meta_get_info (void);
+#define GST_CE_META_API_TYPE (gst_ce_meta_api_get_type())
+#define GST_CE_META_GET(buf) ((GstCEMeta *)gst_buffer_get_meta(buf,gst_ce_meta_api_get_type()))
+#define GST_CE_META_ADD(buf) ((GstCEMeta *)gst_buffer_add_meta(buf,gst_ce_meta_get_info(),NULL))
 
 G_END_DECLS
 #endif /*__GST_CE_UTILS_H__*/

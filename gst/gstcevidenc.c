@@ -564,7 +564,7 @@ gst_cevidenc_allocate_output_frame (GstCEVidEnc * cevidenc, GstBuffer ** buf)
   /*Get allocator parameters */
   gst_video_encoder_get_allocator ((GstVideoEncoder *) cevidenc, NULL,
       &cevidenc->params);
-  cevidenc->params.align = 3;
+  cevidenc->params.align = 31;
   *buf = gst_buffer_new_allocate (cevidenc->allocator, cevidenc->outbuf_size,
       &cevidenc->params);
 
@@ -586,11 +586,9 @@ gst_cevidenc_handle_frame (GstVideoEncoder * encoder,
   GstVideoFrame vframe;
   GstMapInfo info_out;
   GstBuffer *outbuf = NULL;
-  gboolean is_contiguous = FALSE;
   gint ret = 0;
   gint c;
-  gint32 phys;
-
+  GstCEMeta *meta;
   VIDENC1_InArgs in_args;
   VIDENC1_OutArgs out_args;
 
@@ -606,18 +604,29 @@ gst_cevidenc_handle_frame (GstVideoEncoder * encoder,
    * No CMEM contiguous buffers should be registered to Codec Engine
    * How should we manage the buffer registration?
    */
-  phys =
-      Memory_getBufferPhysicalAddress (GST_VIDEO_FRAME_PLANE_DATA (&vframe, 0),
-      GST_VIDEO_FRAME_SIZE (&vframe), (Bool *) & is_contiguous);
 
   gst_video_frame_unmap (&vframe);
-  /* $
-   * TODO
-   * Failing if input buffer is not contiguous. Should copy the buffer
-   * instead of fail?
-   */
-  if (!is_contiguous)
-    goto no_contiguous_buffer;
+
+  /* If no CE meta try to register the buffer to Codec Engine
+   * adding the CE meta*/
+  meta = GST_CE_META_GET (frame->input_buffer);
+  if (!meta) {
+    meta = GST_CE_META_ADD (frame->input_buffer);
+    if (meta) {
+      /* Indicates that the metadata is managed by the 
+       * buffer pool and shouldn't be removed*/
+      GST_META_FLAG_SET (meta, GST_META_FLAG_POOLED);
+      GST_META_FLAG_SET (meta, GST_META_FLAG_LOCKED);
+    } else {
+      /* $
+       * TODO
+       * TODO
+       * Failing if input buffer is not contiguous. Should copy the buffer
+       * instead of fail?
+       */
+      goto no_contiguous_buffer;
+    }
+  }
 
   /* Allocate output buffer */
   if (!gst_cevidenc_allocate_output_frame (cevidenc, &outbuf))
@@ -643,8 +652,8 @@ gst_cevidenc_handle_frame (GstVideoEncoder * encoder,
   if (ret != VIDENC1_EOK)
     goto encode_fail;
 
-  GST_DEBUG_OBJECT (cevidenc, "encoded an output buffer of size %li",
-      out_args.bytesGenerated);
+  GST_DEBUG_OBJECT (cevidenc, "encoded an output buffer of size %li %p",
+      out_args.bytesGenerated, *cevidenc->outbuf.bufs);
   gst_buffer_unmap (outbuf, &info_out);
 
   gst_buffer_set_size (outbuf, out_args.bytesGenerated);
