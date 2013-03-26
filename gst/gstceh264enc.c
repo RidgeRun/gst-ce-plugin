@@ -427,7 +427,7 @@ gst_ce_h264enc_get_header (GstCEVidEnc * cevidenc, GstBuffer ** buf)
   ret = VIDENC1_control (cevidenc->codec_handle, XDM_SETPARAMS,
       cevidenc->codec_dyn_params, &enc_status);
   if (ret != VIDENC1_EOK)
-    goto control_params_fail;
+    goto fail_control_params;
 
   /*Allocate an output buffer for the header */
   header_buf = gst_buffer_new_allocate (cevidenc->allocator, 200,
@@ -449,7 +449,7 @@ gst_ce_h264enc_get_header (GstCEVidEnc * cevidenc, GstBuffer ** buf)
       VIDENC1_process (cevidenc->codec_handle, &cevidenc->inbuf_desc,
       &cevidenc->outbuf_desc, &in_args, &out_args);
   if (ret != VIDENC1_EOK)
-    goto encode_fail;
+    goto fail_encode;
 
   gst_buffer_unmap (header_buf, &info);
 
@@ -457,20 +457,20 @@ gst_ce_h264enc_get_header (GstCEVidEnc * cevidenc, GstBuffer ** buf)
   ret = VIDENC1_control (cevidenc->codec_handle, XDM_SETPARAMS,
       cevidenc->codec_dyn_params, &enc_status);
   if (ret != VIDENC1_EOK)
-    goto control_params_fail;
+    goto fail_control_params;
 
   h264enc->header_size = out_args.bytesGenerated;
   *buf = header_buf;
 
   return TRUE;
 
-control_params_fail:
+fail_control_params:
   {
     GST_WARNING_OBJECT (cevidenc, "Failed to set dynamic parameters, "
         "status error %x, %d", (unsigned int) enc_status.extendedError, ret);
     return FALSE;
   }
-encode_fail:
+fail_encode:
   {
     GST_WARNING_OBJECT (cevidenc,
         "Failed header encode process with extended error: 0x%x",
@@ -584,7 +584,7 @@ gst_ce_h264enc_set_src_caps (GObject * object, GstCaps ** caps,
 
   GST_DEBUG_OBJECT (cevidenc, "setting H.264 caps");
   if (!cevidenc->codec_private)
-    goto no_private_data;
+    goto fail_no_private_data;
 
   h264enc = cevidenc->codec_private;
   *caps = gst_caps_make_writable (*caps);
@@ -625,7 +625,7 @@ gst_ce_h264enc_set_src_caps (GObject * object, GstCaps ** caps,
 
   return ret;
 
-no_private_data:
+fail_no_private_data:
   {
     GST_WARNING_OBJECT (cevidenc, "no codec private data available");
     return FALSE;

@@ -77,7 +77,7 @@ _cmem_new_mem_block (gsize maxsize, gsize align, gsize offset, gsize size)
   GST_DEBUG ("new cmem block");
   mem = g_slice_alloc (sizeof (GstMemoryContig));
   if (!mem)
-    goto alloc_failed;
+    goto fail_alloc;
 
   params = Memory_DEFAULTPARAMS;
   params.type = Memory_CONTIGPOOL;
@@ -88,7 +88,7 @@ _cmem_new_mem_block (gsize maxsize, gsize align, gsize offset, gsize size)
   if (size > 0) {
     data = (guint8 *) Memory_alloc (maxsize, &params);
     if (!data)
-      goto alloc_failed;
+      goto fail_alloc;
   }
 
   _cmem_init (mem, 0, NULL, maxsize, data, maxsize,
@@ -98,7 +98,7 @@ _cmem_new_mem_block (gsize maxsize, gsize align, gsize offset, gsize size)
 
   return mem;
 
-alloc_failed:
+fail_alloc:
   GST_ERROR ("failed CMEM allocation");
   if (mem)
     g_slice_free1 (sizeof (GstMemoryContig), mem);

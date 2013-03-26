@@ -390,7 +390,7 @@ gst_cevidenc_configure_codec (GstCEVidEnc * cevidenc)
   cevidenc->codec_handle = VIDENC1_create (cevidenc->engine_handle,
       (Char *) klass->codec->name, params);
   if (!cevidenc->codec_handle)
-    goto open_codec_fail;
+    goto fail_open_codec;
 
   enc_status.size = sizeof (VIDENC1_Status);
   enc_status.data.buf = NULL;
@@ -399,7 +399,7 @@ gst_cevidenc_configure_codec (GstCEVidEnc * cevidenc)
   ret = VIDENC1_control (cevidenc->codec_handle, XDM_SETPARAMS,
       dyn_params, &enc_status);
   if (ret != VIDENC1_EOK)
-    goto control_params_fail;
+    goto fail_control_params;
 
   GST_OBJECT_UNLOCK (cevidenc);
 
@@ -407,7 +407,7 @@ gst_cevidenc_configure_codec (GstCEVidEnc * cevidenc)
   ret = VIDENC1_control (cevidenc->codec_handle, XDM_GETBUFINFO,
       dyn_params, &enc_status);
   if (ret != VIDENC1_EOK)
-    goto control_getinfo_fail;
+    goto fail_control_getinfo;
 
   for (i = 0; i < enc_status.bufInfo.minNumInBufs; i++) {
     cevidenc->inbuf_desc.bufDesc[i].bufSize =
@@ -423,13 +423,13 @@ gst_cevidenc_configure_codec (GstCEVidEnc * cevidenc)
 
   return TRUE;
 
-open_codec_fail:
+fail_open_codec:
   {
     GST_ERROR_OBJECT (cevidenc, "failed to open codec %s", klass->codec->name);
     GST_OBJECT_UNLOCK (cevidenc);
     return FALSE;
   }
-control_params_fail:
+fail_control_params:
   {
     GST_ERROR_OBJECT (cevidenc, "failed to set dynamic parameters, "
         "status error %x, %d", (guint) enc_status.extendedError, ret);
@@ -438,7 +438,7 @@ control_params_fail:
     cevidenc->codec_handle = NULL;
     return FALSE;
   }
-control_getinfo_fail:
+fail_control_getinfo:
   {
     GST_ERROR_OBJECT (cevidenc, "failed to get buffer information, "
         "status error %x, %d", (guint) enc_status.extendedError, ret);
@@ -594,7 +594,7 @@ gst_cevidenc_handle_frame (GstVideoEncoder * encoder,
 
   /* Fill planes pointer */
   if (!gst_video_frame_map (&vframe, info, frame->input_buffer, GST_MAP_READ))
-    goto map_fail;
+    goto fail_map;
 
   for (c = 0; c < GST_VIDEO_FRAME_N_PLANES (&vframe); c++) {
     cevidenc->inbuf_desc.bufDesc[c].buf =
@@ -625,16 +625,16 @@ gst_cevidenc_handle_frame (GstVideoEncoder * encoder,
        * Failing if input buffer is not contiguous. Should copy the buffer
        * instead of fail?
        */
-      goto no_contiguous_buffer;
+      goto fail_no_contiguous_buffer;
     }
   }
 
   /* Allocate output buffer */
   if (!gst_cevidenc_allocate_output_frame (cevidenc, &outbuf))
-    goto alloc_fail;
+    goto fail_alloc;
 
   if (!gst_buffer_map (outbuf, &info_out, GST_MAP_WRITE)) {
-    goto map_fail;
+    goto fail_map;
   }
 
   cevidenc->outbuf_desc.bufs = (XDAS_Int8 **) & (info_out.data);
@@ -651,7 +651,7 @@ gst_cevidenc_handle_frame (GstVideoEncoder * encoder,
       VIDENC1_process (cevidenc->codec_handle, &cevidenc->inbuf_desc,
       &cevidenc->outbuf_desc, &in_args, &out_args);
   if (ret != VIDENC1_EOK)
-    goto encode_fail;
+    goto fail_encode;
 
   GST_DEBUG_OBJECT (cevidenc, "encoded an output buffer of size %li %p",
       out_args.bytesGenerated, *cevidenc->outbuf_desc.bufs);
@@ -681,22 +681,22 @@ gst_cevidenc_handle_frame (GstVideoEncoder * encoder,
 
   return gst_video_encoder_finish_frame (encoder, frame);
 
-map_fail:
+fail_map:
   {
     GST_ERROR_OBJECT (encoder, "Failed to map input buffer");
     return GST_FLOW_ERROR;
   }
-no_contiguous_buffer:
+fail_no_contiguous_buffer:
   {
     GST_ERROR_OBJECT (encoder, "Input buffer should be contiguous");
     return GST_FLOW_ERROR;
   }
-alloc_fail:
+fail_alloc:
   {
     GST_ERROR_OBJECT (cevidenc, "Failed to get output buffer");
     return GST_FLOW_ERROR;
   }
-encode_fail:
+fail_encode:
   {
     gst_buffer_unmap (outbuf, &info_out);
     GST_ERROR_OBJECT (cevidenc,
@@ -860,7 +860,7 @@ gst_cevidenc_open (GstVideoEncoder * encoder)
   cevidenc->allocator = gst_allocator_find ("ContiguousMemory");
 
   if (!cevidenc->allocator)
-    goto no_allocator;
+    goto fail_no_allocator;
 
   return TRUE;
 
@@ -871,7 +871,7 @@ fail_engine_open:
         ("failed to open codec engine \"%s\"", CODEC_ENGINE));
     return FALSE;
   }
-no_allocator:
+fail_no_allocator:
   {
     GST_WARNING_OBJECT (cevidenc, "can't find the CMEM allocator");
     return FALSE;
@@ -1007,7 +1007,6 @@ gst_cevidenc_register (GstPlugin * plugin, GstCECodecData * codec)
   }
 
   g_free (type_name);
-
 
   GST_LOG ("Finished registering encoder");
 
