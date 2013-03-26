@@ -548,7 +548,6 @@ gst_cevidenc_propose_allocation (GstVideoEncoder * encoder, GstQuery * query)
 
   return GST_VIDEO_ENCODER_CLASS (parent_class)->propose_allocation (encoder,
       query);
-  return TRUE;
 }
 
 /**
