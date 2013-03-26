@@ -66,7 +66,7 @@ gst_ce_meta_init (GstMeta * meta, gpointer params, GstBuffer * buffer)
 
   gst_buffer_unmap (buffer, &info);
 
-  GST_WARNING ("Init CE meta %d", cemeta->addr);
+  GST_DEBUG ("Init CE meta %d", cemeta->addr);
 
 out:
   return is_contiguous;
@@ -86,7 +86,7 @@ gst_ce_meta_free (GstMeta * meta, GstBuffer * buffer)
   cemeta = (GstCEMeta *) meta;
 
   Memory_unregisterContigBuf (cemeta->addr, cemeta->size);
-  GST_WARNING ("Free CE meta %d", cemeta->addr);
+  GST_DEBUG ("Free CE meta %d", cemeta->addr);
 }
 
 const GstMetaInfo *
