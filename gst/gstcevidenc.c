@@ -652,7 +652,7 @@ gst_cevidenc_handle_frame (GstVideoEncoder * encoder,
     goto encode_fail;
 
   GST_DEBUG_OBJECT (cevidenc, "encoded an output buffer of size %li %p",
-      out_args.bytesGenerated, *cevidenc->outbuf.bufs);
+      out_args.bytesGenerated, *cevidenc->outbuf_desc.bufs);
   gst_buffer_unmap (outbuf, &info_out);
 
   gst_buffer_set_size (outbuf, out_args.bytesGenerated);
