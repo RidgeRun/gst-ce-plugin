@@ -358,9 +358,11 @@ gst_cevidenc_configure_codec (GstCEVidEnc * cevidenc)
   switch (cevidenc->video_format) {
     case GST_VIDEO_FORMAT_UYVY:
       params->inputChromaFormat = XDM_YUV_422ILE;
+      dyn_params->captureWidth = cevidenc->inbuf_desc.framePitch / 2;
       break;
     case GST_VIDEO_FORMAT_NV12:
       params->inputChromaFormat = XDM_YUV_420SP;
+      dyn_params->captureWidth = cevidenc->inbuf_desc.framePitch;
       break;
     default:
       GST_ELEMENT_ERROR (cevidenc, STREAM, NOT_IMPLEMENTED,
@@ -480,6 +482,11 @@ gst_cevidenc_set_format (GstVideoEncoder * encoder, GstVideoCodecState * state)
   cevidenc->par_den = GST_VIDEO_INFO_PAR_D (&state->info);
 
   cevidenc->video_format = GST_VIDEO_INFO_FORMAT (&state->info);
+
+  GST_DEBUG_OBJECT (cevidenc, "input buffer format: width=%d, height=%d,"
+      " pitch=%d, bpp=%d", cevidenc->inbuf_desc.frameWidth,
+      cevidenc->inbuf_desc.frameHeight, cevidenc->inbuf_desc.framePitch,
+      cevidenc->bpp);
 
   if (!gst_cevidenc_configure_codec (cevidenc))
     goto fail_set_caps;
