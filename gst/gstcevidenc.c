@@ -548,7 +548,7 @@ static gboolean
 gst_cevidenc_propose_allocation (GstVideoEncoder * encoder, GstQuery * query)
 {
   GstCEVidEnc *cevidenc = (GstCEVidEnc *) encoder;
-  GstAllocationParams params = { 0, 3, 0, 0 };
+  GstAllocationParams params = { 0, 31, 0, 0 };
 
   gst_query_add_allocation_meta (query, GST_VIDEO_META_API_TYPE, NULL);
   gst_query_add_allocation_param (query, cevidenc->allocator, &params);
@@ -569,7 +569,7 @@ gst_cevidenc_allocate_output_frame (GstCEVidEnc * cevidenc, GstBuffer ** buf)
   /*Get allocator parameters */
   gst_video_encoder_get_allocator ((GstVideoEncoder *) cevidenc, NULL,
       &cevidenc->alloc_params);
-  cevidenc->alloc_params.align = 3;
+  cevidenc->alloc_params.align = 31;
 
   *buf = gst_buffer_new_allocate (cevidenc->allocator, cevidenc->outbuf_size,
       &cevidenc->alloc_params);

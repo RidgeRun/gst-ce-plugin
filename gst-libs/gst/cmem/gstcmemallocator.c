@@ -82,7 +82,7 @@ _cmem_new_mem_block (gsize maxsize, gsize align, gsize offset, gsize size)
   params = Memory_DEFAULTPARAMS;
   params.type = Memory_CONTIGPOOL;
   params.flags = Memory_CACHED;
-  params.align = ((UInt) (align - 1));
+  params.align = ((UInt) (align + 1));
   data = NULL;
 
   if (size > 0) {
