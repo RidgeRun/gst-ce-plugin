@@ -121,7 +121,6 @@ create_cmem_buffer (gint size)
 {
   GstAllocator *alloc;
   GstAllocationParams params;
-  GstMapInfo info;
   GstBuffer *buf;
 
   /* memory using the cmem API */
@@ -138,6 +137,29 @@ create_cmem_buffer (gint size)
   gst_object_unref (alloc);
 
   return buf;
+}
+
+static void
+play_a_buffer (GstElement * h264enc, GstCaps * caps)
+{
+  GstBuffer *inbuffer;
+  fail_unless (gst_element_set_state (h264enc,
+          GST_STATE_PLAYING) == GST_STATE_CHANGE_SUCCESS,
+      "could not set to playing");
+
+  gst_pad_set_caps (mysinkpad, caps);
+  gst_caps_unref (caps);
+  gst_pad_use_fixed_caps (mysinkpad);
+
+  caps = gst_caps_from_string (VIDEO_CAPS_STRING);
+  fail_unless (gst_pad_set_caps (mysrcpad, caps));
+
+  fail_unless ((inbuffer = create_cmem_buffer (640 * 480 * 3 / 2)) != NULL);
+  gst_caps_unref (caps);
+
+  ASSERT_BUFFER_REFCOUNT (inbuffer, "inbuffer", 1);
+  fail_unless (gst_pad_push (mysrcpad, inbuffer) == GST_FLOW_OK);
+
 }
 
 static void
@@ -179,13 +201,137 @@ check_caps (GstCaps * caps, gint profile_id)
   }
 }
 
+GST_START_TEST (test_ce_h264enc_properties)
+{
+  GstElement *h264enc;
+  GstCaps *caps;
+  gint res_rate, res_level, res_bitrate, res_idrinterval;
+
+  h264enc = setup_ce_h264enc (&sinktemplate);
+
+  caps = gst_caps_from_string (H264_CAPS_STRING);
+  gst_caps_set_simple (caps, "stream-format", G_TYPE_STRING, "avc", NULL);
+
+  g_object_set (h264enc, "rate-control", 2, NULL);
+  g_object_set (h264enc, "level", 10, NULL);
+  g_object_set (h264enc, "target-bitrate", 4000000, NULL);
+  g_object_set (h264enc, "idrinterval", 90, NULL);
+
+  g_object_get (h264enc,
+      "rate-control", &res_rate,
+      "level", &res_level,
+      "target-bitrate", &res_bitrate, "idrinterval", &res_idrinterval, NULL);
+
+  fail_unless (res_rate == 2);
+  fail_unless (res_level == 10);
+  fail_unless (res_bitrate == 4000000);
+  fail_unless (res_idrinterval == 90);
+
+  play_a_buffer (h264enc, caps);
+
+  /* change dynamic properties while in PLAYING state */
+  g_object_set (h264enc, "target-bitrate", 1000000, NULL);
+  g_object_set (h264enc, "idrinterval", 30, NULL);
+  g_object_get (h264enc,
+      "target-bitrate", &res_bitrate, "idrinterval", &res_idrinterval, NULL);
+
+  fail_unless (res_bitrate == 1000000);
+  fail_unless (res_idrinterval == 30);
+
+  /* try to change static properties while in PLAYING state */
+  g_object_set (h264enc, "rate-control", 3, NULL);
+  g_object_get (h264enc, "rate-control", &res_rate, NULL);
+
+  /* verify that static properties have not been altered */
+  fail_unless (res_rate == 2);
+
+  /* send eos to have all flushed if needed */
+  fail_unless (gst_pad_push_event (mysrcpad, gst_event_new_eos ()) == TRUE);
+
+
+  cleanup_ce_h264enc (h264enc);
+  g_list_free (buffers);
+  buffers = NULL;
+
+}
+
+GST_END_TEST;
+
+GST_START_TEST (test_ce_h264enc_bytestream)
+{
+  GstElement *h264enc;
+  GstBuffer *outbuffer;
+  GstCaps *caps;
+  int i, num_buffers;
+
+  h264enc = setup_ce_h264enc (&sinktemplate);
+
+  caps = gst_caps_from_string (H264_CAPS_STRING);
+  gst_caps_set_simple (caps, "stream-format", G_TYPE_STRING, "byte-stream",
+      NULL);
+
+  play_a_buffer (h264enc, caps);
+
+  /* send eos to have all flushed if needed */
+  fail_unless (gst_pad_push_event (mysrcpad, gst_event_new_eos ()) == TRUE);
+
+  num_buffers = g_list_length (buffers);
+  fail_unless (num_buffers == 1);
+
+  /* check output caps */
+  {
+    GstCaps *outcaps;
+
+    outcaps = gst_pad_get_current_caps (mysinkpad);
+    check_caps (outcaps, 0);
+    gst_caps_unref (outcaps);
+  }
+
+  /* clean up buffers */
+  for (i = 0; i < num_buffers; ++i) {
+    outbuffer = GST_BUFFER (buffers->data);
+    fail_if (outbuffer == NULL);
+
+    switch (i) {
+      case 0:
+      {
+        gint start_code;
+        GstMapInfo map;
+        const guint8 *data;
+
+        gst_buffer_map (outbuffer, &map, GST_MAP_READ);
+        data = map.data;
+
+        start_code = GST_READ_UINT32_BE (data);
+        fail_unless (start_code == 1);
+
+        gst_buffer_unmap (outbuffer, &map);
+        break;
+      }
+      default:
+        break;
+    }
+
+    buffers = g_list_remove (buffers, outbuffer);
+
+    ASSERT_BUFFER_REFCOUNT (outbuffer, "outbuffer", 1);
+    gst_buffer_unref (outbuffer);
+    outbuffer = NULL;
+  }
+
+  cleanup_ce_h264enc (h264enc);
+  g_list_free (buffers);
+  buffers = NULL;
+}
+
+GST_END_TEST;
+
 static void
 test_video_packetized (gboolean headers, gint profile_id)
 {
   GstElement *h264enc;
-  GstBuffer *inbuffer, *outbuffer;
+  GstBuffer *outbuffer;
   GstCaps *caps;
-  //~ GstCaps *allowed_caps;
   int i, num_buffers;
 
   h264enc = setup_ce_h264enc (&sinktemplate);
@@ -195,34 +341,19 @@ test_video_packetized (gboolean headers, gint profile_id)
   g_object_set (h264enc, "seqscaling", 0, NULL);
   /* Setting defined profile */
   g_object_set (h264enc, "profile", profile_id, NULL);
-
-  fail_unless (gst_element_set_state (h264enc,
-          GST_STATE_PLAYING) == GST_STATE_CHANGE_SUCCESS,
-      "could not set to playing");
+  g_object_set (h264enc, "headers", headers, NULL);
 
   caps = gst_caps_from_string (H264_CAPS_STRING);
   /* code below assumes avc */
   gst_caps_set_simple (caps, "stream-format", G_TYPE_STRING, "avc", NULL);
-  gst_pad_set_caps (mysinkpad, caps);
-  gst_caps_unref (caps);
-  gst_pad_use_fixed_caps (mysinkpad);
 
-  caps = gst_caps_from_string (VIDEO_CAPS_STRING);
-  fail_unless (gst_pad_set_caps (mysrcpad, caps));
-
-  g_object_set (h264enc, "headers", headers, NULL);
-
-  fail_unless ((inbuffer = create_cmem_buffer (640 * 480 * 3 / 2)) != NULL);
-  gst_caps_unref (caps);
-
-  ASSERT_BUFFER_REFCOUNT (inbuffer, "inbuffer", 1);
-  fail_unless (gst_pad_push (mysrcpad, inbuffer) == GST_FLOW_OK);
-
-  /* send eos to have all flushed if needed */
-  fail_unless (gst_pad_push_event (mysrcpad, gst_event_new_eos ()) == TRUE);
+  play_a_buffer (h264enc, caps);
 
   num_buffers = g_list_length (buffers);
   fail_unless (num_buffers == 1);
+
+  /* send eos to have all flushed if needed */
+  fail_unless (gst_pad_push_event (mysrcpad, gst_event_new_eos ()) == TRUE);
 
   /* check output caps */
   {
@@ -340,6 +471,8 @@ ce_h264enc_suite (void)
   tcase_add_test (tc_chain, test_ce_h264enc_packetized_high);
   tcase_add_test (tc_chain, test_ce_h264enc_packetized_main);
   tcase_add_test (tc_chain, test_ce_h264enc_packetized_base);
+  tcase_add_test (tc_chain, test_ce_h264enc_bytestream);
+  tcase_add_test (tc_chain, test_ce_h264enc_properties);
 
   return s;
 }
