@@ -28,9 +28,7 @@ GST_DEBUG_CATEGORY_EXTERN (ce_debug);
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(*(x)));
 
-G_BEGIN_DECLS 
-
-typedef struct _GstCECodecData GstCECodecData;
+G_BEGIN_DECLS typedef struct _GstCECodecData GstCECodecData;
 typedef struct _GstCEContigBufMeta GstCEContigBufMeta;
 
 struct _GstCECodecData
@@ -46,10 +44,10 @@ struct _GstCECodecData
   /* Fuction to alloc and Initialize resources */
   void (*setup) (GObject *);
   /* Function to define element src caps */
-  gboolean (*set_src_caps) (GObject *, GstCaps **, GstBuffer ** codec_data);
+    gboolean (*set_src_caps) (GObject *, GstCaps **, GstBuffer ** codec_data);
   /* Functions to run before and after the encoding */
-  gboolean (*pre_process) (GObject *, GstBuffer *);
-  gboolean (*post_process) (GObject *, GstBuffer *);
+    gboolean (*pre_process) (GObject *, GstBuffer *);
+    gboolean (*post_process) (GObject *, GstBuffer *);
   /* Functions to provide custom properties */
   void (*install_properties) (GObjectClass *, guint base);
   void (*set_property) (GObject *, guint, const GValue *,
@@ -67,15 +65,16 @@ struct _GstCECodecData
  * Extra buffer metadata indicating a contiguous buffer registered
  * with Codec Engine.
  */
- struct _GstCEContigBufMeta {
+struct _GstCEContigBufMeta
+{
   GstMeta meta;
-  
+
   guint32 addr;
   guint32 size;
 };
 
 GType gst_ce_contig_buf_meta_api_get_type (void);
-const GstMetaInfo * gst_ce_contig_buf_meta_get_info (void);
+const GstMetaInfo *gst_ce_contig_buf_meta_get_info (void);
 #define GST_CE_CONTIG_BUF_META_API_TYPE (gst_ce_meta_api_get_type())
 #define GST_CE_CONTIG_BUF_META_GET(buf) ((GstCEContigBufMeta *)gst_buffer_get_meta(buf, gst_ce_contig_buf_meta_api_get_type()))
 #define GST_CE_CONTIG_BUF_META_ADD(buf) ((GstCEContigBufMeta *)gst_buffer_add_meta(buf, gst_ce_contig_buf_meta_get_info(), NULL))
