@@ -970,37 +970,72 @@ gst_ce_h264enc_set_property (GObject * object, guint prop_id,
       h264enc->single_nalu = g_value_get_boolean (value);
       break;
     case PROP_PROFILE:
-      params->profileIdc = g_value_get_enum (value);
+      if (!cevidenc->codec_handle)
+        params->profileIdc = g_value_get_enum (value);
+      else
+        goto fail_static_prop;
       break;
     case PROP_LEVEL:
-      params->levelIdc = g_value_get_enum (value);
+      if (!cevidenc->codec_handle)
+        params->levelIdc = g_value_get_enum (value);
+      else
+        goto fail_static_prop;
       break;
     case PROP_ENTROPYMODE:
-      params->entropyMode = g_value_get_enum (value);
+      if (!cevidenc->codec_handle)
+        params->entropyMode = g_value_get_enum (value);
+      else
+        goto fail_static_prop;
       break;
     case PROP_T8X8INTRA:
-      params->transform8x8FlagIntraFrame = g_value_get_boolean (value) ? 1 : 0;
+      if (!cevidenc->codec_handle)
+        params->transform8x8FlagIntraFrame =
+            g_value_get_boolean (value) ? 1 : 0;
+      else
+        goto fail_static_prop;
       break;
     case PROP_T8X8INTER:
-      params->transform8x8FlagInterFrame = g_value_get_boolean (value) ? 1 : 0;
+      if (!cevidenc->codec_handle)
+        params->transform8x8FlagInterFrame =
+            g_value_get_boolean (value) ? 1 : 0;
+      else
+        goto fail_static_prop;
       break;
     case PROP_ENCQUALITY:
-      params->encQuality = g_value_get_enum (value);
+      if (!cevidenc->codec_handle)
+        params->encQuality = g_value_get_enum (value);
+      else
+        goto fail_static_prop;
       break;
     case PROP_ENABLETCM:
-      params->enableARM926Tcm = g_value_get_boolean (value) ? 1 : 0;
+      if (!cevidenc->codec_handle)
+        params->enableARM926Tcm = g_value_get_boolean (value) ? 1 : 0;
+      else
+        goto fail_static_prop;
       break;
     case PROP_DDRBUF:
-      params->enableDDRbuff = g_value_get_boolean (value) ? 1 : 0;
+      if (!cevidenc->codec_handle)
+        params->enableDDRbuff = g_value_get_boolean (value) ? 1 : 0;
+      else
+        goto fail_static_prop;
       break;
     case PROP_NTEMPLAYERS:
-      params->numTemporalLayers = g_value_get_enum (value);
+      if (!cevidenc->codec_handle)
+        params->numTemporalLayers = g_value_get_enum (value);
+      else
+        goto fail_static_prop;
       break;
     case PROP_SVCSYNTAXEN:
-      params->svcSyntaxEnable = g_value_get_enum (value);
+      if (!cevidenc->codec_handle)
+        params->svcSyntaxEnable = g_value_get_enum (value);
+      else
+        goto fail_static_prop;
       break;
     case PROP_SEQSCALING:
-      params->seqScalingFlag = g_value_get_enum (value);
+      if (!cevidenc->codec_handle)
+        params->seqScalingFlag = g_value_get_enum (value);
+      else
+        goto fail_static_prop;
       break;
     case PROP_QPINTRA:
       dyn_params->intraFrameQP = g_value_get_int (value);
@@ -1039,6 +1074,10 @@ gst_ce_h264enc_set_property (GObject * object, guint prop_id,
   }
 
   return;
+
+fail_static_prop:
+  GST_WARNING_OBJECT (cevidenc, "can't set static property when "
+      "the codec is already configured");
 }
 
 static void
