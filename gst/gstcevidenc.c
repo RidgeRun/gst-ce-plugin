@@ -483,8 +483,8 @@ gst_cevidenc_set_format (GstVideoEncoder * encoder, GstVideoCodecState * state)
 
   cevidenc->video_format = GST_VIDEO_INFO_FORMAT (&state->info);
 
-  GST_DEBUG_OBJECT (cevidenc, "input buffer format: width=%d, height=%d,"
-      " pitch=%d, bpp=%d", cevidenc->inbuf_desc.frameWidth,
+  GST_DEBUG_OBJECT (cevidenc, "input buffer format: width=%li, height=%li,"
+      " pitch=%li, bpp=%d", cevidenc->inbuf_desc.frameWidth,
       cevidenc->inbuf_desc.frameHeight, cevidenc->inbuf_desc.framePitch,
       cevidenc->bpp);
 
@@ -691,7 +691,7 @@ gst_cevidenc_handle_frame (GstVideoEncoder * encoder,
   /* Mark I and IDR frames */
   if ((out_args.encodedFrameType == IVIDEO_I_FRAME) ||
       (out_args.encodedFrameType == IVIDEO_IDR_FRAME)) {
-    GST_DEBUG_OBJECT (cevidenc, "frame type %d", out_args.encodedFrameType);
+    GST_DEBUG_OBJECT (cevidenc, "frame type %li", out_args.encodedFrameType);
     GST_VIDEO_CODEC_FRAME_SET_SYNC_POINT (frame);
   }
 
@@ -751,19 +751,31 @@ gst_cevidenc_set_property (GObject * object,
   /* Check the argument id to see which argument we're setting. */
   switch (prop_id) {
     case PROP_RATECONTROL:
-      params->rateControlPreset = g_value_get_enum (value);
-      GST_LOG_OBJECT (cevidenc,
-          "setting encoding rate control to %li", params->rateControlPreset);
+      if (!cevidenc->codec_handle) {
+        params->rateControlPreset = g_value_get_enum (value);
+        GST_LOG_OBJECT (cevidenc,
+            "setting encoding rate control to %li", params->rateControlPreset);
+      } else {
+        goto fail_static_prop;
+      }
       break;
     case PROP_ENCODINGPRESET:
-      params->encodingPreset = g_value_get_enum (value);
-      GST_LOG_OBJECT (cevidenc,
-          "setting encoding rate control to %li", params->encodingPreset);
+      if (!cevidenc->codec_handle) {
+        params->encodingPreset = g_value_get_enum (value);
+        GST_LOG_OBJECT (cevidenc,
+            "setting encoding rate control to %li", params->encodingPreset);
+      } else {
+        goto fail_static_prop;
+      }
       break;
     case PROP_MAXBITRATE:
-      params->maxBitRate = g_value_get_int (value);
-      GST_LOG_OBJECT (cevidenc,
-          "setting max bitrate to %li", params->maxBitRate);
+      if (!cevidenc->codec_handle) {
+        params->maxBitRate = g_value_get_int (value);
+        GST_LOG_OBJECT (cevidenc,
+            "setting max bitrate to %li", params->maxBitRate);
+      } else {
+        goto fail_static_prop;
+      }
       break;
     case PROP_TARGETBITRATE:
       dyn_params->targetBitRate = g_value_get_int (value);
@@ -802,6 +814,12 @@ gst_cevidenc_set_property (GObject * object,
           "status error %x, %d", (guint) enc_status.extendedError, ret);
   }
 
+  GST_OBJECT_UNLOCK (cevidenc);
+  return;
+
+fail_static_prop:
+  GST_WARNING_OBJECT (cevidenc, "can't set static property when "
+      "the codec is already configured");
   GST_OBJECT_UNLOCK (cevidenc);
 }
 
