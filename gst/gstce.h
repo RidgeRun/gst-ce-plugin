@@ -26,6 +26,7 @@
 
 #include "gstceutils.h"
 #include "gstceh264enc.h"
+#include "gstcejpegenc.h"
 
 GST_DEBUG_CATEGORY_EXTERN (ce_debug);
 #define GST_CAT_DEFAULT ce_debug
@@ -35,9 +36,12 @@ G_BEGIN_DECLS
 
 extern gboolean 
     gst_cevidenc_register (GstPlugin * plugin, GstCECodecData * codec);
+extern gboolean 
+    gst_ceimgenc_register (GstPlugin * plugin, GstCECodecData * codec);
 
 static GstCECodecData *gst_cevidenc_list[] = {
-  &gst_ce_h264enc,
+  //  &gst_ce_h264enc,
+  &gst_ce_jpegenc,
 };
 
 G_END_DECLS

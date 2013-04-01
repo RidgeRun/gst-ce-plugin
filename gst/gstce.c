@@ -65,7 +65,7 @@ gst_encoders_register (GstPlugin * plugin)
     for (j = 0; j < num_encs && !codec_found; j++) {
       if (!strcmp (alg_info.name, gst_cevidenc_list[j]->name)) {
         GST_DEBUG ("found %s element data", gst_cevidenc_list[j]->name);
-        ret = gst_cevidenc_register (plugin, gst_cevidenc_list[j]);
+        ret = gst_ceimgenc_register (plugin, gst_cevidenc_list[j]);
         if (!ret) {
           GST_ERROR ("failed to register codec %s", gst_cevidenc_list[j]->name);
           goto out;

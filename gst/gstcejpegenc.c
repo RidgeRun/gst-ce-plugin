@@ -223,7 +223,6 @@ fail_alloc:
 GstCECodecData gst_ce_jpegenc = {
   .name = "jpegenc",
   .long_name = "JPEG",
-  .streamType = "IMG",
   .src_caps = &gst_ce_jpegenc_src_caps,
   .sink_caps = &gst_ce_jpegenc_sink_caps,
   .install_properties = gst_ce_jpegenc_install_properties,
