@@ -1067,7 +1067,7 @@ gst_ce_h264enc_set_property (GObject * object, guint prop_id,
     enc_status.size = sizeof (VIDENC1_Status);
     enc_status.data.buf = NULL;
     ret = VIDENC1_control (cevidenc->codec_handle, XDM_SETPARAMS,
-        dyn_params, &enc_status);
+        (VIDENC1_DynamicParams *) dyn_params, &enc_status);
     if (ret != VIDENC1_EOK)
       GST_WARNING_OBJECT (cevidenc, "failed to set dynamic parameters, "
           "status error %x, %d", (guint) enc_status.extendedError, ret);

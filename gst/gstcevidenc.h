@@ -21,12 +21,14 @@
 #ifndef __GST_CE_VIDENC_H__
 #define __GST_CE_VIDENC_H__
 
-G_BEGIN_DECLS
+#include <gst/video/gstvideoencoder.h>
 #include <xdc/std.h>
 #include <ti/sdo/ce/Engine.h>
 #include <ti/sdo/ce/video1/videnc1.h>
-#include <gst/video/gstvideoencoder.h>
+
 #include "gstceutils.h"
+
+G_BEGIN_DECLS
 typedef struct _GstCEVidEnc GstCEVidEnc;
 
 struct _GstCEVidEnc

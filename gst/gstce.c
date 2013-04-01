@@ -27,6 +27,10 @@
 
 GST_DEBUG_CATEGORY (ce_debug);
 
+static GstCECodecData *gst_cevidenc_list[] = {
+  &gst_ce_h264enc,
+};
+
 static gboolean
 gst_encoders_register (GstPlugin * plugin)
 {
