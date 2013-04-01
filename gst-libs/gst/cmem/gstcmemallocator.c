@@ -82,7 +82,8 @@ _cmem_new_mem_block (gsize maxsize, gsize align, gsize offset, gsize size)
   params = Memory_DEFAULTPARAMS;
   params.type = Memory_CONTIGPOOL;
   params.flags = Memory_CACHED;
-  params.align = ((UInt) (align + 1));
+  params.align = (UInt) align;
+
   data = NULL;
 
   if (size > 0) {
@@ -146,14 +147,21 @@ static GstMemoryContig *
 _cmem_copy (GstMemoryContig * mem, gssize offset, gsize size)
 {
   GstMemoryContig *copy;
+  gsize align;
 
   g_return_val_if_fail (mem, NULL);
 
   if (size == -1)
     size = mem->mem.size > offset ? mem->mem.size - offset : 0;
 
+  /*
+   * GstAllocationParams have an alignment that is a bitmask
+   * so that align + 1 equals the amount of bytes to align to.
+   */
+  align = mem->mem.align + 1;
+
   copy =
-      _cmem_new_mem_block (mem->mem.maxsize, mem->mem.align,
+      _cmem_new_mem_block (mem->mem.maxsize, align,
       mem->mem.offset + offset, size);
 
   if (!copy)
@@ -229,18 +237,34 @@ _cmem_is_span (GstMemoryContig * mem1, GstMemoryContig * mem2, gsize * offset)
       mem2->data + mem2->mem.offset;
 }
 
-
+/**
+ * _cmem_alloc:
+ * 
+ * The implementation of the GstAllocatorClass alloc() function.
+ */
 static GstMemory *
 _cmem_alloc (GstAllocator * allocator, gsize size, GstAllocationParams * params)
 {
   gsize maxsize = size + params->prefix + params->padding;
+  gsize align;
 
   GST_DEBUG ("alloc from CMEM allocator");
 
-  return (GstMemory *) _cmem_new_mem_block (maxsize, params->align,
+  /*
+   * GstAllocationParams have an alignment that is a bitmask
+   * so that align + 1 equals the amount of bytes to align to.
+   */
+  align = params->align + 1;
+
+  return (GstMemory *) _cmem_new_mem_block (maxsize, align,
       params->prefix, size);
 }
 
+/**
+ * _cmem_free:
+ * 
+ * The implementation of the GstAllocatorClass free() function.
+ */
 static void
 _cmem_free (GstAllocator * allocator, GstMemory * mem)
 {

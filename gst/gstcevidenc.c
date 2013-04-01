@@ -548,7 +548,17 @@ static gboolean
 gst_cevidenc_propose_allocation (GstVideoEncoder * encoder, GstQuery * query)
 {
   GstCEVidEnc *cevidenc = (GstCEVidEnc *) encoder;
-  GstAllocationParams params = { 0, 31, 0, 0 };
+  GstAllocationParams params;
+
+  params.flags = 0;
+  params.prefix = 0;
+  params.padding = 0;
+
+  /*
+   * GstAllocationParams have an alignment that is a bitmask
+   * so that align + 1 equals the amount of bytes to align to.
+   */
+  params.align = 31;
 
   gst_query_add_allocation_meta (query, GST_VIDEO_META_API_TYPE, NULL);
   gst_query_add_allocation_param (query, cevidenc->allocator, &params);
@@ -560,7 +570,7 @@ gst_cevidenc_propose_allocation (GstVideoEncoder * encoder, GstQuery * query)
 /**
  * gst_cevidenc_allocate_output_frame
  * 
- * Allocates a CMEM output buffer 
+ * Allocates a CMEM output buffer
  */
 static gboolean
 gst_cevidenc_allocate_output_frame (GstCEVidEnc * cevidenc, GstBuffer ** buf)
@@ -621,7 +631,7 @@ gst_cevidenc_handle_frame (GstVideoEncoder * encoder,
     meta = GST_CE_META_ADD (frame->input_buffer);
     if (meta) {
       /* Indicates that the metadata is managed by the 
-       * buffer pool and shouldn't be removed*/
+       * buffer pool and shouldn't be removed */
       GST_META_FLAG_SET (meta, GST_META_FLAG_POOLED);
       GST_META_FLAG_SET (meta, GST_META_FLAG_LOCKED);
     } else {
