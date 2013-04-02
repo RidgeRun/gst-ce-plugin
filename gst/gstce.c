@@ -97,7 +97,10 @@ plugin_init (GstPlugin * plugin)
   gst_cmem_init ();
 
   /* Register encoders */
-  gst_encoders_register (plugin);
+  if (!gst_element_register (plugin, "ce_h264enc", GST_RANK_PRIMARY,
+          GST_TYPE_CE_H264ENC))
+    return FALSE;
+  //~ gst_encoders_register (plugin);
 
 
   return TRUE;

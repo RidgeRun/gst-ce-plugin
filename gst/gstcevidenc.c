@@ -159,16 +159,18 @@ static gboolean gst_cevidenc_reset (GstVideoEncoder * encoder);
 #define GST_CEENC_PARAMS_QDATA g_quark_from_static_string("ceenc-params")
 
 static GstElementClass *parent_class = NULL;
-
+G_DEFINE_TYPE (GstCEVidEnc, gst_cevidenc, GST_TYPE_VIDEO_ENCODER);
 
 static void
 gst_cevidenc_base_init (GstCEVidEncClass * klass)
 {
+#if 0
   GstElementClass *element_class = GST_ELEMENT_CLASS (klass);
   GstCECodecData *codec;
   GstPadTemplate *srctempl = NULL, *sinktempl = NULL;
   GstCaps *srccaps = NULL, *sinkcaps = NULL;
   gchar *longname, *description;
+
 
   codec = (GstCECodecData *)
       g_type_get_qdata (G_OBJECT_CLASS_TYPE (klass), GST_CEENC_PARAMS_QDATA);
@@ -211,7 +213,7 @@ gst_cevidenc_base_init (GstCEVidEncClass * klass)
   klass->srctempl = srctempl;
   klass->sinktempl = sinktempl;
   klass->sinkcaps = NULL;
-
+#endif
   return;
 }
 
@@ -266,10 +268,12 @@ gst_cevidenc_class_init (GstCEVidEncClass * klass)
           GST_CE_VIDENC_FORCE_FRAME_TYPE, PROP_FORCE_FRAME_DEFAULT,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
+#if 0
   /* Register additional properties, dependent on the exact CODEC */
   if (klass->codec && klass->codec->install_properties) {
     klass->codec->install_properties (gobject_class, PROP_CODEC_BASE);
   }
+#endif
 
   venc_class->open = gst_cevidenc_open;
   venc_class->close = gst_cevidenc_close;
@@ -361,6 +365,7 @@ gst_cevidenc_configure_codec (GstCEVidEnc * cevidenc)
 
   g_return_val_if_fail (params, FALSE);
   g_return_val_if_fail (dyn_params, FALSE);
+  g_return_val_if_fail (klass->codec_name, FALSE);
 
   /* Set the caps on the parameters of the encoder */
   switch (cevidenc->video_format) {
@@ -398,7 +403,7 @@ gst_cevidenc_configure_codec (GstCEVidEnc * cevidenc)
 
   GST_DEBUG_OBJECT (cevidenc, "Create the codec handle");
   cevidenc->codec_handle = VIDENC1_create (cevidenc->engine_handle,
-      (Char *) klass->codec->name, params);
+      (Char *) klass->codec_name, params);
   if (!cevidenc->codec_handle)
     goto fail_open_codec;
 

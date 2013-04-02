@@ -23,8 +23,6 @@
 #include <ti/sdo/codecs/h264enc/ih264venc.h>
 
 #include "gstceh264enc.h"
-#include "gstcevidenc.h"
-
 
 GstStaticCaps gst_ce_h264enc_sink_caps = GST_STATIC_CAPS ("video/x-raw, "
     "   format = (string) NV12,"
@@ -36,6 +34,29 @@ GstStaticCaps gst_ce_h264enc_src_caps = GST_STATIC_CAPS ("video/x-h264, "
     "   width=(int)[ 128, 4080 ], "
     "   height=(int)[ 96, 4096 ],"
     "   stream-format = (string) { avc, byte-stream }");
+
+/* *INDENT-OFF* */
+static GstStaticPadTemplate gst_ce_h264enc_sink_pad_template =
+GST_STATIC_PAD_TEMPLATE ("sink",
+    GST_PAD_SINK,
+    GST_PAD_ALWAYS,
+    GST_STATIC_CAPS ("video/x-raw, "
+        "   format = (string) NV12,"
+        "   framerate=(fraction)[ 0, 120], "
+        "   width=(int)[ 128, 4080 ], " "   height=(int)[ 96, 4096 ]")
+    );
+/* *INDENT-ON* */
+
+static GstStaticPadTemplate gst_ce_h264enc_src_pad_template =
+GST_STATIC_PAD_TEMPLATE ("src",
+    GST_PAD_SRC,
+    GST_PAD_ALWAYS,
+    GST_STATIC_CAPS ("video/x-h264, "
+        "   framerate=(fraction)[ 0, 120], "
+        "   width=(int)[ 128, 4080 ], "
+        "   height=(int)[ 96, 4096 ],"
+        "   stream-format = (string) { avc, byte-stream }")
+    );
 
 #define NAL_LENGTH 4
 
@@ -349,6 +370,175 @@ gst_cevidenc_rcalgo_get_type (void)
     rcalgo_type = g_enum_register_static ("GstCEH264EncRCAlgo", rcalgo_types);
   }
   return rcalgo_type;
+}
+
+static void gst_ce_h264enc_get_property (GObject * object, guint prop_id,
+    GValue * value, GParamSpec * pspec);
+static void gst_ce_h264enc_set_property (GObject * object, guint prop_id,
+    const GValue * value, GParamSpec * pspec);
+
+#define gst_ce_h264enc_parent_class parent_class
+G_DEFINE_TYPE (GstCEH264Enc, gst_ce_h264enc, GST_TYPE_CEVIDENC);
+
+static void
+gst_ce_h264enc_class_init (GstCEH264EncClass * klass)
+{
+  GObjectClass *gobject_class;
+  GstElementClass *element_class;
+  GstCEVidEncClass *cevidenc_class;
+  GstPadTemplate *srctempl = NULL, *sinktempl = NULL;
+
+  gobject_class = (GObjectClass *) klass;
+  element_class = (GstElementClass *) klass;
+  cevidenc_class = (GstCEVidEncClass *) klass;
+
+
+
+  parent_class = g_type_class_peek_parent (klass);
+
+  gobject_class->set_property = gst_ce_h264enc_set_property;
+  gobject_class->get_property = gst_ce_h264enc_get_property;
+
+  g_object_class_install_property (gobject_class, PROP_BYTESTREAM,
+      g_param_spec_boolean ("bytestream",
+          "Byte-stream",
+          "Generate h264 NAL unit stream instead of 'packetized' stream (no codec_data is generated)",
+          PROP_BYTESTREAM_DEFAULT, G_PARAM_READWRITE));
+
+  g_object_class_install_property (gobject_class, PROP_HEADERS,
+      g_param_spec_boolean ("headers",
+          "Include on the stream the SPS/PPS headers",
+          "Include on the stream the SPS/PPS headers",
+          PROP_HEADERS_DEFAULT, G_PARAM_READWRITE));
+
+  g_object_class_install_property (gobject_class, PROP_SINGLE_NALU,
+      g_param_spec_boolean ("single-nalu",
+          "Buffers contains a single NALU",
+          "Buffers contains a single NALU",
+          PROP_SINGLE_NALU_DEFAULT, G_PARAM_READWRITE));
+
+  g_object_class_install_property (gobject_class, PROP_PROFILE,
+      g_param_spec_enum ("profile", "Profile",
+          "Profile identification for the encoder", GST_CE_H264ENC_PROFILE_TYPE,
+          PROP_PROFILE_DEFAULT, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property (gobject_class, PROP_LEVEL,
+      g_param_spec_enum ("level", "Profile",
+          "Level identification for the encoder", GST_CE_H264ENC_LEVEL_TYPE,
+          PROP_LEVEL_DEFAULT, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
+
+  g_object_class_install_property (gobject_class, PROP_ENTROPYMODE,
+      g_param_spec_enum ("entropy", "Entropy",
+          "Flag for Entropy Coding Mode", GST_CE_H264ENC_ENTROPY_TYPE,
+          PROP_ENTROPYMODE_DEFAULT,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property (gobject_class, PROP_T8X8INTRA,
+      g_param_spec_boolean ("t8x8intra",
+          "Enable 8x8 Transform for I Frame",
+          "Enable 8x8 Transform for I Frame (only for High Profile)",
+          PROP_T8X8INTRA_DEFAULT, G_PARAM_READWRITE));
+
+  g_object_class_install_property (gobject_class, PROP_T8X8INTER,
+      g_param_spec_boolean ("t8x8inter",
+          "Enable 8x8 Transform for P Frame",
+          "Enable 8x8 Transform for P Frame (only for High Profile)",
+          PROP_T8X8INTER_DEFAULT, G_PARAM_READWRITE));
+
+  g_object_class_install_property (gobject_class, PROP_SEQSCALING,
+      g_param_spec_enum ("seqscaling", "Sequence Scaling",
+          "Use of sequence scaling matrix", GST_CE_H264ENC_SEQSCALING_TYPE,
+          PROP_SEQSCALING_DEFAULT, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property (gobject_class, PROP_ENCQUALITY,
+      g_param_spec_enum ("encquality", "Encoder quality",
+          "Encoder quality setting", GST_CE_H264ENC_QUALITY_TYPE,
+          PROP_ENCQUALITY_DEFAULT, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property (gobject_class, PROP_ENABLETCM,
+      g_param_spec_boolean ("enabletcm",
+          "Enable ARM TCM memory usage",
+          "When encquality is 0, this flag controls if TCM memory "
+          "should be used (otherwise is ignored and default to yes)",
+          PROP_ENABLETCM_DEFAULT, G_PARAM_READWRITE));
+
+  g_object_class_install_property (gobject_class, PROP_DDRBUF,
+      g_param_spec_boolean ("ddrbuf",
+          "Use DDR buffers",
+          "Use DDR buffers instead of IMCOP buffers",
+          PROP_DDRBUF_DEFAULT, G_PARAM_READWRITE));
+
+  g_object_class_install_property (gobject_class, PROP_NTEMPLAYERS,
+      g_param_spec_enum ("ntemplayers", "Number of temporal Layers for SVC",
+          "Number of temporal Layers for SVC", GST_CE_H264ENC_LAYERS_TYPE,
+          PROP_NTEMPLAYERS_DEFAULT,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property (gobject_class, PROP_SVCSYNTAXEN,
+      g_param_spec_enum ("svcsyntaxen", "SVC Syntax Enable",
+          "Control for SVC syntax and DPB management",
+          GST_CE_H264ENC_SVCSYNTAX_TYPE,
+          PROP_SVCSYNTAXEN_DEFAULT,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property (gobject_class, PROP_QPINTRA,
+      g_param_spec_int ("qpintra",
+          "qpintra",
+          "Quantization Parameter (QP) for I frames (only valid when "
+          "rate control is disabled or is fixed QP)",
+          1, 51, PROP_QPINTRA_DEFAULT, G_PARAM_READWRITE));
+
+  g_object_class_install_property (gobject_class, PROP_QPINTER,
+      g_param_spec_int ("qpinter",
+          "qpinter",
+          "Quantization Parameter (QP) for P frame (only valid when "
+          "rate control is disabled or is fixed QP)",
+          1, 41, PROP_QPINTER_DEFAULT, G_PARAM_READWRITE));
+
+  g_object_class_install_property (gobject_class, PROP_RCALGO,
+      g_param_spec_enum ("rcalgo", "Rate control Algorithm",
+          "Rate Control Algorithm (requires ratecontrol set to 5)",
+          GST_CE_H264ENC_RCALGO_TYPE,
+          PROP_RCALGO_DEFAULT, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property (gobject_class, PROP_AIRRATE,
+      g_param_spec_int ("airrate",
+          "Adaptive intra refresh",
+          "Adaptive intra refresh. This indicates the maximum number of MBs"
+          "(per frame) that can be refreshed using AIR.",
+          0, G_MAXINT32, PROP_AIRRATE_DEFAULT, G_PARAM_READWRITE));
+
+  g_object_class_install_property (gobject_class, PROP_IDRINTERVAL,
+      g_param_spec_int ("idrinterval",
+          "Interval between two consecutive IDR frames",
+          "Interval between two consecutive IDR frames",
+          0, G_MAXINT32, PROP_IDRINTERVAL_DEFAULT, G_PARAM_READWRITE));
+
+  /* pad templates */
+  gst_element_class_add_pad_template (element_class,
+      gst_static_pad_template_get (&gst_ce_h264enc_sink_pad_template));
+  gst_element_class_add_pad_template (element_class,
+      gst_static_pad_template_get (&gst_ce_h264enc_src_pad_template));
+
+  gst_element_class_set_static_metadata (element_class,
+      "CE H.264 video encoder", "Codec/Encoder/Video",
+      "Encode video in H.264 format",
+      "Melissa Montero <melissa.montero@ridgerun.com>");
+
+  cevidenc_class->codec_name = "h264enc";
+  /*$
+   * TODO
+   * Set cevidenc klass virtual functions
+   */
+  //~ GST_DEBUG_CATEGORY_INIT (h264enc_debug, "ce_h264enc", 0,
+  //~ "H.264 encoding element");
+}
+
+static void
+gst_ce_h264enc_init (GstCEH264Enc * h264enc)
+{
+
 }
 
 static gboolean
@@ -940,7 +1130,7 @@ gst_ce_h264enc_install_properties (GObjectClass * gobject_class, guint base)
 
 static void
 gst_ce_h264enc_set_property (GObject * object, guint prop_id,
-    const GValue * value, GParamSpec * pspec, guint base)
+    const GValue * value, GParamSpec * pspec)
 {
   GstCEVidEnc *cevidenc = (GstCEVidEnc *) (object);
   h264PrivateData *h264enc = (h264PrivateData *) cevidenc->codec_private;
@@ -948,18 +1138,17 @@ gst_ce_h264enc_set_property (GObject * object, guint prop_id,
   IH264VENC_DynamicParams *dyn_params;
   VIDENC1_Status enc_status;
   gboolean set_params = FALSE;
-  guint prop_h264_id, ret;
+  guint ret;
 
   params = (IH264VENC_Params *) cevidenc->codec_params;
   dyn_params = (IH264VENC_DynamicParams *) cevidenc->codec_dyn_params;
-  prop_h264_id = prop_id - base;
 
   if (!h264enc) {
     GST_ERROR_OBJECT (cevidenc, "no H.264 private data, run setup first");
     return;
   }
 
-  switch (prop_h264_id) {
+  switch (prop_id) {
     case PROP_BYTESTREAM:
       h264enc->byte_stream = g_value_get_boolean (value);
       break;
@@ -1082,23 +1271,21 @@ fail_static_prop:
 
 static void
 gst_ce_h264enc_get_property (GObject * object, guint prop_id,
-    GValue * value, GParamSpec * pspec, guint base)
+    GValue * value, GParamSpec * pspec)
 {
   GstCEVidEnc *cevidenc = (GstCEVidEnc *) (object);
   h264PrivateData *h264enc = (h264PrivateData *) cevidenc->codec_private;
   IH264VENC_Params *params;
   IH264VENC_DynamicParams *dyn_params;
-  guint prop_h264_id;
 
   params = (IH264VENC_Params *) cevidenc->codec_params;
   dyn_params = (IH264VENC_DynamicParams *) cevidenc->codec_dyn_params;
-  prop_h264_id = prop_id - base;
 
   if (!h264enc) {
     GST_ERROR_OBJECT (cevidenc, "no H.264 private data, run setup first");
     return;
   }
-  switch (prop_h264_id) {
+  switch (prop_id) {
     case PROP_BYTESTREAM:
       g_value_set_boolean (value, h264enc->byte_stream);
       break;
@@ -1173,6 +1360,6 @@ GstCECodecData gst_ce_h264enc = {
   .set_src_caps = gst_ce_h264enc_set_src_caps,
   .post_process = gst_ce_h264enc_post_process,
   .install_properties = gst_ce_h264enc_install_properties,
-  .set_property = gst_ce_h264enc_set_property,
-  .get_property = gst_ce_h264enc_get_property,
+  //~ .set_property = gst_ce_h264enc_set_property,
+  //~ .get_property = gst_ce_h264enc_get_property,
 };

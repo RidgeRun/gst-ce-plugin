@@ -75,24 +75,26 @@ struct _GstCEVidEncClass
   GstCaps *sinkcaps;
 
   /*< public > */
+  const gchar *codec_name;
+  
   /* virtual methods for subclasses */
 
   /* alloc and initialize resources */
   void (*setup) (GObject *);
 
   /* define element src caps */
-    gboolean (*set_src_caps) (GObject *, GstCaps **, GstBuffer ** codec_data);
+  gboolean (*set_src_caps) (GObject *, GstCaps **, GstBuffer ** codec_data);
 
   /* process before and after the encoding */
-    gboolean (*pre_process) (GObject *, GstBuffer *);
-    gboolean (*post_process) (GObject *, GstBuffer *);
+  gboolean (*pre_process) (GObject *, GstBuffer *);
+  gboolean (*post_process) (GObject *, GstBuffer *);
 
   /*< private > */
   gpointer _gst_reserved[GST_PADDING_LARGE];
 };
 
 #define GST_TYPE_CEVIDENC \
-  (gst_ffmpegvidenc_get_type())
+  (gst_cevidenc_get_type())
 #define GST_CEVIDENC(obj) \
   (G_TYPE_CHECK_INSTANCE_CAST((obj),GST_TYPE_CEVIDENC,GstCEVidEnc))
 #define GST_CEVIDENC_CLASS(klass) \
@@ -101,6 +103,8 @@ struct _GstCEVidEncClass
   (G_TYPE_CHECK_INSTANCE_TYPE((obj),GST_TYPE_CEVIDENC))
 #define GST_IS_CEVIDENC_CLASS(klass) \
   (G_TYPE_CHECK_CLASS_TYPE((klass),GST_TYPE_CEVIDENC))
+
+GType gst_cevidenc_get_type (void);
 
 G_END_DECLS
 #endif /* __GST_CE_VIDENC_H__ */
