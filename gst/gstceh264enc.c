@@ -423,7 +423,7 @@ gst_ce_h264enc_class_init (GstCEH264EncClass * klass)
           PROP_PROFILE_DEFAULT, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
   g_object_class_install_property (gobject_class, PROP_LEVEL,
-      g_param_spec_enum ("level", "Profile",
+      g_param_spec_enum ("level", "Level",
           "Level identification for the encoder", GST_CE_H264ENC_LEVEL_TYPE,
           PROP_LEVEL_DEFAULT, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
@@ -538,7 +538,51 @@ gst_ce_h264enc_class_init (GstCEH264EncClass * klass)
 static void
 gst_ce_h264enc_init (GstCEH264Enc * h264enc)
 {
+  GstCEVidEnc *cevidenc = (GstCEVidEnc *) (h264enc);
+  IH264VENC_Params *h264_params = NULL;
+  IH264VENC_DynamicParams *h264_dyn_params = NULL;
 
+  GST_DEBUG ("setup H.264 parameters");
+  /* Alloc the params and set a default value */
+  h264_params = g_malloc0 (sizeof (IH264VENC_Params));
+  if (!h264_params)
+    goto fail_alloc;
+  *h264_params = IH264VENC_PARAMS;
+
+  h264_dyn_params = g_malloc0 (sizeof (IH264VENC_DynamicParams));
+  if (!h264_dyn_params)
+    goto fail_alloc;
+  *h264_dyn_params = H264VENC_TI_IH264VENC_DYNAMICPARAMS;
+
+  if (cevidenc->codec_params) {
+    GST_DEBUG ("codec params not NULL, copy and free them");
+    h264_params->videncParams = *cevidenc->codec_params;
+    g_free (cevidenc->codec_params);
+  }
+  cevidenc->codec_params = (VIDENC1_Params *) h264_params;
+
+  if (cevidenc->codec_dyn_params) {
+    GST_DEBUG ("codec dynamic params not NULL, copy and free them");
+    h264_dyn_params->videncDynamicParams = *cevidenc->codec_dyn_params;
+    g_free (cevidenc->codec_dyn_params);
+  }
+  cevidenc->codec_dyn_params = (VIDENC1_DynamicParams *) h264_dyn_params;
+
+  /* Add the extends params to the original params */
+  cevidenc->codec_params->size = sizeof (IH264VENC_Params);
+  cevidenc->codec_dyn_params->size = sizeof (IH264VENC_DynamicParams);
+
+  return;
+
+fail_alloc:
+  {
+    GST_WARNING_OBJECT (cevidenc, "failed to allocate H.264 params");
+    if (h264_params)
+      g_free (h264_params);
+    if (h264_dyn_params)
+      g_free (h264_params);
+    return;
+  }
 }
 
 static gboolean
@@ -1133,7 +1177,7 @@ gst_ce_h264enc_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec)
 {
   GstCEVidEnc *cevidenc = (GstCEVidEnc *) (object);
-  h264PrivateData *h264enc = (h264PrivateData *) cevidenc->codec_private;
+  GstCEH264Enc *h264enc = (GstCEH264Enc *) (object);
   IH264VENC_Params *params;
   IH264VENC_DynamicParams *dyn_params;
   VIDENC1_Status enc_status;
@@ -1143,8 +1187,8 @@ gst_ce_h264enc_set_property (GObject * object, guint prop_id,
   params = (IH264VENC_Params *) cevidenc->codec_params;
   dyn_params = (IH264VENC_DynamicParams *) cevidenc->codec_dyn_params;
 
-  if (!h264enc) {
-    GST_ERROR_OBJECT (cevidenc, "no H.264 private data, run setup first");
+  if ((!params) || (!dyn_params)) {
+    GST_WARNING_OBJECT (cevidenc, "couldn't set property");
     return;
   }
 
@@ -1274,17 +1318,18 @@ gst_ce_h264enc_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec)
 {
   GstCEVidEnc *cevidenc = (GstCEVidEnc *) (object);
-  h264PrivateData *h264enc = (h264PrivateData *) cevidenc->codec_private;
+  GstCEH264Enc *h264enc = (GstCEH264Enc *) (object);
   IH264VENC_Params *params;
   IH264VENC_DynamicParams *dyn_params;
 
   params = (IH264VENC_Params *) cevidenc->codec_params;
   dyn_params = (IH264VENC_DynamicParams *) cevidenc->codec_dyn_params;
 
-  if (!h264enc) {
-    GST_ERROR_OBJECT (cevidenc, "no H.264 private data, run setup first");
+  if ((!params) || (!dyn_params)) {
+    GST_WARNING_OBJECT (cevidenc, "couldn't set property");
     return;
   }
+
   switch (prop_id) {
     case PROP_BYTESTREAM:
       g_value_set_boolean (value, h264enc->byte_stream);
