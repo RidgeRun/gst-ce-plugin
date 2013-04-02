@@ -79,8 +79,8 @@ struct _GstCEVidEncClass
   
   /* virtual methods for subclasses */
 
-  /* alloc and initialize resources */
-  void (*setup) (GObject *);
+  /* initialize resources */
+  void (*reset) (GstCEVidEnc * cevidenc);
 
   /* define element src caps */
   gboolean (*set_src_caps) (GObject *, GstCaps **, GstBuffer ** codec_data);

@@ -1009,9 +1009,9 @@ gst_cevidenc_reset (GstVideoEncoder * encoder)
   GST_OBJECT_UNLOCK (cevidenc);
 
   /* Configure specific codec */
-  if (klass->setup) {
+  if (klass->reset) {
     GST_DEBUG_OBJECT (cevidenc, "configuring codec");
-    klass->setup ((GObject *) cevidenc);
+    klass->reset (cevidenc);
   }
 
   return TRUE;

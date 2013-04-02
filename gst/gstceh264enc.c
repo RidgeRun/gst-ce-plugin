@@ -372,6 +372,8 @@ gst_cevidenc_rcalgo_get_type (void)
   return rcalgo_type;
 }
 
+static void gst_ce_h264enc_reset (GstCEVidEnc * cevidenc);
+
 static void gst_ce_h264enc_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec);
 static void gst_ce_h264enc_set_property (GObject * object, guint prop_id,
@@ -386,13 +388,10 @@ gst_ce_h264enc_class_init (GstCEH264EncClass * klass)
   GObjectClass *gobject_class;
   GstElementClass *element_class;
   GstCEVidEncClass *cevidenc_class;
-  GstPadTemplate *srctempl = NULL, *sinktempl = NULL;
 
   gobject_class = (GObjectClass *) klass;
   element_class = (GstElementClass *) klass;
   cevidenc_class = (GstCEVidEncClass *) klass;
-
-
 
   parent_class = g_type_class_peek_parent (klass);
 
@@ -527,6 +526,7 @@ gst_ce_h264enc_class_init (GstCEH264EncClass * klass)
       "Melissa Montero <melissa.montero@ridgerun.com>");
 
   cevidenc_class->codec_name = "h264enc";
+  cevidenc_class->reset = gst_ce_h264enc_reset;
   /*$
    * TODO
    * Set cevidenc klass virtual functions
@@ -868,53 +868,22 @@ fail_no_private_data:
 }
 
 static void
-gst_ce_h264enc_setup (GObject * object)
+gst_ce_h264enc_reset (GstCEVidEnc * cevidenc)
 {
-  GstCEVidEnc *cevidenc = (GstCEVidEnc *) (object);
-  h264PrivateData *h264enc;
-  IH264VENC_Params *h264_params = NULL;
-  IH264VENC_DynamicParams *h264_dyn_params = NULL;
+  GstCEH264Enc *h264enc = (GstCEH264Enc *) (cevidenc);
+  IH264VENC_Params *h264_params;
+  IH264VENC_DynamicParams *h264_dyn_params;
+
+  GST_DEBUG ("H.264 reset");
+
+  if ((cevidenc->codec_params->size != sizeof (IH264VENC_Params)) ||
+      (cevidenc->codec_dyn_params->size != sizeof (IH264VENC_DynamicParams)))
+    return;
+
+  h264_params = (IH264VENC_Params *) cevidenc->codec_params;
+  h264_dyn_params = (IH264VENC_DynamicParams *) cevidenc->codec_dyn_params;
 
   GST_DEBUG ("setup H.264 parameters");
-  /* Alloc the params and set a default value */
-  h264_params = g_malloc0 (sizeof (IH264VENC_Params));
-  if (!h264_params)
-    goto fail_alloc;
-  *h264_params = IH264VENC_PARAMS;
-
-  h264_dyn_params = g_malloc0 (sizeof (IH264VENC_DynamicParams));
-  if (!h264_dyn_params)
-    goto fail_alloc;
-  *h264_dyn_params = H264VENC_TI_IH264VENC_DYNAMICPARAMS;
-
-  if (cevidenc->codec_params) {
-    GST_DEBUG ("codec params not NULL, copy and free them");
-    h264_params->videncParams = *cevidenc->codec_params;
-    g_free (cevidenc->codec_params);
-  }
-  cevidenc->codec_params = (VIDENC1_Params *) h264_params;
-
-  if (cevidenc->codec_dyn_params) {
-    GST_DEBUG ("codec dynamic params not NULL, copy and free them");
-    h264_dyn_params->videncDynamicParams = *cevidenc->codec_dyn_params;
-    g_free (cevidenc->codec_dyn_params);
-  }
-  cevidenc->codec_dyn_params = (VIDENC1_DynamicParams *) h264_dyn_params;
-
-  /* Add the extends params to the original params */
-  cevidenc->codec_params->size = sizeof (IH264VENC_Params);
-  cevidenc->codec_dyn_params->size = sizeof (IH264VENC_DynamicParams);
-  GST_DEBUG_OBJECT (cevidenc, "allocating H.264 private data");
-  if (cevidenc->codec_private)
-    g_free (cevidenc->codec_private);
-
-  cevidenc->codec_private = g_malloc0 (sizeof (h264PrivateData));
-  if (!cevidenc->codec_private) {
-    GST_WARNING_OBJECT (cevidenc, "Failed to allocate codec private data");
-    return;
-  }
-  h264enc = (h264PrivateData *) cevidenc->codec_private;
-
   /* Setting properties defaults */
   h264enc->byte_stream = PROP_BYTESTREAM_DEFAULT;
   h264enc->single_nalu = PROP_SINGLE_NALU_DEFAULT;
@@ -939,16 +908,6 @@ gst_ce_h264enc_setup (GObject * object)
   h264_dyn_params->idrFrameInterval = PROP_IDRINTERVAL_DEFAULT;
 
   return;
-
-fail_alloc:
-  {
-    GST_WARNING_OBJECT (cevidenc, "failed to allocate H.264 params");
-    if (h264_params)
-      g_free (h264_params);
-    if (h264_dyn_params)
-      g_free (h264_params);
-    return;
-  }
 }
 
 static gboolean
@@ -1401,7 +1360,7 @@ GstCECodecData gst_ce_h264enc = {
   .long_name = "H.264",
   .src_caps = &gst_ce_h264enc_src_caps,
   .sink_caps = &gst_ce_h264enc_sink_caps,
-  .setup = gst_ce_h264enc_setup,
+  //~ .setup = gst_ce_h264enc_setup,
   .set_src_caps = gst_ce_h264enc_set_src_caps,
   .post_process = gst_ce_h264enc_post_process,
   .install_properties = gst_ce_h264enc_install_properties,
