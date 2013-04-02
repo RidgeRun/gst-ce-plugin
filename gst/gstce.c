@@ -24,6 +24,7 @@
 #include <gst/cmem/gstcmemallocator.h>
 
 #include "gstce.h"
+#include "gstceh264enc.h"
 
 GST_DEBUG_CATEGORY (ce_debug);
 

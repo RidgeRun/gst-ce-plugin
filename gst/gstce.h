@@ -24,12 +24,14 @@
 #include <gst/gst.h>
 #include <config.h>
 
-#include "gstceutils.h"
-#include "gstceh264enc.h"
-
-#define CODEC_ENGINE "codecServer"
 G_BEGIN_DECLS
 
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof(*(x)));
+#define CODEC_ENGINE "codecServer"
+
+GST_DEBUG_CATEGORY_EXTERN (ce_debug);
+#define GST_CAT_DEFAULT ce_debug
 
 G_END_DECLS
+
 #endif /* __GST_CEPLUGIN_H__ */

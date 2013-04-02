@@ -50,27 +50,41 @@ struct _GstCEVidEnc
 };
 
 
-
+/**
+ * GstCEVidEncClass
+ * @parent_class:   Element parent class
+ * @codec_name:     The name of the codec
+ * @reset:          Optional.
+ *                  Allows subclass to set default values of properties and
+ *                  reset the element resources. Called when the element is
+ *                  initialized and when the element stops processing.
+ * @set_src_caps:   Optional.
+ *                  Allows subclass to be notified of the actual src caps
+ *                  and be able to propose custom src caps and codec data.
+ * @pre_process:    Optional.
+ *                  Called right before the base class will start the encoding 
+ *                  process. Allows delayed configuration and dynamic properties
+ *                  be performed in this method.
+ * @post_process:   Optional.
+ *                  Called after the base class finished the encoding 
+ *                  process. Allows output buffer transformations.
+ * 
+ * Subclasses can override any of the available virtual methods or not, as
+ * needed. At minimum @codec_name shoud be filled.
+ */
 struct _GstCEVidEncClass
 {
   GstVideoEncoderClass parent_class;
-
-  GstCECodecData *codec;
-  GstPadTemplate *srctempl, *sinktempl;
-  GstCaps *sinkcaps;
 
   /*< public > */
   const gchar *codec_name;
   
   /* virtual methods for subclasses */
-
-  /* initialize resources */
   void (*reset) (GstCEVidEnc * cevidenc);
+  gboolean (*set_src_caps) (GstCEVidEnc *cevidenc, 
+                            GstCaps ** src_caps, 
+                            GstBuffer ** codec_data);
 
-  /* define element src caps */
-  gboolean (*set_src_caps) (GstCEVidEnc *cevidenc, GstCaps **, GstBuffer ** codec_data);
-
-  /* process before and after the encoding */
   gboolean (*pre_process) (GstCEVidEnc *cevidenc, GstBuffer *input_buffer);
   gboolean (*post_process) (GstCEVidEnc *cevidenc, GstBuffer *output_buffer);
 

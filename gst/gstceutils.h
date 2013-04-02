@@ -22,38 +22,11 @@
 #define __GST_CE_UTILS_H__
 
 #include <gst/gst.h>
+#include "gstce.h"
 
-GST_DEBUG_CATEGORY_EXTERN (ce_debug);
-#define GST_CAT_DEFAULT ce_debug
+G_BEGIN_DECLS 
 
-#define ARRAY_SIZE(x) (sizeof(x) / sizeof(*(x)));
-
-G_BEGIN_DECLS typedef struct _GstCECodecData GstCECodecData;
 typedef struct _GstCEContigBufMeta GstCEContigBufMeta;
-
-struct _GstCECodecData
-{
-  /* Name of the codec implementation */
-  const gchar *name;
-  /* Descriptive name for the codec */
-  const gchar *long_name;
-  /* Capabilities of the codec's input */
-  GstStaticCaps *src_caps;
-  /* Capabilities of the codec's output */
-  GstStaticCaps *sink_caps;
-  /* Fuction to alloc and Initialize resources */
-  void (*setup) (GObject *);
-  /* Function to define element src caps */
-    gboolean (*set_src_caps) (GObject *, GstCaps **, GstBuffer ** codec_data);
-  /* Functions to run before and after the encoding */
-    gboolean (*pre_process) (GObject *, GstBuffer *);
-    gboolean (*post_process) (GObject *, GstBuffer *);
-  /* Functions to provide custom properties */
-  void (*install_properties) (GObjectClass *, guint base);
-  void (*set_property) (GObject *, guint, const GValue *,
-      GParamSpec *, guint base);
-  void (*get_property) (GObject *, guint, GValue *, GParamSpec *, guint base);
-};
 
 /**
  * GstCEMeta:

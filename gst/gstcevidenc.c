@@ -20,6 +20,19 @@
  *
  */
 
+/**
+ * SECTION:gstcevidenc
+ * @short_description: Base class for Codec Engine video encoders
+ * @see_also:
+ *
+ * This base class is for video encoders turning raw video into
+ * encoded video data using TI codecs with the VIDENC1 video encoding
+ * interface.
+ * 
+ * Subclass is responsible for providing pad template caps for
+ * source and sink pads. The pads need to be named "sink" and "src".
+ * 
+ */
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -393,7 +406,7 @@ gst_cevidenc_configure_codec (GstCEVidEnc * cevidenc)
 
 fail_open_codec:
   {
-    GST_ERROR_OBJECT (cevidenc, "failed to open codec %s", klass->codec->name);
+    GST_ERROR_OBJECT (cevidenc, "failed to open codec %s", klass->codec_name);
     GST_OBJECT_UNLOCK (cevidenc);
     return FALSE;
   }
@@ -965,8 +978,20 @@ gst_cevidenc_reset (GstVideoEncoder * encoder)
   return TRUE;
 }
 
+/**
+ * gst_cevidenc_get_header:
+ * @cevidenc: a #GstCEVidEnc
+ * @buffer: (out) (transfer full): the #GstBuffer containing the 
+ *        encoding header.
+ * @header_size: (out): the bytes generated for the header.
+ * 
+ * Lets #GstCEVidEnc sub-classes to obtain the encoding header,
+ * that can be used to calculate the corresponding codec data.
+ *
+ * Unref the @buffer after use it.
+ */
 gboolean
-gst_cevidenc_get_header (GstCEVidEnc * cevidenc, GstBuffer ** buf,
+gst_cevidenc_get_header (GstCEVidEnc * cevidenc, GstBuffer ** buffer,
     gint * header_size)
 {
   GstCEVidEncPrivate *priv = cevidenc->priv;
