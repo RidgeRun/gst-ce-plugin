@@ -1,10 +1,8 @@
 /*
  * gstcejpegenc.h
  *
- * Original Author:
- *     Carlos Gomez, RidgeRun
- *
  * Copyright (C) 2013 RidgeRun, LLC (http://www.ridgerun.com)
+ * Author: Carlos Gomez Viquez <carlos.gomez@ridgerun.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published

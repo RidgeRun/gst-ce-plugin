@@ -17,5 +17,5 @@ libgstce_la_LIBTOOLFLAGS = --tag=disable-static
 
 # headers we need but don't want installed
 noinst_HEADERS = gstce.h \
- gstcevidenc.h gstceh264enc.h
+ gstcevidenc.h gstceh264enc.h \
  gstceimgenc.h gstcejpegenc.h

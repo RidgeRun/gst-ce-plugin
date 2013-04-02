@@ -1,10 +1,8 @@
 /*
  * gstceimgenc.c
  *
- * Original Author:
- *     Carlos Gomez, RidgeRun
- *
  * Copyright (C) 2013 RidgeRun, LLC (http://www.ridgerun.com)
+ * Author: Carlos Gomez Viquez <carlos.gomez@ridgerun.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -35,6 +33,7 @@
 #include <gst/gst.h>
 #include <gst/video/gstvideometa.h>
 
+#include "gstce.h"
 #include "gstceimgenc.h"
 
 #include <ti/sdo/ce/osal/Memory.h>
@@ -54,13 +53,69 @@ enum
 };
 
 #define  PROP_DATA_ENDIANNESS_DEFAULT XDM_BYTE
-#define  PROP_MAX_SACANS_DEFAULT 15
-#define  PROP_FORCE_CHROMA_FORMAT_DEFAULT XDM_YUV_420P 
-#define  PROP_INPUT_CHROMA_FORMAT_DEFAULT XDM_YUV_420P 
+#define  PROP_MAX_SCANS_DEFAULT 15
+#define  PROP_FORCE_CHROMA_FORMAT_DEFAULT XDM_YUV_420P
+#define  PROP_INPUT_CHROMA_FORMAT_DEFAULT XDM_YUV_420P
 #define  PROP_QUALITY_VALUE_DEFAULT 50
 
+#define GST_CE_IMGENC_CHROMA_FORMAT_TYPE (gst_ceimgenc_chroma_format_get_type())
+static GType
+gst_ceimgenc_chroma_format_get_type (void)
+{
+  static GType chroma_format_type = 0;
+
+  static const GEnumValue chroma_format_types[] = {
+    {XDM_CHROMA_NA, "Chroma format not applicable", "NA"},
+    {XDM_YUV_420P, "YUV 4:2:0 planer", "YUV420P"},
+    {XDM_YUV_422P, "YUV 4:2:2 planer", "YUV422P"},
+    {XDM_YUV_422IBE, "YUV 4:2:2 interleaved big endian", "YUV422IBE"},
+    {XDM_YUV_422ILE, "YUV 4:2:2 interleaved little endian", "YUV422ILE"},
+    {XDM_YUV_444P, "YUV 4:4:4 planer", "YUV444P"},
+    {XDM_YUV_411P, "YUV 4:1:1 planer", "YUV411P"},
+    {XDM_YUV_420SP, "YUV 4:2:0 semi-planer", "YUV420SP"},
+    {XDM_YUV_444ILE, "YUV 4:4:4 interleaved little endian", "YUV444ILE"},
+    {XDM_GRAY, "Gray format", "Gray"},
+    {XDM_RGB, "RGB color format", "RGB"},
+    {XDM_RGB555, "RGB 555 color format", "RGB555"},
+    {XDM_RGB565, "RGB 565 color format", "RGB565"},
+    {XDM_ARGB8888, "Alpha plane", "ARGB8888"},
+    {XDM_CHROMAFORMAT_DEFAULT, "Default setting", "Default"},
+    {0, NULL, NULL}
+  };
+
+  if (!chroma_format_type) {
+    chroma_format_type =
+        g_enum_register_static ("GstCEImgEncChromaFormat", chroma_format_types);
+  }
+  return chroma_format_type;
+}
+
+#define GST_CE_IMGENC_DATA_FORMAT_TYPE (gst_ceimgenc_data_format_get_type())
+static GType
+gst_ceimgenc_data_format_get_type (void)
+{
+  static GType data_format_type = 0;
+
+  static const GEnumValue data_format_types[] = {
+    {XDM_BYTE, "Big endian stream", "BYTE"},
+    {XDM_LE_16, "16 bit little endian stream", "LE16"},
+    {XDM_LE_32, "32 bit little endian stream", "LE32"},
+    {XDM_LE_64, "64 bit little endian stream", "LE64"},
+    {XDM_BE_16, "16 bit big endian stream", "BE16"},
+    {XDM_BE_32, "32 bit big endian stream", "BE32"},
+    {XDM_BE_64, "64 bit big endian stream", "BE64"},
+    {0, NULL, NULL}
+  };
+
+  if (!data_format_type) {
+    data_format_type =
+        g_enum_register_static ("GstCEImgEncDataFormat", data_format_types);
+  }
+  return data_format_type;
+}
+
 #define gst_ceimgec_parent_class parent_class
-G_DEFINE_TYPE (Gstceimgenc, gst_ceimgenc, GST_TYPE_ELEMENT);
+G_DEFINE_TYPE (GstCEImgEnc, gst_ceimgenc, GST_TYPE_ELEMENT);
 
 /* A number of function prototypes are given so we can refer to them later. */
 static void gst_ceimgenc_base_init (GstCEImgEncClass * klass);
@@ -159,34 +214,32 @@ gst_ceimgenc_class_init (GstCEImgEncClass * klass)
   gobject_class->get_property = gst_ceimgenc_get_property;
 
   g_object_class_install_property (gobject_class, PROP_MAX_SCANS,
-      g_param_spec_enum ("maxScans", "Maximum number of scans",
-          "Maximum number of scans", GST_CE_IMGENC_RATE_TYPE,
-          PROP_MAX_SCANS_DEFAULT,
-          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+      g_param_spec_int ("maxScans", "Maximum number of scans",
+          "Maximum number of scans", 1, 100,
+          PROP_MAX_SCANS_DEFAULT, G_PARAM_READWRITE));
 
   g_object_class_install_property (gobject_class, PROP_FORCE_CHROMA_FORMAT,
       g_param_spec_enum ("forceChromaFormat", "Force chroma format",
-          "Force encoding in given Chroma format", GST_CE_IMGENC_RATE_TYPE,
-          PROP_FORCE_CHROMA_FORMAT_DEFAULT,
+          "Force encoding in given Chroma format",
+          GST_CE_IMGENC_CHROMA_FORMAT_TYPE, PROP_FORCE_CHROMA_FORMAT_DEFAULT,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
   g_object_class_install_property (gobject_class, PROP_DATA_ENDIANNESS,
       g_param_spec_enum ("dataEndianness", "Data endianness",
-          "Endianness of output data", GST_CE_IMGENC_PRESET_TYPE,
+          "Endianness of output data", GST_CE_IMGENC_DATA_FORMAT_TYPE,
           PROP_DATA_ENDIANNESS_DEFAULT,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
   g_object_class_install_property (gobject_class, PROP_INPUT_CHROMA_FORMAT,
       g_param_spec_enum ("inputChromaFormat", "Input chroma format",
-          "Input chroma format", GST_CE_IMGENC_PRESET_TYPE,
+          "Input chroma format", GST_CE_IMGENC_CHROMA_FORMAT_TYPE,
           PROP_INPUT_CHROMA_FORMAT_DEFAULT,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
   g_object_class_install_property (gobject_class, PROP_QUALITY_VALUE,
-      g_param_spec_enum ("qValue", "Quality value",
-          "Quality factor for encoder", GST_CE_IMGENC_PRESET_TYPE,
-          PROP_QUALITY_VALUE_DEFAULT,
-          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+      g_param_spec_int ("qValue", "Quality value",
+          "Quality factor for encoder", 0, 100,
+          PROP_QUALITY_VALUE_DEFAULT, G_PARAM_READWRITE));
 
   /* Register additional properties, dependent on the exact CODEC */
   if (klass->codec->install_properties) {
@@ -274,7 +327,7 @@ gst_ceimgenc_configure_codec (GstCEImgEnc * ceimgenc)
   IMGENC1_Status enc_status;
   IMGENC1_Params *params;
   IMGENC1_DynamicParams *dyn_params;
-  gint ret,i;
+  gint ret, i;
 
   klass = (GstCEImgEncClass *) G_OBJECT_GET_CLASS (ceimgenc);
   params = ceimgenc->codec_params;
@@ -370,10 +423,8 @@ gst_ceimgenc_set_format (GstVideoEncoder * encoder, GstVideoCodecState * state)
   ceimgenc->inbuf.frameWidth = GST_VIDEO_INFO_WIDTH (&state->info);
   ceimgenc->inbuf.frameHeight = GST_VIDEO_INFO_HEIGHT (&state->info);
   ceimgenc->inbuf.framePitch = GST_VIDEO_INFO_PLANE_STRIDE (&state->info, 0);
-  ceimgenc->inbuf.numBufs = GST_VIDEO_INFO_N_PLANES (&state->info);
+  ceimgenc->inbuf.numBufs = GST_VIDEO_INFO_N_PLANES (&state->info);     //Components?
 
-  ceimgenc->channels = GST_VIDEO_INFO_N_COMPONENTS (&state->info);
- 
   if (!gst_ceimgenc_configure_codec (ceimgenc))
     goto fail_set_caps;
 
@@ -613,7 +664,7 @@ gst_ceimgenc_set_property (GObject * object,
           "setting force chroma format to %li", params->forceChromaFormat);
       break;
     case PROP_DATA_ENDIANNESS:
-      params->dataEndianness =  g_value_get_enum (value);
+      params->dataEndianness = g_value_get_enum (value);
       GST_LOG_OBJECT (ceimgenc,
           "setting data endianness to %li", params->dataEndianness);
       break;

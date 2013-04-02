@@ -1,10 +1,8 @@
 /*
  * gstceimgenc.h
  *
- * Original Author:
- *     Carlos Gomez, RidgeRun
- *
  * Copyright (C) 2013 RidgeRun, LLC (http://www.ridgerun.com)
+ * Author: Carlos Gomez Viquez <carlos.gomez@ridgerun.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -27,6 +25,7 @@
 #include <xdc/std.h>
 #include <ti/sdo/ce/Engine.h>
 #include <ti/sdo/ce/image1/imgenc1.h>
+#include <ti/sdo/ce/video1/videnc1.h>
 #include <gst/video/gstvideoencoder.h>
 #include "gstceutils.h"
 
@@ -37,20 +36,10 @@ typedef struct _GstCEImgEnc GstCEImgEnc;
 struct _GstCEImgEnc
 {
   GstVideoEncoder parent;
-
-  GstVideoCodecState *input_state;
-  GstVideoFrame current_vframe;
-  GstVideoCodecFrame *current_frame;
-  GstFowReturn res;
-
-  guint channels;
-  gint out_buffer_size;
   gboolean first_buffer;
-
-  /* properties */
-  gint quality;
-  gint smoothing;
-  gint idct_method;
+  
+  gint32 outbuf_size;
+  GstVideoCodecState *input_state;
 
   /* Handle to the CMEM allocator */
   GstAllocator *allocator;
