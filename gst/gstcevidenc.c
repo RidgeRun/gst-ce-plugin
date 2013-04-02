@@ -126,6 +126,14 @@ gst_cevidenc_force_frame_get_type (void)
   return force_frame_type;
 }
 
+#define GST_CEVIDENC_GET_PRIVATE(obj)  \
+    (G_TYPE_INSTANCE_GET_PRIVATE ((obj), GST_TYPE_CEVIDENC, GstCEVidEncPrivate))
+
+struct _GstCEVidEncPrivate
+{
+
+};
+
 /* A number of function prototypes are given so we can refer to them later. */
 static void gst_cevidenc_class_init (GstCEVidEncClass * klass);
 static void gst_cevidenc_base_init (GstCEVidEncClass * klass);
@@ -503,10 +511,9 @@ gst_cevidenc_set_format (GstVideoEncoder * encoder, GstVideoCodecState * state)
   }
   GST_DEBUG_OBJECT (cevidenc, "chose caps %" GST_PTR_FORMAT, allowed_caps);
 
-  if (klass->codec && klass->codec->set_src_caps) {
+  if (klass->set_src_caps) {
     GST_DEBUG ("use custom set src caps");
-    if (!klass->codec->set_src_caps ((GObject *) cevidenc, &allowed_caps,
-            &codec_data))
+    if (!klass->set_src_caps ((GObject *) cevidenc, &allowed_caps, &codec_data))
       goto fail_set_caps;
   }
 
@@ -655,8 +662,8 @@ gst_cevidenc_handle_frame (GstVideoEncoder * encoder,
   out_args.size = sizeof (VIDENC1_OutArgs);
 
   /* Pre-encode process */
-  if (klass->codec && klass->codec->pre_process)
-    if (!klass->codec->pre_process ((GObject *) cevidenc, frame->input_buffer))
+  if (klass->pre_process)
+    if (!klass->pre_process ((GObject *) cevidenc, frame->input_buffer))
       goto fail_pre_encode;
 
   /* Encode process */
@@ -674,8 +681,8 @@ gst_cevidenc_handle_frame (GstVideoEncoder * encoder,
   gst_buffer_set_size (outbuf, out_args.bytesGenerated);
 
   /* Post-encode process */
-  if (klass->codec && klass->codec->post_process)
-    if (!klass->codec->post_process ((GObject *) cevidenc, outbuf))
+  if (klass->post_process)
+    if (!klass->post_process ((GObject *) cevidenc, outbuf))
       goto fail_post_encode;
 
   if (cevidenc->first_buffer)
@@ -997,9 +1004,9 @@ gst_cevidenc_reset (GstVideoEncoder * encoder)
   GST_OBJECT_UNLOCK (cevidenc);
 
   /* Configure specific codec */
-  if (klass->codec && klass->codec->setup) {
+  if (klass->setup) {
     GST_DEBUG_OBJECT (cevidenc, "configuring codec");
-    klass->codec->setup ((GObject *) cevidenc);
+    klass->setup ((GObject *) cevidenc);
   }
 
   return TRUE;

@@ -28,8 +28,7 @@
 
 #include "gstceutils.h"
 
-G_BEGIN_DECLS
-typedef struct _GstCEVidEnc GstCEVidEnc;
+G_BEGIN_DECLS typedef struct _GstCEVidEnc GstCEVidEnc;
 
 struct _GstCEVidEnc
 {
@@ -74,6 +73,22 @@ struct _GstCEVidEncClass
   GstCECodecData *codec;
   GstPadTemplate *srctempl, *sinktempl;
   GstCaps *sinkcaps;
+
+  /*< public > */
+  /* virtual methods for subclasses */
+
+  /* alloc and initialize resources */
+  void (*setup) (GObject *);
+
+  /* define element src caps */
+    gboolean (*set_src_caps) (GObject *, GstCaps **, GstBuffer ** codec_data);
+
+  /* process before and after the encoding */
+    gboolean (*pre_process) (GObject *, GstBuffer *);
+    gboolean (*post_process) (GObject *, GstBuffer *);
+
+  /*< private > */
+  gpointer _gst_reserved[GST_PADDING_LARGE];
 };
 
 #define GST_TYPE_CEVIDENC \
