@@ -1067,3 +1067,88 @@ gst_cevidenc_register (GstPlugin * plugin, GstCECodecData * codec)
 
   return TRUE;
 }
+
+
+
+gboolean
+gst_cevidenc_get_header (GstCEVidEnc * cevidenc, GstBuffer ** buf,
+    gint * header_size)
+{
+  VIDENC1_Status enc_status;
+  VIDENC1_InArgs in_args;
+  VIDENC1_OutArgs out_args;
+  GstBuffer *header_buf;
+  GstMapInfo info;
+  gint ret;
+
+  g_return_val_if_fail (GST_IS_CEVIDENC (cevidenc), FALSE);
+
+  GST_OBJECT_LOCK (cevidenc);
+
+  if ((!cevidenc->codec_handle) || (!cevidenc->codec_dyn_params))
+    return FALSE;
+
+  GST_DEBUG_OBJECT (cevidenc, "get H.264 header");
+
+  enc_status.size = sizeof (VIDENC1_Status);
+  enc_status.data.buf = NULL;
+
+  cevidenc->codec_dyn_params->generateHeader = XDM_GENERATE_HEADER;
+  ret = VIDENC1_control (cevidenc->codec_handle, XDM_SETPARAMS,
+      cevidenc->codec_dyn_params, &enc_status);
+  if (ret != VIDENC1_EOK)
+    goto fail_control_params;
+
+  /*Allocate an output buffer for the header */
+  header_buf = gst_buffer_new_allocate (cevidenc->allocator, 200,
+      &cevidenc->alloc_params);
+  if (!gst_buffer_map (header_buf, &info, GST_MAP_WRITE))
+    return FALSE;
+
+  cevidenc->outbuf_desc.bufs = (XDAS_Int8 **) & (info.data);
+
+  /* Set output and input arguments for the encode process */
+  in_args.size = sizeof (IVIDENC1_InArgs);
+  in_args.inputID = 1;
+  in_args.topFieldFirstFlag = 1;
+
+  out_args.size = sizeof (VIDENC1_OutArgs);
+
+  /* Generate the header */
+  ret =
+      VIDENC1_process (cevidenc->codec_handle, &cevidenc->inbuf_desc,
+      &cevidenc->outbuf_desc, &in_args, &out_args);
+  if (ret != VIDENC1_EOK)
+    goto fail_encode;
+
+  gst_buffer_unmap (header_buf, &info);
+
+  cevidenc->codec_dyn_params->generateHeader = XDM_ENCODE_AU;
+  ret = VIDENC1_control (cevidenc->codec_handle, XDM_SETPARAMS,
+      cevidenc->codec_dyn_params, &enc_status);
+  if (ret != VIDENC1_EOK)
+    goto fail_control_params;
+
+  GST_OBJECT_UNLOCK (cevidenc);
+
+  *header_size = out_args.bytesGenerated;
+  *buf = header_buf;
+
+  return TRUE;
+
+fail_control_params:
+  {
+    GST_OBJECT_UNLOCK (cevidenc);
+    GST_WARNING_OBJECT (cevidenc, "Failed to set dynamic parameters, "
+        "status error %x, %d", (unsigned int) enc_status.extendedError, ret);
+    return FALSE;
+  }
+fail_encode:
+  {
+    GST_OBJECT_UNLOCK (cevidenc);
+    GST_WARNING_OBJECT (cevidenc,
+        "Failed header encode process with extended error: 0x%x",
+        (unsigned int) out_args.extendedError);
+    return FALSE;
+  }
+}

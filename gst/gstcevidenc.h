@@ -106,5 +106,10 @@ struct _GstCEVidEncClass
 
 GType gst_cevidenc_get_type (void);
 
+gboolean gst_cevidenc_get_header (GstCEVidEnc * cevidenc, 
+                                  GstBuffer ** buf,
+                                  gint *header_size);
+                                  
+
 G_END_DECLS
 #endif /* __GST_CE_VIDENC_H__ */

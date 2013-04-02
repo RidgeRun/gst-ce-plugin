@@ -146,9 +146,9 @@ enum
   GST_CE_H264ENC_PROFILE_HIGH = 100,
 };
 
-#define GST_CE_H264ENC_PROFILE_TYPE (gst_cevidenc_profile_get_type())
+#define GST_CE_H264ENC_PROFILE_TYPE (gst_ce_h264enc_profile_get_type())
 static GType
-gst_cevidenc_profile_get_type (void)
+gst_ce_h264enc_profile_get_type (void)
 {
   static GType profile_type = 0;
 
@@ -166,9 +166,9 @@ gst_cevidenc_profile_get_type (void)
   return profile_type;
 }
 
-#define GST_CE_H264ENC_LEVEL_TYPE (gst_cevidenc_level_get_type())
+#define GST_CE_H264ENC_LEVEL_TYPE (gst_ce_h264enc_level_get_type())
 static GType
-gst_cevidenc_level_get_type (void)
+gst_ce_h264enc_level_get_type (void)
 {
   static GType level_type = 0;
 
@@ -204,9 +204,9 @@ enum
   GST_CE_H264ENC_ENTROPY_CABAC = 1,
 };
 
-#define GST_CE_H264ENC_ENTROPY_TYPE (gst_cevidenc_entropy_get_type())
+#define GST_CE_H264ENC_ENTROPY_TYPE (gst_ce_h264enc_entropy_get_type())
 static GType
-gst_cevidenc_entropy_get_type (void)
+gst_ce_h264enc_entropy_get_type (void)
 {
   static GType entropy_type = 0;
 
@@ -231,9 +231,9 @@ enum
   GST_CE_H264ENC_SEQSCALING_MODERATE,
 };
 
-#define GST_CE_H264ENC_SEQSCALING_TYPE (gst_cevidenc_seqscaling_get_type())
+#define GST_CE_H264ENC_SEQSCALING_TYPE (gst_ce_h264enc_seqscaling_get_type())
 static GType
-gst_cevidenc_seqscaling_get_type (void)
+gst_ce_h264enc_seqscaling_get_type (void)
 {
   static GType seqscaling_type = 0;
 
@@ -252,9 +252,9 @@ gst_cevidenc_seqscaling_get_type (void)
   return seqscaling_type;
 }
 
-#define GST_CE_H264ENC_QUALITY_TYPE (gst_cevidenc_quality_get_type())
+#define GST_CE_H264ENC_QUALITY_TYPE (gst_ce_h264enc_quality_get_type())
 static GType
-gst_cevidenc_quality_get_type (void)
+gst_ce_h264enc_quality_get_type (void)
 {
   static GType quality_type = 0;
 
@@ -280,9 +280,9 @@ enum
   GST_CE_H264ENC_LAYERS_ALL = 255,
 };
 
-#define GST_CE_H264ENC_LAYERS_TYPE (gst_cevidenc_layers_get_type())
+#define GST_CE_H264ENC_LAYERS_TYPE (gst_ce_h264enc_layers_get_type())
 static GType
-gst_cevidenc_layers_get_type (void)
+gst_ce_h264enc_layers_get_type (void)
 {
   static GType layers_type = 0;
 
@@ -313,9 +313,9 @@ enum
   GST_CE_H264ENC_SVCSYNTAX_SVC_MMCO,
 };
 
-#define GST_CE_H264ENC_SVCSYNTAX_TYPE (gst_cevidenc_svcsyntax_get_type())
+#define GST_CE_H264ENC_SVCSYNTAX_TYPE (gst_ce_h264enc_svcsyntax_get_type())
 static GType
-gst_cevidenc_svcsyntax_get_type (void)
+gst_ce_h264enc_svcsyntax_get_type (void)
 {
   static GType svcsyntax_type = 0;
 
@@ -349,9 +349,9 @@ enum
   GST_CE_H264ENC_RCALGO_VBR1,
 };
 
-#define GST_CE_H264ENC_RCALGO_TYPE (gst_cevidenc_rcalgo_get_type())
+#define GST_CE_H264ENC_RCALGO_TYPE (gst_ce_h264enc_rcalgo_get_type())
 static GType
-gst_cevidenc_rcalgo_get_type (void)
+gst_ce_h264enc_rcalgo_get_type (void)
 {
   static GType rcalgo_type = 0;
 
@@ -648,85 +648,8 @@ gst_ce_h264enc_fetch_header (guint8 * data, gint buffer_size,
 }
 
 static gboolean
-gst_ce_h264enc_get_header (GstCEVidEnc * cevidenc, GstBuffer ** buf)
-{
-  GstCEH264Enc *h264enc = (GstCEH264Enc *) cevidenc;
-  VIDENC1_Status enc_status;
-  VIDENC1_InArgs in_args;
-  VIDENC1_OutArgs out_args;
-  GstBuffer *header_buf;
-  GstMapInfo info;
-  gint ret;
-
-  GST_DEBUG_OBJECT (cevidenc, "get H.264 header");
-  if ((!cevidenc->codec_handle) || (!cevidenc->codec_dyn_params))
-    return FALSE;
-
-  enc_status.size = sizeof (VIDENC1_Status);
-  enc_status.data.buf = NULL;
-
-  cevidenc->codec_dyn_params->generateHeader = XDM_GENERATE_HEADER;
-  ret = VIDENC1_control (cevidenc->codec_handle, XDM_SETPARAMS,
-      cevidenc->codec_dyn_params, &enc_status);
-  if (ret != VIDENC1_EOK)
-    goto fail_control_params;
-
-  /*Allocate an output buffer for the header */
-  header_buf = gst_buffer_new_allocate (cevidenc->allocator, 200,
-      &cevidenc->alloc_params);
-  if (!gst_buffer_map (header_buf, &info, GST_MAP_WRITE))
-    return FALSE;
-
-  cevidenc->outbuf_desc.bufs = (XDAS_Int8 **) & (info.data);
-
-  /* Set output and input arguments for the encode process */
-  in_args.size = sizeof (IVIDENC1_InArgs);
-  in_args.inputID = 1;
-  in_args.topFieldFirstFlag = 1;
-
-  out_args.size = sizeof (VIDENC1_OutArgs);
-
-  /* Generate the header */
-  ret =
-      VIDENC1_process (cevidenc->codec_handle, &cevidenc->inbuf_desc,
-      &cevidenc->outbuf_desc, &in_args, &out_args);
-  if (ret != VIDENC1_EOK)
-    goto fail_encode;
-
-  gst_buffer_unmap (header_buf, &info);
-
-  cevidenc->codec_dyn_params->generateHeader = XDM_ENCODE_AU;
-  ret = VIDENC1_control (cevidenc->codec_handle, XDM_SETPARAMS,
-      cevidenc->codec_dyn_params, &enc_status);
-  if (ret != VIDENC1_EOK)
-    goto fail_control_params;
-
-  h264enc->header_size = out_args.bytesGenerated;
-  *buf = header_buf;
-
-  return TRUE;
-
-fail_control_params:
-  {
-    GST_WARNING_OBJECT (cevidenc, "Failed to set dynamic parameters, "
-        "status error %x, %d", (unsigned int) enc_status.extendedError, ret);
-    return FALSE;
-  }
-fail_encode:
-  {
-    GST_WARNING_OBJECT (cevidenc,
-        "Failed header encode process with extended error: 0x%x",
-        (unsigned int) out_args.extendedError);
-    return FALSE;
-  }
-
-}
-
-static gboolean
 gst_ce_h264enc_get_codec_data (GstCEH264Enc * h264enc, GstBuffer ** codec_data)
 {
-  GstCEVidEnc *cevidenc = (GstCEVidEnc *) h264enc;
-
   GstBuffer *buf;
   GstMapInfo info;
   nalUnit sps, pps;
@@ -736,10 +659,10 @@ gst_ce_h264enc_get_codec_data (GstCEH264Enc * h264enc, GstBuffer ** codec_data)
   gint num_pps = 1;
   gint nal_idx;
 
-  GST_DEBUG_OBJECT (cevidenc, "generating codec data..");
+  GST_DEBUG_OBJECT (h264enc, "generating codec data..");
 
-  /*Get the bytestream header from codec */
-  if (!gst_ce_h264enc_get_header (cevidenc, &buf))
+  if (!gst_cevidenc_get_header ((GstCEVidEnc *) h264enc, &buf,
+          &h264enc->header_size))
     return FALSE;
 
   /*Get pointer to the header data */
@@ -1352,13 +1275,3 @@ gst_ce_h264enc_get_property (GObject * object, guint prop_id,
       break;
   }
 }
-
-GstCECodecData gst_ce_h264enc = {
-  .name = "h264enc",
-  .long_name = "H.264",
-  .src_caps = &gst_ce_h264enc_src_caps,
-  .sink_caps = &gst_ce_h264enc_sink_caps,
-  //~ .setup = gst_ce_h264enc_setup,
-  //~ .set_src_caps = gst_ce_h264enc_set_src_caps,
-  .post_process = gst_ce_h264enc_post_process,
-};

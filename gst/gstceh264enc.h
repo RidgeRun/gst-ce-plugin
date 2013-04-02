@@ -23,7 +23,6 @@
 
 #include "gstceutils.h"
 #include "gstcevidenc.h"
-extern GstCECodecData gst_ce_h264enc;
 
 G_BEGIN_DECLS
 #define GST_TYPE_CE_H264ENC \
