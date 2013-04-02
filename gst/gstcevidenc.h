@@ -28,43 +28,28 @@
 
 #include "gstceutils.h"
 
-G_BEGIN_DECLS typedef struct _GstCEVidEnc GstCEVidEnc;
+G_BEGIN_DECLS 
+
+typedef struct _GstCEVidEnc GstCEVidEnc;
+typedef struct _GstCEVidEncClass GstCEVidEncClass;
+typedef struct _GstCEVidEncPrivate GstCEVidEncPrivate;
 
 struct _GstCEVidEnc
 {
   GstVideoEncoder parent;
-  gboolean first_buffer;
-
-  /* Video Data */
-  gint fps_num;
-  gint fps_den;
-  gint par_num;
-  gint par_den;
-  gint bpp;
-
-  gint32 outbuf_size;
-  GstVideoFormat video_format;
-  GstVideoCodecState *input_state;
-
-  /* Handle to the CMEM allocator */
-  GstAllocator *allocator;
-  GstAllocationParams alloc_params;
-
-  /* Handle to the Codec Engine */
-  Engine_Handle engine_handle;
 
   /* Handle to the Codec */
   VIDENC1_Handle codec_handle;
   VIDENC1_Params *codec_params;
   VIDENC1_DynamicParams *codec_dyn_params;
-  IVIDEO1_BufDescIn inbuf_desc;
-  XDM_BufDesc outbuf_desc;
+  
+  /*< private >*/
+  GstCEVidEncPrivate *priv;
 
-  /* Codec Private Data */
-  void *codec_private;
+  gpointer  _gst_reserved[GST_PADDING_LARGE];
 };
 
-typedef struct _GstCEVidEncClass GstCEVidEncClass;
+
 
 struct _GstCEVidEncClass
 {
