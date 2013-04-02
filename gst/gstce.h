@@ -30,8 +30,6 @@
 #define CODEC_ENGINE "codecServer"
 G_BEGIN_DECLS
 
-extern gboolean 
-    gst_cevidenc_register (GstPlugin * plugin, GstCECodecData * codec);
 
 G_END_DECLS
 #endif /* __GST_CEPLUGIN_H__ */
