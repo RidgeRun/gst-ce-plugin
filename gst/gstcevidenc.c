@@ -667,9 +667,8 @@ gst_cevidenc_handle_frame (GstVideoEncoder * encoder,
   out_args.size = sizeof (VIDENC1_OutArgs);
 
   /* Pre-encode process */
-  if (klass->pre_process)
-    if (!klass->pre_process ((GObject *) cevidenc, frame->input_buffer))
-      goto fail_pre_encode;
+  if (klass->pre_process && !klass->pre_process (cevidenc, frame->input_buffer))
+    goto fail_pre_encode;
 
   /* Encode process */
   ret =
@@ -686,9 +685,8 @@ gst_cevidenc_handle_frame (GstVideoEncoder * encoder,
   gst_buffer_set_size (outbuf, out_args.bytesGenerated);
 
   /* Post-encode process */
-  if (klass->post_process)
-    if (!klass->post_process ((GObject *) cevidenc, outbuf))
-      goto fail_post_encode;
+  if (klass->post_process && !klass->post_process (cevidenc, outbuf))
+    goto fail_post_encode;
 
   if (cevidenc->first_buffer)
     cevidenc->first_buffer = FALSE;

@@ -83,11 +83,11 @@ struct _GstCEVidEncClass
   void (*reset) (GstCEVidEnc * cevidenc);
 
   /* define element src caps */
-  gboolean (*set_src_caps) (GObject *, GstCaps **, GstBuffer ** codec_data);
+  gboolean (*set_src_caps) (GstCEVidEnc *cevidenc, GstCaps **, GstBuffer ** codec_data);
 
   /* process before and after the encoding */
-  gboolean (*pre_process) (GObject *, GstBuffer *);
-  gboolean (*post_process) (GObject *, GstBuffer *);
+  gboolean (*pre_process) (GstCEVidEnc *cevidenc, GstBuffer *input_buffer);
+  gboolean (*post_process) (GstCEVidEnc *cevidenc, GstBuffer *output_buffer);
 
   /*< private > */
   gpointer _gst_reserved[GST_PADDING_LARGE];
