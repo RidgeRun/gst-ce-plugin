@@ -192,6 +192,10 @@ gst_cevidenc_class_init (GstCEVidEncClass * klass)
 
   g_type_class_add_private (klass, sizeof (GstCEVidEncPrivate));
 
+  /* 
+   * Not using GST_DEBUG_FUNCPTR with GObject
+   * virtual functions because no one will use them
+   */
   gobject_class->set_property = gst_cevidenc_set_property;
   gobject_class->get_property = gst_cevidenc_get_property;
   gobject_class->finalize = gst_cevidenc_finalize;
@@ -211,13 +215,13 @@ gst_cevidenc_class_init (GstCEVidEncClass * klass)
   g_object_class_install_property (gobject_class, PROP_MAX_BITRATE,
       g_param_spec_int ("max-bitrate",
           "Maximum bit rate",
-          "Maximum bit-rate to be supported in bits per second",
+          "Maximum bit rate to be supported in bits per second",
           1000, 50000000, PROP_MAX_BITRATE_DEFAULT, G_PARAM_READWRITE));
 
   g_object_class_install_property (gobject_class, PROP_TARGET_BITRATE,
       g_param_spec_int ("target-bitrate",
           "Target bit rate",
-          "Target bit-rate in bits per second, should be <= than the maxbitrate",
+          "Target bit rate in bits per second, should be <= than the maxbitrate",
           1000, 20000000, PROP_TARGET_BITRATE_DEFAULT, G_PARAM_READWRITE));
 
   g_object_class_install_property (gobject_class, PROP_INTRA_FRAME_INTERVAL,
@@ -233,12 +237,13 @@ gst_cevidenc_class_init (GstCEVidEncClass * klass)
           GST_CE_VIDENC_FORCE_FRAME_TYPE, PROP_FORCE_FRAME_DEFAULT,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
-  venc_class->open = gst_cevidenc_open;
-  venc_class->close = gst_cevidenc_close;
-  venc_class->stop = gst_cevidenc_stop;
-  venc_class->handle_frame = gst_cevidenc_handle_frame;
-  venc_class->set_format = gst_cevidenc_set_format;
-  venc_class->propose_allocation = gst_cevidenc_propose_allocation;
+  venc_class->open = GST_DEBUG_FUNCPTR(gst_cevidenc_open);
+  venc_class->close = GST_DEBUG_FUNCPTR(gst_cevidenc_close);
+  venc_class->stop = GST_DEBUG_FUNCPTR(gst_cevidenc_stop);
+  venc_class->handle_frame = GST_DEBUG_FUNCPTR(gst_cevidenc_handle_frame);
+  venc_class->set_format = GST_DEBUG_FUNCPTR(gst_cevidenc_set_format);
+  venc_class->propose_allocation = 
+      GST_DEBUG_FUNCPTR(gst_cevidenc_propose_allocation);
 }
 
 static void
