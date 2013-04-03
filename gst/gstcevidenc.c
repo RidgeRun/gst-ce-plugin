@@ -260,7 +260,9 @@ gst_cevidenc_init (GstCEVidEnc * cevidenc)
     GST_DEBUG_OBJECT (cevidenc, "allocating codec params");
     cevidenc->codec_params = g_malloc0 (sizeof (VIDENC1_Params));
     if (!cevidenc->codec_params) {
-      GST_WARNING_OBJECT (cevidenc, "failed to allocate VIDENC1_Params");
+      GST_ELEMENT_ERROR (cevidenc, RESOURCE, NO_SPACE_LEFT,
+          (_("failed to allocate VIDENC1_Params")), (NULL));
+
       return;
     }
     cevidenc->codec_params->size = sizeof (VIDENC1_Params);
@@ -270,7 +272,8 @@ gst_cevidenc_init (GstCEVidEnc * cevidenc)
     GST_DEBUG_OBJECT (cevidenc, "allocating codec dynamic params");
     cevidenc->codec_dyn_params = g_malloc0 (sizeof (VIDENC1_DynamicParams));
     if (!cevidenc->codec_dyn_params) {
-      GST_WARNING_OBJECT (cevidenc, "failed to allocate VIDENC1_DynamicParams");
+      GST_ELEMENT_ERROR (cevidenc, RESOURCE, NO_SPACE_LEFT,
+          (_("failed to allocate VIDENC1_DynamicParams")), (NULL));
       return;
     }
     cevidenc->codec_dyn_params->size = sizeof (VIDENC1_DynamicParams);
