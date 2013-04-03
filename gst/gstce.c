@@ -32,7 +32,7 @@ typedef struct _CEElement
 {
   const gchar *name;
   guint rank;
-    GType (*get_type) (void);
+  GType (*get_type) (void);
 } CEElement;
 
 static CEElement gst_ce_element_list[] = {
@@ -49,7 +49,7 @@ plugin_init (GstPlugin * plugin)
   gint num_elements, i;
 
   GST_DEBUG_CATEGORY_INIT (ce_debug, "ce", 0,
-      "TI plugin for CodecEngine debugging");
+      "TI plugin for CodecEngine");
 
   /* Initialize CMEM allocator
    * Inside this function the Codec Engine is initialized*/
