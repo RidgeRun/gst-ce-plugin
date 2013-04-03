@@ -495,9 +495,8 @@ gst_cevidenc_set_format (GstVideoEncoder * encoder, GstVideoCodecState * state)
   output_format =
       gst_video_encoder_set_output_state (encoder, allowed_caps, state);
 
-  if (!output_format) {
+  if (!output_format)
     goto fail_set_caps;
-  }
 
   if (codec_data) {
     GST_DEBUG_OBJECT (cevidenc, "setting the codec data");
@@ -536,7 +535,7 @@ gst_cevidenc_propose_allocation (GstVideoEncoder * encoder, GstQuery * query)
       query);
 }
 
-/**
+/*
  * gst_cevidenc_allocate_output_frame
  * 
  * Allocates a CMEM output buffer
@@ -567,7 +566,7 @@ gst_cevidenc_handle_frame (GstVideoEncoder * encoder,
 {
   GstCEVidEnc *cevidenc = GST_CEVIDENC(encoder);
   GstCEVidEncPrivate *priv = cevidenc->priv;
-  GstCEVidEncClass *klass = (GstCEVidEncClass *) G_OBJECT_GET_CLASS (cevidenc);
+  GstCEVidEncClass *klass = GST_CEVIDENC_CLASS(G_OBJECT_GET_CLASS (cevidenc));
   GstVideoInfo *info = &priv->input_state->info;
   GstVideoFrame vframe;
   GstMapInfo info_out;
@@ -616,7 +615,7 @@ gst_cevidenc_handle_frame (GstVideoEncoder * encoder,
   if (!gst_buffer_map (outbuf, &info_out, GST_MAP_WRITE))
     goto fail_map;
 
-  priv->outbuf_desc.bufs = (XDAS_Int8 **) & (info_out.data);
+  priv->outbuf_desc.bufs[0] = (XDAS_Int8 *) info_out.data;
 
   /* Set output and input arguments for the encoding process */
   in_args.size = sizeof (IVIDENC1_InArgs);
