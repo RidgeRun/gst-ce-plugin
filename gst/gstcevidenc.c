@@ -483,13 +483,8 @@ gst_cevidenc_set_format (GstVideoEncoder * encoder, GstVideoCodecState * state)
       goto fail_set_caps;
   }
 
-  if (gst_caps_get_size (allowed_caps) > 1) {
-    GstCaps *newcaps;
-
-    newcaps = gst_caps_copy_nth (allowed_caps, 0);
-    gst_caps_unref (allowed_caps);
-    allowed_caps = newcaps;
-  }
+  /* Truncate to the first structure and fixate any unfixed fields */
+  allowed_caps = gst_caps_fixate (allowed_caps);
 
   /* Store input state and set output state */
   if (priv->input_state)
