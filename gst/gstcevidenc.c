@@ -52,12 +52,6 @@
 
 enum
 {
-  /* FILL ME */
-  LAST_SIGNAL
-};
-
-enum
-{
   PROP_0,
   PROP_RATECONTROL,
   PROP_ENCODINGPRESET,
