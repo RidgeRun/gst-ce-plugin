@@ -80,7 +80,7 @@ gst_cevidenc_rate_control_get_type (void)
     {IVIDEO_TWOPASS, "Two pass rate, for non real-time applications",
         "Two Pass"},
     {IVIDEO_NONE, "No Rate Control is used", "None"},
-    {IVIDEO_USER_DEFINED, "User defined on extended parameters", "User"},
+    {IVIDEO_USER_DEFINED, "User defined on algorithm specific properties", "User"},
     {0, NULL, NULL}
   };
 
@@ -99,7 +99,7 @@ gst_cevidenc_preset_get_type (void)
   static const GEnumValue preset_types[] = {
     {XDM_HIGH_QUALITY, "High quality", "quality"},
     {XDM_HIGH_SPEED, "High speed, for storage", "speed"},
-    {XDM_USER_DEFINED, "User defined on extended parameters", "user"},
+    {XDM_USER_DEFINED, "User defined on algorithm specific properties", "user"},
     {0, NULL, NULL}
   };
 
@@ -160,8 +160,6 @@ struct _GstCEVidEncPrivate
 };
 
 /* A number of function prototypes are given so we can refer to them later. */
-static void gst_cevidenc_finalize (GObject * object);
-
 static gboolean gst_cevidenc_open (GstVideoEncoder * encoder);
 static gboolean gst_cevidenc_close (GstVideoEncoder * encoder);
 static gboolean gst_cevidenc_stop (GstVideoEncoder * encoder);
@@ -176,9 +174,9 @@ static void gst_cevidenc_set_property (GObject * object,
     guint prop_id, const GValue * value, GParamSpec * pspec);
 static void gst_cevidenc_get_property (GObject * object,
     guint prop_id, GValue * value, GParamSpec * pspec);
+static void gst_cevidenc_finalize (GObject * object);
+
 static gboolean gst_cevidenc_reset (GstVideoEncoder * encoder);
-
-
 
 #define gst_cevidenc_parent_class parent_class
 G_DEFINE_TYPE (GstCEVidEnc, gst_cevidenc, GST_TYPE_VIDEO_ENCODER);
@@ -196,6 +194,7 @@ gst_cevidenc_class_init (GstCEVidEncClass * klass)
 
   gobject_class->set_property = gst_cevidenc_set_property;
   gobject_class->get_property = gst_cevidenc_get_property;
+  gobject_class->finalize = gst_cevidenc_finalize;
 
   g_object_class_install_property (gobject_class, PROP_RATE_CONTROL,
       g_param_spec_enum ("rate-control", "Encoding rate control",
@@ -240,8 +239,6 @@ gst_cevidenc_class_init (GstCEVidEncClass * klass)
   venc_class->handle_frame = gst_cevidenc_handle_frame;
   venc_class->set_format = gst_cevidenc_set_format;
   venc_class->propose_allocation = gst_cevidenc_propose_allocation;
-
-  gobject_class->finalize = gst_cevidenc_finalize;
 }
 
 static void
