@@ -1053,7 +1053,7 @@ gst_cevidenc_get_header (GstCEVidEnc * cevidenc, GstBuffer ** buffer,
   GST_OBJECT_UNLOCK (cevidenc);
 
   *header_size = out_args.bytesGenerated;
-  *buf = header_buf;
+  *buffer = header_buf;
 
   return TRUE;
 
