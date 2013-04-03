@@ -472,8 +472,6 @@ gst_cevidenc_set_format (GstVideoEncoder * encoder, GstVideoCodecState * state)
   allowed_caps = gst_pad_get_allowed_caps (GST_VIDEO_ENCODER_SRC_PAD (encoder));
   if (!allowed_caps) {
     GST_DEBUG_OBJECT (cevidenc, "... but no peer, using template caps");
-    /* we need to copy because get_allowed_caps returns a ref, and
-     * get_pad_template_caps doesn't */
     allowed_caps =
         gst_pad_get_pad_template_caps (GST_VIDEO_ENCODER_SRC_PAD (encoder));
   }
