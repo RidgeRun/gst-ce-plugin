@@ -22,8 +22,34 @@
 #ifndef __GST_CE_JPEGENC_H__
 #define __GST_CE_JPEGENC_H__
 
+#include "gstceimgenc.h"
 
-#include "gstceutils.h"
+G_BEGIN_DECLS
+#define GST_TYPE_CE_JPEGENC \
+  (gst_ce_jpegenc_get_type())
+#define GST_CE_JPEGENC(obj) \
+  (G_TYPE_CHECK_INSTANCE_CAST((obj),GST_TYPE_CE_JPEGENC,GstCEJPEGEnc))
+#define GST_CE_JPEGENC_CLASS(klass) \
+  (G_TYPE_CHECK_CLASS_CAST((klass),GST_TYPE_CE_JPEGENC,GstCEJPEGEncClass))
+#define GST_IS_CE_JPEGENC(obj) \
+  (G_TYPE_CHECK_INSTANCE_TYPE((obj),GST_TYPE_CE_JPEGENC))
+#define GST_IS_CE_JPEGENC_CLASS(klass) \
+  (G_TYPE_CHECK_CLASS_TYPE((klass),GST_TYPE_CE_JPEGENC))
 
-extern GstCECodecData gst_ce_jpegenc;
+typedef struct _GstCEJPEGEnc GstCEJPEGEnc;
+typedef struct _GstCEJPEGEncClass GstCEJPEGEncClass;
+
+struct _GstCEJPEGEnc
+{
+  GstCEImgEnc encoder;
+};
+
+struct _GstCEJPEGEncClass
+{
+  GstCEImgEncClass parent_class;
+};
+
+GType gst_ce_jpegenc_get_type (void);
+
+G_END_DECLS
 #endif /* __GST_CE_JPEGENC_H__ */

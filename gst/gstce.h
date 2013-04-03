@@ -1,5 +1,5 @@
 /*
- * gstce.c
+ * gstce.h
  *
  * Copyright (C) 2013 RidgeRun, LLC (http://www.ridgerun.com)
  *

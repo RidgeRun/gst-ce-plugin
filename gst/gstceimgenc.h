@@ -22,52 +22,74 @@
 #ifndef __GST_CE_IMGENC_H__
 #define __GST_CE_IMGENC_H__
 
+#include <gst/video/gstvideoencoder.h>
 #include <xdc/std.h>
 #include <ti/sdo/ce/Engine.h>
 #include <ti/sdo/ce/image1/imgenc1.h>
 #include <ti/sdo/ce/video1/videnc1.h>
-#include <gst/video/gstvideoencoder.h>
+
 #include "gstceutils.h"
 
 G_BEGIN_DECLS
 
 typedef struct _GstCEImgEnc GstCEImgEnc;
+typedef struct _GstCEImgEncClass GstCEImgEncClass;
+typedef struct _GstCEImgEncPrivate GstCEImgEncPrivate;
 
 struct _GstCEImgEnc
 {
   GstVideoEncoder parent;
-  gboolean first_buffer;
-  
-  gint32 outbuf_size;
-  GstVideoCodecState *input_state;
-
-  /* Handle to the CMEM allocator */
-  GstAllocator *allocator;
-  GstAllocationParams params;
-
-  /* Handle to the Codec Engine */
-  Engine_Handle engine_handle;
-
+ 
   /* Handle to the Codec */
   IMGENC1_Handle codec_handle;
   IMGENC1_Params *codec_params;
   IMGENC1_DynamicParams *codec_dyn_params;
-  IVIDEO1_BufDescIn inbuf;
-  XDM_BufDesc outbuf;
+ 
+ /*< private >*/
+  GstCEImgEncPrivate *priv;
 
-  /* Codec Private Data */
-  void *codec_private;
+  gpointer  _gst_reserved[GST_PADDING_LARGE];
 };
 
-typedef struct _GstCEImgEncClass GstCEImgEncClass;
-
+/**
+ * GstCEImgEncClass
+ * @parent_class:   Element parent class
+ * @codec_name:     The name of the codec
+ * @reset:          Optional.
+ *                  Allows subclass to set default values of properties and
+ *                  reset the element resources. Called when the element is
+ *                  initialized and when the element stops processing.
+ * @set_src_caps:   Optional.
+ *                  Allows subclass to be notified of the actual src caps
+ *                  and be able to propose custom src caps and codec data.
+ * @pre_process:    Optional.
+ *                  Called right before the base class will start the encoding 
+ *                  process. Allows delayed configuration and dynamic properties
+ *                  be performed in this method.
+ * @post_process:   Optional.
+ *                  Called after the base class finished the encoding 
+ *                  process. Allows output buffer transformations.
+ * 
+ * Subclasses can override any of the available virtual methods or not, as
+ * needed. At minimum @codec_name should be filled.
+ */
 struct _GstCEImgEncClass
 {
   GstVideoEncoderClass parent_class;
 
-  GstCECodecData *codec;
-  GstPadTemplate *srctempl, *sinktempl;
-  GstCaps *sinkcaps;
+  /*< public > */
+  const gchar *codec_name;
+  
+  /* virtual methods for subclasses */
+  void (*reset) (GstCEImgEnc * ceimgenc);
+  gboolean (*set_src_caps) (GstCEImgEnc *ceimgenc, 
+                            GstCaps ** src_caps);
+
+  gboolean (*pre_process) (GstCEImgEnc *ceimgenc, GstBuffer *input_buffer);
+  gboolean (*post_process) (GstCEImgEnc *ceimgenc, GstBuffer *output_buffer);
+
+  /*< private > */
+  gpointer _gst_reserved[GST_PADDING_LARGE];
 };
 
 #define GST_TYPE_CEIMGENC \

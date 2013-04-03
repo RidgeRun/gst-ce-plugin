@@ -25,6 +25,7 @@
 
 #include "gstce.h"
 #include "gstceh264enc.h"
+#include "gstcejpegenc.h"
 
 GST_DEBUG_CATEGORY (ce_debug);
 
@@ -37,6 +38,7 @@ typedef struct _CEElement
 
 static CEElement gst_ce_element_list[] = {
   {"ce_h264enc", GST_RANK_PRIMARY, gst_ce_h264enc_get_type},
+  {"ce_jpegenc", GST_RANK_PRIMARY, gst_ce_jpegenc_get_type},
 };
 
 /* Register of all the elements of the plugin */

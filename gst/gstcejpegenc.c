@@ -24,31 +24,37 @@
 #include <ti/sdo/codecs/jpegenc/ijpegenc.h>
 
 #include "gstcejpegenc.h"
-#include "gstceimgenc.h"
 
-#define MAX=2147483647
+/* *INDENT-OFF* */
+static GstStaticPadTemplate gst_ce_jpegenc_sink_pad_template =
+GST_STATIC_PAD_TEMPLATE ("sink",
+    GST_PAD_SINK,
+    GST_PAD_ALWAYS,
+    GST_STATIC_CAPS ("video/x-raw, "
+        "   format = (string){NV12,UYVY},"
+        "   framerate=(fraction)[ 0, 120], "
+        "   width=(int)[ 128, 4080 ], " "   height=(int)[ 96, 4096 ]")
+    );
+/* *INDENT-ON* */
+
+static GstStaticPadTemplate gst_ce_jpegenc_src_pad_template =
+GST_STATIC_PAD_TEMPLATE ("src",
+    GST_PAD_SRC,
+    GST_PAD_ALWAYS,
+    GST_STATIC_CAPS ("image/jpeg, "
+        "   framerate=(fraction)[ 0, 120], "
+        "   width=(int)[ 128, 4080 ], " "   height=(int)[ 96, 4096 ]")
+    );
 
 enum
 {
+  PROP_BASE = 0,
   PROP_DISABLE_EOI,
-  PROP_ROTATION
+  PROP_ROTATION,
 };
 
 #define JPEG_DEFAULT_DISABLE_EOI XDM_DEFAULT
 #define JPEG_DEFAULT_ROTATION 0
-
-GstStaticCaps gst_ce_jpegenc_sink_caps = GST_STATIC_CAPS (
-    ("video/x-raw, "
-        "format=(string){I420, YV12, YUY2, UYVY, Y41B, Y42B, YVYU, Y444, RGB, BGR, RGBx, xRGB, BGRx, xBGR, GRAY8}"
-        "width=(int)[ 1, MAX ], "
-        "height=(int)[ 1, MAX ], " "framerate=(fraction)[ 0/1, MAX/1 ]")
-    );
-
-GstStaticCaps gst_ce_jpegenc_src_caps = GST_STATIC_CAPS (
-    ("image/jpeg, "
-        "width=(int)[ 16, 65535 ], "
-        "height=(int)[ 16, 65535 ], " "framerate=(fraction)[ 0/1, MAX/1 ]")
-    );
 
 enum
 {
@@ -79,71 +85,65 @@ gst_ceimgenc_rotation_get_type (void)
   return rotation_type;
 }
 
+static void gst_ce_jpegenc_reset (GstCEImgEnc * ceimgenc);
+
+static void gst_ce_jpegenc_get_property (GObject * object, guint prop_id,
+    GValue * value, GParamSpec * pspec);
+static void gst_ce_jpegenc_set_property (GObject * object, guint prop_id,
+    const GValue * value, GParamSpec * pspec);
+
+#define gst_ce_jpegenc_parent_class parent_class
+G_DEFINE_TYPE (GstCEJPEGEnc, gst_ce_jpegenc, GST_TYPE_CEIMGENC);
+
 static void
-gst_ce_jpegenc_install_properties (GObjectClass * gobject_class, guint base)
+gst_ce_jpegenc_class_init (GstCEJPEGEncClass * klass)
 {
-  g_object_class_install_property (gobject_class, base + PROP_DISABLE_EOI,
+  GObjectClass *gobject_class;
+  GstElementClass *element_class;
+  GstCEImgEncClass *ceimgenc_class;
+
+  gobject_class = (GObjectClass *) klass;
+  element_class = (GstElementClass *) klass;
+  ceimgenc_class = (GstCEImgEncClass *) klass;
+
+  parent_class = g_type_class_peek_parent (klass);
+
+  gobject_class->set_property = gst_ce_jpegenc_set_property;
+  gobject_class->get_property = gst_ce_jpegenc_get_property;
+
+  g_object_class_install_property (gobject_class, PROP_DISABLE_EOI,
       g_param_spec_boolean ("disableEOI", "Disable EOI",
           "Disable End of Image", JPEG_DEFAULT_DISABLE_EOI, G_PARAM_READWRITE));
-  g_object_class_install_property (gobject_class, base + PROP_ROTATION,
+  g_object_class_install_property (gobject_class, PROP_ROTATION,
       g_param_spec_enum ("rotation", "Rotation",
-          "Set the rotation angle (0,90,180,270)", GST_CE_JPEGENC_ROTATION_TYPE,
+          "Set the rotation angle", GST_CE_JPEGENC_ROTATION_TYPE,
           JPEG_DEFAULT_ROTATION, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
+  /* pad templates */
+  gst_element_class_add_pad_template (element_class,
+      gst_static_pad_template_get (&gst_ce_jpegenc_sink_pad_template));
+  gst_element_class_add_pad_template (element_class,
+      gst_static_pad_template_get (&gst_ce_jpegenc_src_pad_template));
+
+  gst_element_class_set_static_metadata (element_class,
+      "CE JPEG image encoder", "Codec/Encoder/Image",
+      "Encode image in JPEG format",
+      "Carlos Gomez <carlos.gomez@ridgerun.com>");
+
+  ceimgenc_class->codec_name = "jpegenc";
+  ceimgenc_class->reset = gst_ce_jpegenc_reset;
+  /*$
+   * TODO
+   * Set ceimgenc klass virtual functions
+   */
+  //~ GST_DEBUG_CATEGORY_INIT (jpegenc_debug, "ce_jpegenc", 0,
+  //~ "JPEG encoding element");
 }
 
 static void
-gst_ce_jpegenc_set_property (GObject * object, guint prop_id,
-    const GValue * value, GParamSpec * pspec, guint base)
+gst_ce_jpegenc_init (GstCEJPEGEnc * jpegenc)
 {
-  GstCEImgEnc *ceimgenc = (GstCEImgEnc *) (object);
-  IJPEGENC_DynamicParams *dyn_params;
-  guint prop_jpeg_id;
-
-  dyn_params = (IJPEGENC_DynamicParams *) ceimgenc->codec_dyn_params;
-  prop_jpeg_id = prop_id - base;
-
-  switch (prop_jpeg_id) {
-    case PROP_DISABLE_EOI:
-      dyn_params->disableEOI = g_value_get_enum (value);
-      break;
-    case PROP_ROTATION:
-      dyn_params->rotation = g_value_get_enum (value);
-      break;
-    default:
-      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
-      break;
-  }
-}
-
-static void
-gst_ce_jpegenc_get_property (GObject * object, guint prop_id,
-    GValue * value, GParamSpec * pspec, guint base)
-{
-  GstCEImgEnc *ceimgenc = (GstCEImgEnc *) (object);
-  IJPEGENC_DynamicParams *dyn_params;
-  guint prop_jpeg_id;
-
-  dyn_params = (IJPEGENC_DynamicParams *) ceimgenc->codec_dyn_params;
-  prop_jpeg_id = prop_id - base;
-
-  switch (prop_jpeg_id) {
-    case PROP_DISABLE_EOI:
-      g_value_set_enum (value, dyn_params->disableEOI);
-      break;
-    case PROP_ROTATION:
-      g_value_set_enum (value, dyn_params->rotation);
-      break;
-    default:
-      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
-      break;
-  }
-}
-
-static void
-gst_ce_jpegenc_setup (GObject * object)
-{
-  GstCEImgEnc *ceimgenc = (GstCEImgEnc *) (object);
-  // jpegPrivateData *jpegenc; ??
+  GstCEImgEnc *ceimgenc = (GstCEImgEnc *) (jpegenc);
   IJPEGENC_Params *jpeg_params = NULL;
   IJPEGENC_DynamicParams *jpeg_dyn_params = NULL;
 
@@ -176,13 +176,8 @@ gst_ce_jpegenc_setup (GObject * object)
   /* Add the extends params to the original params */
   ceimgenc->codec_params->size = sizeof (IJPEGENC_Params);
   ceimgenc->codec_dyn_params->size = sizeof (IJPEGENC_DynamicParams);
-  GST_DEBUG_OBJECT (ceimgenc, "allocating JPEG private data");
-  if (ceimgenc->codec_private)
-    g_free (ceimgenc->codec_private);
 
-  /* Setting properties defaults */
-  jpeg_dyn_params->disableEOI = JPEG_DEFAULT_DISABLE_EOI;
-  jpeg_dyn_params->rotation = JPEG_DEFAULT_ROTATION;
+  gst_ce_jpegenc_reset (ceimgenc);
 
   return;
 
@@ -192,19 +187,113 @@ fail_alloc:
     if (jpeg_params)
       g_free (jpeg_params);
     if (jpeg_dyn_params)
-      g_free (jpeg_params);
+      g_free (jpeg_dyn_params);
     return;
   }
 }
 
+static void
+gst_ce_jpegenc_reset (GstCEImgEnc * ceimgenc)
+{
+  GstCEJPEGEnc *jpegenc = (GstCEJPEGEnc *) (ceimgenc);
+  IJPEGENC_Params *jpeg_params;
+  IJPEGENC_DynamicParams *jpeg_dyn_params;
 
-GstCECodecData gst_ce_jpegenc = {
-  .name = "jpegenc",
-  .long_name = "JPEG",
-  .src_caps = &gst_ce_jpegenc_src_caps,
-  .sink_caps = &gst_ce_jpegenc_sink_caps,
-  .install_properties = gst_ce_jpegenc_install_properties,
-  .set_property = gst_ce_jpegenc_set_property,
-  .get_property = gst_ce_jpegenc_get_property,
-  .setup = gst_ce_jpegenc_setup,
-};
+  GST_DEBUG ("JPEG reset");
+
+  if ((ceimgenc->codec_params->size != sizeof (IJPEGENC_Params)) ||
+      (ceimgenc->codec_dyn_params->size != sizeof (IJPEGENC_DynamicParams)))
+    return;
+
+  jpeg_params = (IJPEGENC_Params *) ceimgenc->codec_params;
+  jpeg_dyn_params = (IJPEGENC_DynamicParams *) ceimgenc->codec_dyn_params;
+
+  GST_DEBUG ("setup JPEG parameters");
+  /* Setting properties defaults */
+  jpeg_params->halfBufCB = NULL;
+  jpeg_params->halfBufCBarg = NULL;
+
+  jpeg_dyn_params->disableEOI = JPEG_DEFAULT_DISABLE_EOI;
+  jpeg_dyn_params->rotation = JPEG_DEFAULT_ROTATION;
+  jpeg_dyn_params->rstInterval = 84;
+  jpeg_dyn_params->customQ = NULL;
+
+  return;
+}
+
+static void
+gst_ce_jpegenc_set_property (GObject * object, guint prop_id,
+    const GValue * value, GParamSpec * pspec)
+{
+  GstCEImgEnc *ceimgenc = (GstCEImgEnc *) (object);
+  // IJPEGENC_Params *params;
+  IJPEGENC_DynamicParams *dyn_params;
+  IMGENC1_Status enc_status;
+  gboolean set_params = FALSE;
+  guint ret;
+
+  // params = (IJPEGENC_Params *) ceimgenc->codec_params;
+  dyn_params = (IJPEGENC_DynamicParams *) ceimgenc->codec_dyn_params;
+
+  if (!dyn_params) {            //(!params) || (!dyn_params)
+    GST_WARNING_OBJECT (ceimgenc, "couldn't set property");
+    return;
+  }
+
+  switch (prop_id) {
+    case PROP_DISABLE_EOI:
+      dyn_params->disableEOI = g_value_get_enum (value);
+      break;
+    case PROP_ROTATION:
+      dyn_params->rotation = g_value_get_enum (value);
+      break;
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+      break;
+  }
+
+  /* Set dynamic parameters if needed */
+  if (set_params && ceimgenc->codec_handle) {
+    enc_status.size = sizeof (IMGENC1_Status);
+    enc_status.data.buf = NULL;
+    ret = IMGENC1_control (ceimgenc->codec_handle, XDM_SETPARAMS,
+        (IMGENC1_DynamicParams *) dyn_params, &enc_status);
+    if (ret != IMGENC1_EOK)
+      GST_WARNING_OBJECT (ceimgenc, "failed to set dynamic parameters, "
+          "status error %x, %d", (guint) enc_status.extendedError, ret);
+  }
+
+  return;
+  //fail_static_prop:
+  //GST_WARNING_OBJECT (ceimgenc, "can't set static property when "
+  //    "the codec is already configured");
+}
+
+static void
+gst_ce_jpegenc_get_property (GObject * object, guint prop_id,
+    GValue * value, GParamSpec * pspec)
+{
+  GstCEImgEnc *ceimgenc = (GstCEImgEnc *) (object);
+  // IJPEGENC_Params *params;
+  IJPEGENC_DynamicParams *dyn_params;
+
+  // params = (IJPEGENC_Params *) ceimgenc->codec_params;
+  dyn_params = (IJPEGENC_DynamicParams *) ceimgenc->codec_dyn_params;
+
+  if (!dyn_params) {            //(!params) || (!dyn_params)
+    GST_WARNING_OBJECT (ceimgenc, "couldn't set property");
+    return;
+  }
+
+  switch (prop_id) {
+    case PROP_DISABLE_EOI:
+      g_value_set_enum (value, dyn_params->disableEOI);
+      break;
+    case PROP_ROTATION:
+      g_value_set_enum (value, dyn_params->rotation);
+      break;
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+      break;
+  }
+}
