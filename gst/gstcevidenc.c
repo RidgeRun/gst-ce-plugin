@@ -710,10 +710,10 @@ gst_cevidenc_set_property (GObject * object,
 
   /* Get a pointer of the right type. */
   cevidenc = GST_CEVIDENC(object);
-  klass = (GstCEVidEncClass *) G_OBJECT_GET_CLASS (cevidenc);
+  klass = GST_CEVIDENC_CLASS(G_OBJECT_GET_CLASS (cevidenc));
 
   if ((!cevidenc->codec_params) || (!cevidenc->codec_dyn_params)) {
-    GST_WARNING_OBJECT (cevidenc, "couldn't set property");
+    GST_WARNING_OBJECT (cevidenc, "couldn't set property, no codec parameters defined");
     return;
   }
 
@@ -723,6 +723,7 @@ gst_cevidenc_set_property (GObject * object,
   GST_OBJECT_LOCK (cevidenc);
   /* Check the argument id to see which argument we're setting. */
   switch (prop_id) {
+
     case PROP_RATE_CONTROL:
       if (!cevidenc->codec_handle) {
         params->rateControlPreset = g_value_get_enum (value);
