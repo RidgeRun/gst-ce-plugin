@@ -136,8 +136,6 @@ gst_cevidenc_force_frame_get_type (void)
 
 struct _GstCEVidEncPrivate
 {
-  gboolean first_buffer;
-
   /* Video Data */
   gint fps_num;
   gint fps_den;
@@ -279,7 +277,6 @@ gst_cevidenc_init (GstCEVidEnc * cevidenc)
     cevidenc->codec_dyn_params->size = sizeof (VIDENC1_DynamicParams);
   }
 
-  priv->first_buffer = TRUE;
   priv->engine_handle = NULL;
   priv->allocator = NULL;
 
@@ -645,9 +642,6 @@ gst_cevidenc_handle_frame (GstVideoEncoder * encoder,
   /* Post-encode process */
   if (klass->post_process && !klass->post_process (cevidenc, outbuf))
     goto fail_post_encode;
-
-  if (priv->first_buffer)
-    priv->first_buffer = FALSE;
 
   GST_DEBUG_OBJECT (cevidenc, "frame encoded succesfully");
 
