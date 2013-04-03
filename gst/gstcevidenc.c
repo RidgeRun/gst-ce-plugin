@@ -53,23 +53,24 @@
 enum
 {
   PROP_0,
-  PROP_RATECONTROL,
-  PROP_ENCODINGPRESET,
-  PROP_MAXBITRATE,
-  PROP_TARGETBITRATE,
-  PROP_INTRAFRAMEINTERVAL,
+  PROP_RATE_CONTROL,
+  PROP_ENCODING_PRESET,
+  PROP_MAX_BITRATE,
+  PROP_TARGET_BITRATE,
+  PROP_INTRA_FRAME_INTERVAL,
   PROP_FORCE_FRAME,
 };
 
-#define PROP_ENCODINGPRESET_DEFAULT       XDM_HIGH_SPEED
-#define PROP_MAXBITRATE_DEFAULT           6000000
-#define PROP_TARGETBITRATE_DEFAULT        6000000
-#define PROP_INTRAFRAMEINTERVAL_DEFAULT   30
+#define PROP_ENCODING_PRESET_DEFAULT      XDM_HIGH_SPEED
+#define PROP_RATE_CONTROL_DEFAULT         IVIDEO_RATECONTROLPRESET_DEFAULT
+#define PROP_MAX_BITRATE_DEFAULT          6000000
+#define PROP_TARGET_BITRATE_DEFAULT       6000000
+#define PROP_INTRA_FRAME_INTERVAL_DEFAULT 30
 #define PROP_FORCE_FRAME_DEFAULT          IVIDEO_NA_FRAME
 
-#define GST_CE_VIDENC_RATE_TYPE (gst_cevidenc_rate_get_type())
+#define GST_CE_VIDENC_RATE_CONTROL_TYPE (gst_cevidenc_rate_control_get_type())
 static GType
-gst_cevidenc_rate_get_type (void)
+gst_cevidenc_rate_control_get_type (void)
 {
   static GType rate_type = 0;
 
@@ -89,7 +90,7 @@ gst_cevidenc_rate_get_type (void)
   return rate_type;
 }
 
-#define GST_CE_VIDENC_PRESET_TYPE (gst_cevidenc_preset_get_type())
+#define GST_CE_VIDENC_ENCODING_PRESET_TYPE (gst_cevidenc_preset_get_type())
 static GType
 gst_cevidenc_preset_get_type (void)
 {
@@ -196,35 +197,35 @@ gst_cevidenc_class_init (GstCEVidEncClass * klass)
   gobject_class->set_property = gst_cevidenc_set_property;
   gobject_class->get_property = gst_cevidenc_get_property;
 
-  g_object_class_install_property (gobject_class, PROP_RATECONTROL,
+  g_object_class_install_property (gobject_class, PROP_RATE_CONTROL,
       g_param_spec_enum ("rate-control", "Encoding rate control",
-          "Encoding rate control", GST_CE_VIDENC_RATE_TYPE,
-          IVIDEO_RATECONTROLPRESET_DEFAULT,
+          "Encoding rate control", GST_CE_VIDENC_RATE_CONTROL_TYPE,
+          PROP_RATE_CONTROL_DEFAULT,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
-  g_object_class_install_property (gobject_class, PROP_ENCODINGPRESET,
+  g_object_class_install_property (gobject_class, PROP_ENCODING_PRESET,
       g_param_spec_enum ("encoding-preset", "Encoding preset",
-          "Encoding preset", GST_CE_VIDENC_PRESET_TYPE,
-          PROP_ENCODINGPRESET_DEFAULT,
+          "Encoding preset", GST_CE_VIDENC_ENCODING_PRESET_TYPE,
+          PROP_ENCODING_PRESET_DEFAULT,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
-  g_object_class_install_property (gobject_class, PROP_MAXBITRATE,
+  g_object_class_install_property (gobject_class, PROP_MAX_BITRATE,
       g_param_spec_int ("max-bitrate",
           "Maximum bit rate",
           "Maximum bit-rate to be supported in bits per second",
-          1000, 50000000, PROP_MAXBITRATE_DEFAULT, G_PARAM_READWRITE));
+          1000, 50000000, PROP_MAX_BITRATE_DEFAULT, G_PARAM_READWRITE));
 
-  g_object_class_install_property (gobject_class, PROP_TARGETBITRATE,
+  g_object_class_install_property (gobject_class, PROP_TARGET_BITRATE,
       g_param_spec_int ("target-bitrate",
           "Target bit rate",
           "Target bit-rate in bits per second, should be <= than the maxbitrate",
-          1000, 20000000, PROP_TARGETBITRATE_DEFAULT, G_PARAM_READWRITE));
+          1000, 20000000, PROP_TARGET_BITRATE_DEFAULT, G_PARAM_READWRITE));
 
-  g_object_class_install_property (gobject_class, PROP_INTRAFRAMEINTERVAL,
+  g_object_class_install_property (gobject_class, PROP_INTRA_FRAME_INTERVAL,
       g_param_spec_int ("intraframe-interval",
           "Intra frame interval",
           "Interval between two consecutive intra frames",
-          0, G_MAXINT32, PROP_INTRAFRAMEINTERVAL_DEFAULT, G_PARAM_READWRITE));
+          0, G_MAXINT32, PROP_INTRA_FRAME_INTERVAL_DEFAULT, G_PARAM_READWRITE));
 
   g_object_class_install_property (gobject_class, PROP_FORCE_FRAME,
       g_param_spec_enum ("force-frame",
@@ -730,7 +731,7 @@ gst_cevidenc_set_property (GObject * object,
   GST_OBJECT_LOCK (cevidenc);
   /* Check the argument id to see which argument we're setting. */
   switch (prop_id) {
-    case PROP_RATECONTROL:
+    case PROP_RATE_CONTROL:
       if (!cevidenc->codec_handle) {
         params->rateControlPreset = g_value_get_enum (value);
         GST_LOG_OBJECT (cevidenc,
@@ -739,7 +740,7 @@ gst_cevidenc_set_property (GObject * object,
         goto fail_static_prop;
       }
       break;
-    case PROP_ENCODINGPRESET:
+    case PROP_ENCODING_PRESET:
       if (!cevidenc->codec_handle) {
         params->encodingPreset = g_value_get_enum (value);
         GST_LOG_OBJECT (cevidenc,
@@ -748,7 +749,7 @@ gst_cevidenc_set_property (GObject * object,
         goto fail_static_prop;
       }
       break;
-    case PROP_MAXBITRATE:
+    case PROP_MAX_BITRATE:
       if (!cevidenc->codec_handle) {
         params->maxBitRate = g_value_get_int (value);
         GST_LOG_OBJECT (cevidenc,
@@ -757,13 +758,13 @@ gst_cevidenc_set_property (GObject * object,
         goto fail_static_prop;
       }
       break;
-    case PROP_TARGETBITRATE:
+    case PROP_TARGET_BITRATE:
       dyn_params->targetBitRate = g_value_get_int (value);
       GST_LOG_OBJECT (cevidenc,
           "setting target bitrate to %li", dyn_params->targetBitRate);
       set_params = TRUE;
       break;
-    case PROP_INTRAFRAMEINTERVAL:
+    case PROP_INTRA_FRAME_INTERVAL:
       dyn_params->intraFrameInterval = g_value_get_int (value);
       GST_LOG_OBJECT (cevidenc,
           "setting intra frame interval to %li",
@@ -823,19 +824,19 @@ gst_cevidenc_get_property (GObject * object,
 
   GST_OBJECT_LOCK (cevidenc);
   switch (prop_id) {
-    case PROP_RATECONTROL:
+    case PROP_RATE_CONTROL:
       g_value_set_enum (value, params->rateControlPreset);
       break;
-    case PROP_ENCODINGPRESET:
+    case PROP_ENCODING_PRESET:
       g_value_set_enum (value, params->encodingPreset);
       break;
-    case PROP_MAXBITRATE:
+    case PROP_MAX_BITRATE:
       g_value_set_int (value, params->maxBitRate);
       break;
-    case PROP_TARGETBITRATE:
+    case PROP_TARGET_BITRATE:
       g_value_set_int (value, dyn_params->targetBitRate);
       break;
-    case PROP_INTRAFRAMEINTERVAL:
+    case PROP_INTRA_FRAME_INTERVAL:
       g_value_set_int (value, dyn_params->intraFrameInterval);
       break;
     case PROP_FORCE_FRAME:
@@ -940,9 +941,9 @@ gst_cevidenc_reset (GstVideoEncoder * encoder)
   GST_OBJECT_LOCK (cevidenc);
 
   /* Set default values for codec static params */
-  params->encodingPreset = PROP_ENCODINGPRESET_DEFAULT;
-  params->rateControlPreset = IVIDEO_RATECONTROLPRESET_DEFAULT;
-  params->maxBitRate = PROP_MAXBITRATE_DEFAULT;
+  params->encodingPreset = PROP_ENCODING_PRESET_DEFAULT;
+  params->rateControlPreset = PROP_RATE_CONTROL_DEFAULT;
+  params->maxBitRate = PROP_MAX_BITRATE_DEFAULT;
   params->dataEndianness = XDM_BYTE;
   params->maxInterFrameInterval = 1;
   params->inputChromaFormat = XDM_YUV_420P;
@@ -950,8 +951,8 @@ gst_cevidenc_reset (GstVideoEncoder * encoder)
   params->reconChromaFormat = XDM_CHROMA_NA;
 
   /* Set default values for codec dynamic params */
-  dyn_params->targetBitRate = PROP_TARGETBITRATE_DEFAULT;
-  dyn_params->intraFrameInterval = PROP_INTRAFRAMEINTERVAL_DEFAULT;
+  dyn_params->targetBitRate = PROP_TARGET_BITRATE_DEFAULT;
+  dyn_params->intraFrameInterval = PROP_INTRA_FRAME_INTERVAL_DEFAULT;
   dyn_params->generateHeader = XDM_ENCODE_AU;
   dyn_params->captureWidth = 0;
   dyn_params->forceFrame = PROP_FORCE_FRAME_DEFAULT;
