@@ -187,8 +187,8 @@ gst_cevidenc_class_init (GstCEVidEncClass * klass)
   GObjectClass *gobject_class;
   GstVideoEncoderClass *venc_class;
 
-  gobject_class = (GObjectClass *) klass;
-  venc_class = (GstVideoEncoderClass *) klass;
+  gobject_class = G_OBJECT_CLASS(klass);
+  venc_class = GST_VIDEO_ENCODER_CLASS(klass);
 
   g_type_class_add_private (klass, sizeof (GstCEVidEncPrivate));
 
@@ -289,9 +289,9 @@ gst_cevidenc_init (GstCEVidEnc * cevidenc)
 static void
 gst_cevidenc_finalize (GObject * object)
 {
-  GstCEVidEnc *cevidenc = (GstCEVidEnc *) (object);
+  GstCEVidEnc *cevidenc = GST_CEVIDENC(object);
 
-  /* Allocate the codec params */
+  /* Free the allocated resources */
   if (cevidenc->codec_params) {
     g_free (cevidenc->codec_params);
     cevidenc->codec_params = NULL;
@@ -322,7 +322,7 @@ gst_cevidenc_configure_codec (GstCEVidEnc * cevidenc)
   gint i;
 
 
-  klass = (GstCEVidEncClass *) G_OBJECT_GET_CLASS (cevidenc);
+  klass = GST_CEVIDENC_CLASS(G_OBJECT_GET_CLASS (cevidenc));
   priv = cevidenc->priv;
   params = cevidenc->codec_params;
   dyn_params = cevidenc->codec_dyn_params;
@@ -330,6 +330,8 @@ gst_cevidenc_configure_codec (GstCEVidEnc * cevidenc)
   g_return_val_if_fail (params, FALSE);
   g_return_val_if_fail (dyn_params, FALSE);
   g_return_val_if_fail (klass->codec_name, FALSE);
+
+  GST_OBJECT_LOCK (cevidenc);
 
   /* Set the caps on the parameters of the encoder */
   switch (priv->video_format) {
@@ -350,8 +352,6 @@ gst_cevidenc_configure_codec (GstCEVidEnc * cevidenc)
 
   fps = (priv->fps_num * 1000) / priv->fps_den;
 
-  GST_OBJECT_LOCK (cevidenc);
-
   params->maxWidth = priv->inbuf_desc.frameWidth;
   params->maxHeight = priv->inbuf_desc.frameHeight;
   params->maxFrameRate = fps;
@@ -361,6 +361,7 @@ gst_cevidenc_configure_codec (GstCEVidEnc * cevidenc)
   dyn_params->refFrameRate = dyn_params->targetFrameRate = fps;
 
   if (cevidenc->codec_handle) {
+    /* TODO: test this use case to verify its properly handled */  
     GST_DEBUG_OBJECT (cevidenc, "Closing old codec session");
     VIDENC1_delete (cevidenc->codec_handle);
   }
@@ -434,8 +435,8 @@ gst_cevidenc_set_format (GstVideoEncoder * encoder, GstVideoCodecState * state)
   GstBuffer *codec_data = NULL;
   gint i, bpp = 0;
 
-  GstCEVidEnc *cevidenc = (GstCEVidEnc *) encoder;
-  GstCEVidEncClass *klass = (GstCEVidEncClass *) G_OBJECT_GET_CLASS (cevidenc);
+  GstCEVidEnc *cevidenc = GST_CEVIDENC(encoder);
+  GstCEVidEncClass *klass =  GST_CEVIDENC_CLASS(G_OBJECT_GET_CLASS(cevidenc));
   GstCEVidEncPrivate *priv = cevidenc->priv;
 
   GST_DEBUG_OBJECT (cevidenc, "extracting common video information");
@@ -521,7 +522,7 @@ fail_set_caps:
 static gboolean
 gst_cevidenc_propose_allocation (GstVideoEncoder * encoder, GstQuery * query)
 {
-  GstCEVidEnc *cevidenc = (GstCEVidEnc *) encoder;
+  GstCEVidEnc *cevidenc = GST_CEVIDENC(encoder);
   GstCEVidEncPrivate *priv = cevidenc->priv;
   GstAllocationParams params;
 
@@ -571,7 +572,7 @@ static GstFlowReturn
 gst_cevidenc_handle_frame (GstVideoEncoder * encoder,
     GstVideoCodecFrame * frame)
 {
-  GstCEVidEnc *cevidenc = (GstCEVidEnc *) encoder;
+  GstCEVidEnc *cevidenc = GST_CEVIDENC(encoder);
   GstCEVidEncPrivate *priv = cevidenc->priv;
   GstCEVidEncClass *klass = (GstCEVidEncClass *) G_OBJECT_GET_CLASS (cevidenc);
   GstVideoInfo *info = &priv->input_state->info;
@@ -722,7 +723,7 @@ gst_cevidenc_set_property (GObject * object,
   gint ret;
 
   /* Get a pointer of the right type. */
-  cevidenc = (GstCEVidEnc *) (object);
+  cevidenc = GST_CEVIDENC(object);
   klass = (GstCEVidEncClass *) G_OBJECT_GET_CLASS (cevidenc);
 
   if ((!cevidenc->codec_params) || (!cevidenc->codec_dyn_params)) {
@@ -816,7 +817,7 @@ gst_cevidenc_get_property (GObject * object,
   VIDENC1_DynamicParams *dyn_params;
 
   /* It's not null if we got it, but it might not be ours */
-  cevidenc = (GstCEVidEnc *) (object);
+  cevidenc = GST_CEVIDENC(object);
   klass = (GstCEVidEncClass *) G_OBJECT_GET_CLASS (cevidenc);
 
   if ((!cevidenc->codec_params) || (!cevidenc->codec_dyn_params)) {
@@ -857,7 +858,7 @@ gst_cevidenc_get_property (GObject * object,
 static gboolean
 gst_cevidenc_open (GstVideoEncoder * encoder)
 {
-  GstCEVidEnc *cevidenc = (GstCEVidEnc *) encoder;
+  GstCEVidEnc *cevidenc = GST_CEVIDENC(encoder);
   GstCEVidEncPrivate *priv = cevidenc->priv;
 
   GST_DEBUG_OBJECT (cevidenc, "opening %s Engine", CODEC_ENGINE);
@@ -896,7 +897,7 @@ fail_no_allocator:
 static gboolean
 gst_cevidenc_close (GstVideoEncoder * encoder)
 {
-  GstCEVidEnc *cevidenc = (GstCEVidEnc *) encoder;
+  GstCEVidEnc *cevidenc = GST_CEVIDENC(encoder);
   GstCEVidEncPrivate *priv = cevidenc->priv;
 
   if (priv->engine_handle) {
@@ -923,7 +924,7 @@ gst_cevidenc_stop (GstVideoEncoder * encoder)
 static gboolean
 gst_cevidenc_reset (GstVideoEncoder * encoder)
 {
-  GstCEVidEnc *cevidenc = (GstCEVidEnc *) encoder;
+  GstCEVidEnc *cevidenc = GST_CEVIDENC(encoder);
   GstCEVidEncPrivate *priv = cevidenc->priv;
   GstCEVidEncClass *klass = (GstCEVidEncClass *) G_OBJECT_GET_CLASS (cevidenc);
 
