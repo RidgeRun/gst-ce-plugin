@@ -24,66 +24,28 @@
 #include <gst/cmem/gstcmemallocator.h>
 
 #include "gstce.h"
+#include "gstceh264enc.h"
 
 GST_DEBUG_CATEGORY (ce_debug);
 
-static gboolean
-gst_encoders_register (GstPlugin * plugin)
+typedef struct _CEElement
 {
-  Engine_AlgInfo alg_info;
-  Engine_Error status;
-  gint num_algs = 0;
-  gint num_encs = 0;
-  gint i, j;
-  gboolean codec_found = FALSE;
-  gboolean ret = FALSE;
+  const gchar *name;
+  guint rank;
+    GType (*get_type) (void);
+} CEElement;
 
-  /* Get all algorithms configured in the Codec Engine */
-  status = Engine_getNumAlgs ((Char *) CODEC_ENGINE, &num_algs);
-  if (status == Engine_EOK) {
-    GST_DEBUG ("%s: number of algorithms = %d", CODEC_ENGINE, num_algs);
-  } else {
-    GST_ERROR ("failed to get the number of algorithms "
-        "configured into %s: %d\n", CODEC_ENGINE, status);
-    goto out;
-  }
-
-  alg_info.algInfoSize = sizeof (Engine_AlgInfo);
-
-  for (i = 0; i < num_algs; i++) {
-
-    status = Engine_getAlgInfo ((Char *) CODEC_ENGINE, &alg_info, i);
-    if (status == Engine_EOK) {
-      GST_DEBUG ("algorithm[%d] = %s", i, alg_info.name);
-    } else {
-      GST_ERROR ("failed to get %s algorithm[%d] information", CODEC_ENGINE, i);
-      goto out;
-    }
-
-    codec_found = FALSE;
-    num_encs = ARRAY_SIZE (gst_cevidenc_list);
-    for (j = 0; j < num_encs && !codec_found; j++) {
-      if (!strcmp (alg_info.name, gst_cevidenc_list[j]->name)) {
-        GST_DEBUG ("found %s element data", gst_cevidenc_list[j]->name);
-        ret = gst_ceimgenc_register (plugin, gst_cevidenc_list[j]);
-        if (!ret) {
-          GST_ERROR ("failed to register codec %s", gst_cevidenc_list[j]->name);
-          goto out;
-        }
-        codec_found = TRUE;
-      }
-    }
-
-  }
-
-out:
-  return ret;
-}
+static CEElement gst_ce_element_list[] = {
+  {"ce_h264enc", GST_RANK_PRIMARY, gst_ce_h264enc_get_type},
+};
 
 /* Register of all the elements of the plugin */
 static gboolean
 plugin_init (GstPlugin * plugin)
 {
+  CEElement *element;
+  GType element_type;
+  gint num_elements, i;
 
   GST_DEBUG_CATEGORY_INIT (ce_debug, "ce", 0,
       "TI plugin for CodecEngine debugging");
@@ -92,9 +54,17 @@ plugin_init (GstPlugin * plugin)
    * Inside this function the Codec Engine is initialized*/
   gst_cmem_init ();
 
-  /* Register encoders */
-  gst_encoders_register (plugin);
-
+  /* Register elements */
+  num_elements = ARRAY_SIZE (gst_ce_element_list);
+  for (i = 0; i < num_elements; i++) {
+    element = &gst_ce_element_list[i];
+    element_type = element->get_type ();
+    if (!gst_element_register (plugin, element->name, element->rank,
+            element_type)) {
+      GST_ERROR ("failed to register codec %s", element->name);
+      return FALSE;
+    }
+  }
 
   return TRUE;
 }

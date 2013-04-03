@@ -21,61 +21,79 @@
 #ifndef __GST_CE_VIDENC_H__
 #define __GST_CE_VIDENC_H__
 
-G_BEGIN_DECLS
+#include <gst/video/gstvideoencoder.h>
 #include <xdc/std.h>
 #include <ti/sdo/ce/Engine.h>
 #include <ti/sdo/ce/video1/videnc1.h>
-#include <gst/video/gstvideoencoder.h>
+
 #include "gstceutils.h"
+
+G_BEGIN_DECLS 
+
 typedef struct _GstCEVidEnc GstCEVidEnc;
+typedef struct _GstCEVidEncClass GstCEVidEncClass;
+typedef struct _GstCEVidEncPrivate GstCEVidEncPrivate;
 
 struct _GstCEVidEnc
 {
   GstVideoEncoder parent;
-  gboolean first_buffer;
-
-  /* Video Data */
-  gint fps_num;
-  gint fps_den;
-  gint par_num;
-  gint par_den;
-  gint bpp;
-
-  gint32 outbuf_size;
-  GstVideoFormat video_format;
-  GstVideoCodecState *input_state;
-
-  /* Handle to the CMEM allocator */
-  GstAllocator *allocator;
-  GstAllocationParams alloc_params;
-
-  /* Handle to the Codec Engine */
-  Engine_Handle engine_handle;
 
   /* Handle to the Codec */
   VIDENC1_Handle codec_handle;
   VIDENC1_Params *codec_params;
   VIDENC1_DynamicParams *codec_dyn_params;
-  IVIDEO1_BufDescIn inbuf_desc;
-  XDM_BufDesc outbuf_desc;
+  
+  /*< private >*/
+  GstCEVidEncPrivate *priv;
 
-  /* Codec Private Data */
-  void *codec_private;
+  gpointer  _gst_reserved[GST_PADDING_LARGE];
 };
 
-typedef struct _GstCEVidEncClass GstCEVidEncClass;
 
+/**
+ * GstCEVidEncClass
+ * @parent_class:   Element parent class
+ * @codec_name:     The name of the codec
+ * @reset:          Optional.
+ *                  Allows subclass to set default values of properties and
+ *                  reset the element resources. Called when the element is
+ *                  initialized and when the element stops processing.
+ * @set_src_caps:   Optional.
+ *                  Allows subclass to be notified of the actual src caps
+ *                  and be able to propose custom src caps and codec data.
+ * @pre_process:    Optional.
+ *                  Called right before the base class will start the encoding 
+ *                  process. Allows delayed configuration and dynamic properties
+ *                  be performed in this method.
+ * @post_process:   Optional.
+ *                  Called after the base class finished the encoding 
+ *                  process. Allows output buffer transformations.
+ * 
+ * Subclasses can override any of the available virtual methods or not, as
+ * needed. At minimum @codec_name shoud be filled.
+ */
 struct _GstCEVidEncClass
 {
   GstVideoEncoderClass parent_class;
 
-  GstCECodecData *codec;
-  GstPadTemplate *srctempl, *sinktempl;
-  GstCaps *sinkcaps;
+  /*< public > */
+  const gchar *codec_name;
+  
+  /* virtual methods for subclasses */
+  void (*reset) (GstCEVidEnc * cevidenc);
+  gboolean (*set_src_caps) (GstCEVidEnc *cevidenc, 
+                            GstCaps ** src_caps, 
+                            GstBuffer ** codec_data);
+
+  gboolean (*pre_process) (GstCEVidEnc *cevidenc, GstBuffer *input_buffer);
+  gboolean (*post_process) (GstCEVidEnc *cevidenc, GstBuffer *output_buffer);
+
+  /*< private > */
+  gpointer _gst_reserved[GST_PADDING_LARGE];
 };
 
 #define GST_TYPE_CEVIDENC \
-  (gst_ffmpegvidenc_get_type())
+  (gst_cevidenc_get_type())
 #define GST_CEVIDENC(obj) \
   (G_TYPE_CHECK_INSTANCE_CAST((obj),GST_TYPE_CEVIDENC,GstCEVidEnc))
 #define GST_CEVIDENC_CLASS(klass) \
@@ -84,6 +102,13 @@ struct _GstCEVidEncClass
   (G_TYPE_CHECK_INSTANCE_TYPE((obj),GST_TYPE_CEVIDENC))
 #define GST_IS_CEVIDENC_CLASS(klass) \
   (G_TYPE_CHECK_CLASS_TYPE((klass),GST_TYPE_CEVIDENC))
+
+GType gst_cevidenc_get_type (void);
+
+gboolean gst_cevidenc_get_header (GstCEVidEnc * cevidenc, 
+                                  GstBuffer ** buf,
+                                  gint *header_size);
+                                  
 
 G_END_DECLS
 #endif /* __GST_CE_VIDENC_H__ */
