@@ -184,9 +184,10 @@ static void gst_cevidenc_set_property (GObject * object,
     guint prop_id, const GValue * value, GParamSpec * pspec);
 static void gst_cevidenc_get_property (GObject * object,
     guint prop_id, GValue * value, GParamSpec * pspec);
+
 static gboolean gst_cevidenc_reset (GstVideoEncoder * encoder);
-
-
+static gboolean gst_cevidenc_set_dynamic_params (GstCEVidEnc * cevidenc);
+static gboolean gst_cevidenc_get_buffer_info (GstCEVidEnc * cevidenc);
 
 #define gst_cevidenc_parent_class parent_class
 G_DEFINE_TYPE (GstCEVidEnc, gst_cevidenc, GST_TYPE_VIDEO_ENCODER);
@@ -321,9 +322,6 @@ gst_cevidenc_configure_codec (GstCEVidEnc * cevidenc)
   VIDENC1_Params *params;
   VIDENC1_DynamicParams *dyn_params;
   gint fps;
-  gint ret;
-  gint i;
-
 
   klass = (GstCEVidEncClass *) G_OBJECT_GET_CLASS (cevidenc);
   priv = cevidenc->priv;
@@ -378,29 +376,13 @@ gst_cevidenc_configure_codec (GstCEVidEnc * cevidenc)
   enc_status.data.buf = NULL;
 
   GST_DEBUG_OBJECT (cevidenc, "Set codec dynamic parameters");
-  ret = VIDENC1_control (cevidenc->codec_handle, XDM_SETPARAMS,
-      dyn_params, &enc_status);
-  if (ret != VIDENC1_EOK)
-    goto fail_control_params;
+  if (!gst_cevidenc_set_dynamic_params (cevidenc))
+    goto fail_out;
+
+  if (!gst_cevidenc_get_buffer_info (cevidenc))
+    goto fail_out;
 
   GST_OBJECT_UNLOCK (cevidenc);
-
-  /* Get buffer information from video encoder */
-  ret = VIDENC1_control (cevidenc->codec_handle, XDM_GETBUFINFO,
-      dyn_params, &enc_status);
-  if (ret != VIDENC1_EOK)
-    goto fail_control_getinfo;
-
-  for (i = 0; i < enc_status.bufInfo.minNumInBufs; i++) {
-    priv->inbuf_desc.bufDesc[i].bufSize = enc_status.bufInfo.minInBufSize[i];
-    GST_DEBUG_OBJECT (cevidenc, "size of input buffer [%d] = %li", i,
-        priv->inbuf_desc.bufDesc[i].bufSize);
-  }
-
-  priv->outbuf_size = enc_status.bufInfo.minOutBufSize[0];
-  priv->outbuf_desc.numBufs = 1;
-  priv->outbuf_desc.bufSizes = (XDAS_Int32 *) & priv->outbuf_size;
-  GST_DEBUG_OBJECT (cevidenc, "output buffer size = %d", priv->outbuf_size);
 
   return TRUE;
 
@@ -410,19 +392,9 @@ fail_open_codec:
     GST_OBJECT_UNLOCK (cevidenc);
     return FALSE;
   }
-fail_control_params:
+fail_out:
   {
-    GST_ERROR_OBJECT (cevidenc, "failed to set dynamic parameters, "
-        "status error %x, %d", (guint) enc_status.extendedError, ret);
     GST_OBJECT_UNLOCK (cevidenc);
-    VIDENC1_delete (cevidenc->codec_handle);
-    cevidenc->codec_handle = NULL;
-    return FALSE;
-  }
-fail_control_getinfo:
-  {
-    GST_ERROR_OBJECT (cevidenc, "failed to get buffer information, "
-        "status error %x, %d", (guint) enc_status.extendedError, ret);
     VIDENC1_delete (cevidenc->codec_handle);
     cevidenc->codec_handle = NULL;
     return FALSE;
@@ -586,6 +558,7 @@ gst_cevidenc_handle_frame (GstVideoEncoder * encoder,
   VIDENC1_OutArgs out_args;
   gint ret = 0;
   gint i;
+  gint current_pitch;
 
   /* Fill planes pointer */
   if (!gst_video_frame_map (&vframe, info, frame->input_buffer, GST_MAP_READ))
@@ -595,8 +568,30 @@ gst_cevidenc_handle_frame (GstVideoEncoder * encoder,
     priv->inbuf_desc.bufDesc[i].buf = GST_VIDEO_FRAME_PLANE_DATA (&vframe, i);
   }
 
+  current_pitch = GST_VIDEO_FRAME_PLANE_STRIDE (&vframe, 0);
+
   gst_video_frame_unmap (&vframe);
 
+  if (priv->inbuf_desc.framePitch != current_pitch) {
+    priv->inbuf_desc.framePitch = current_pitch;
+    switch (priv->video_format) {
+      case GST_VIDEO_FORMAT_UYVY:
+        cevidenc->codec_dyn_params->captureWidth =
+            priv->inbuf_desc.framePitch / 2;
+        break;
+      case GST_VIDEO_FORMAT_NV12:
+        cevidenc->codec_dyn_params->captureWidth = priv->inbuf_desc.framePitch;
+        break;
+      default:
+        cevidenc->codec_dyn_params->captureWidth = 0;
+    }
+    if (!gst_cevidenc_set_dynamic_params (cevidenc))
+      goto fail_set_buffer_stride;
+
+    if (!gst_cevidenc_get_buffer_info (cevidenc))
+      goto fail_set_buffer_stride;
+
+  }
   /* If there's no contiguous buffer metadata, it hasn't been
    * registered as contiguous, so we attempt to register it. If 
    * we can't, then this buffer is not contiguous and we fail. */
@@ -680,6 +675,11 @@ fail_map:
     GST_ERROR_OBJECT (encoder, "Failed to map input buffer");
     return GST_FLOW_ERROR;
   }
+fail_set_buffer_stride:
+  {
+    GST_ERROR_OBJECT (encoder, "Failed to set buffer stride");
+    return GST_FLOW_ERROR;
+  }
 fail_no_contiguous_buffer:
   {
     GST_ERROR_OBJECT (encoder, "Input buffer should be contiguous");
@@ -719,10 +719,7 @@ gst_cevidenc_set_property (GObject * object,
   GstCEVidEncClass *klass;
   VIDENC1_Params *params;
   VIDENC1_DynamicParams *dyn_params;
-  VIDENC1_Status enc_status;
   gboolean set_params = FALSE;
-
-  gint ret;
 
   /* Get a pointer of the right type. */
   cevidenc = (GstCEVidEnc *) (object);
@@ -789,15 +786,8 @@ gst_cevidenc_set_property (GObject * object,
       break;
   }
 
-  if (set_params && cevidenc->codec_handle) {
-    enc_status.size = sizeof (VIDENC1_Status);
-    enc_status.data.buf = NULL;
-    ret = VIDENC1_control (cevidenc->codec_handle, XDM_SETPARAMS,
-        dyn_params, &enc_status);
-    if (ret != VIDENC1_EOK)
-      GST_WARNING_OBJECT (cevidenc, "failed to set dynamic parameters, "
-          "status error %x, %d", (guint) enc_status.extendedError, ret);
-  }
+  if (set_params && cevidenc->codec_handle)
+    gst_cevidenc_set_dynamic_params (cevidenc);
 
   GST_OBJECT_UNLOCK (cevidenc);
   return;
@@ -978,6 +968,67 @@ gst_cevidenc_reset (GstVideoEncoder * encoder)
   return TRUE;
 }
 
+/* Set current dynamic parameters */
+static gboolean
+gst_cevidenc_set_dynamic_params (GstCEVidEnc * cevidenc)
+{
+  VIDENC1_Status enc_status;
+  gint ret;
+
+  g_return_val_if_fail (cevidenc->codec_handle, FALSE);
+  g_return_val_if_fail (cevidenc->codec_dyn_params, FALSE);
+
+  enc_status.size = sizeof (VIDENC1_Status);
+  enc_status.data.buf = NULL;
+
+  ret = VIDENC1_control (cevidenc->codec_handle, XDM_SETPARAMS,
+      cevidenc->codec_dyn_params, &enc_status);
+  if (ret != VIDENC1_EOK) {
+    GST_WARNING_OBJECT (cevidenc, "Failed to set dynamic parameters, "
+        "status error %x, %d", (unsigned int) enc_status.extendedError, ret);
+    return FALSE;
+  }
+
+  return TRUE;
+}
+
+/* Get buffer information from video codec */
+static gboolean
+gst_cevidenc_get_buffer_info (GstCEVidEnc * cevidenc)
+{
+  GstCEVidEncPrivate *priv = cevidenc->priv;
+  VIDENC1_Status enc_status;
+  gint i, ret;
+
+  g_return_val_if_fail (cevidenc->codec_handle, FALSE);
+  g_return_val_if_fail (cevidenc->codec_dyn_params, FALSE);
+
+  enc_status.size = sizeof (VIDENC1_Status);
+  enc_status.data.buf = NULL;
+
+  ret = VIDENC1_control (cevidenc->codec_handle, XDM_GETBUFINFO,
+      cevidenc->codec_dyn_params, &enc_status);
+  if (ret != VIDENC1_EOK) {
+    GST_ERROR_OBJECT (cevidenc, "failed to get buffer information, "
+        "status error %x, %d", (guint) enc_status.extendedError, ret);
+    return FALSE;
+  }
+
+  for (i = 0; i < enc_status.bufInfo.minNumInBufs; i++) {
+    priv->inbuf_desc.bufDesc[i].bufSize = enc_status.bufInfo.minInBufSize[i];
+    GST_DEBUG_OBJECT (cevidenc, "size of input buffer [%d] = %li", i,
+        priv->inbuf_desc.bufDesc[i].bufSize);
+  }
+
+  priv->outbuf_size = enc_status.bufInfo.minOutBufSize[0];
+  priv->outbuf_desc.numBufs = 1;
+  priv->outbuf_desc.bufSizes = (XDAS_Int32 *) & priv->outbuf_size;
+
+  GST_DEBUG_OBJECT (cevidenc, "output buffer size = %d", priv->outbuf_size);
+
+  return TRUE;
+}
+
 /**
  * gst_cevidenc_get_header:
  * @cevidenc: a #GstCEVidEnc
@@ -995,7 +1046,6 @@ gst_cevidenc_get_header (GstCEVidEnc * cevidenc, GstBuffer ** buffer,
     gint * header_size)
 {
   GstCEVidEncPrivate *priv = cevidenc->priv;
-  VIDENC1_Status enc_status;
   VIDENC1_InArgs in_args;
   VIDENC1_OutArgs out_args;
   GstBuffer *header_buf;
@@ -1003,28 +1053,22 @@ gst_cevidenc_get_header (GstCEVidEnc * cevidenc, GstBuffer ** buffer,
   gint ret;
 
   g_return_val_if_fail (GST_IS_CEVIDENC (cevidenc), FALSE);
+  g_return_val_if_fail (cevidenc->codec_handle, FALSE);
+  g_return_val_if_fail (cevidenc->codec_dyn_params, FALSE);
 
   GST_OBJECT_LOCK (cevidenc);
 
-  if ((!cevidenc->codec_handle) || (!cevidenc->codec_dyn_params))
-    return FALSE;
-
   GST_DEBUG_OBJECT (cevidenc, "get H.264 header");
 
-  enc_status.size = sizeof (VIDENC1_Status);
-  enc_status.data.buf = NULL;
-
   cevidenc->codec_dyn_params->generateHeader = XDM_GENERATE_HEADER;
-  ret = VIDENC1_control (cevidenc->codec_handle, XDM_SETPARAMS,
-      cevidenc->codec_dyn_params, &enc_status);
-  if (ret != VIDENC1_EOK)
-    goto fail_control_params;
+  if (!gst_cevidenc_set_dynamic_params (cevidenc))
+    goto fail_out;
 
   /*Allocate an output buffer for the header */
   header_buf = gst_buffer_new_allocate (priv->allocator, 200,
       &priv->alloc_params);
   if (!gst_buffer_map (header_buf, &info, GST_MAP_WRITE))
-    return FALSE;
+    goto fail_out;
 
   priv->outbuf_desc.bufs = (XDAS_Int8 **) & (info.data);
 
@@ -1045,10 +1089,8 @@ gst_cevidenc_get_header (GstCEVidEnc * cevidenc, GstBuffer ** buffer,
   gst_buffer_unmap (header_buf, &info);
 
   cevidenc->codec_dyn_params->generateHeader = XDM_ENCODE_AU;
-  ret = VIDENC1_control (cevidenc->codec_handle, XDM_SETPARAMS,
-      cevidenc->codec_dyn_params, &enc_status);
-  if (ret != VIDENC1_EOK)
-    goto fail_control_params;
+  if (!gst_cevidenc_set_dynamic_params (cevidenc))
+    goto fail_out;
 
   GST_OBJECT_UNLOCK (cevidenc);
 
@@ -1057,19 +1099,21 @@ gst_cevidenc_get_header (GstCEVidEnc * cevidenc, GstBuffer ** buffer,
 
   return TRUE;
 
-fail_control_params:
-  {
-    GST_OBJECT_UNLOCK (cevidenc);
-    GST_WARNING_OBJECT (cevidenc, "Failed to set dynamic parameters, "
-        "status error %x, %d", (unsigned int) enc_status.extendedError, ret);
-    return FALSE;
-  }
 fail_encode:
   {
+    gst_buffer_unmap (header_buf, &info);
     GST_OBJECT_UNLOCK (cevidenc);
     GST_WARNING_OBJECT (cevidenc,
         "Failed header encode process with extended error: 0x%x",
         (unsigned int) out_args.extendedError);
+    return FALSE;
+  }
+
+fail_out:
+  {
+    GST_OBJECT_UNLOCK (cevidenc);
+    if (header_buf)
+      buffer_unref (header_buf);
     return FALSE;
   }
 }
