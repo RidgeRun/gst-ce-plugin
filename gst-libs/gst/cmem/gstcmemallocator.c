@@ -49,7 +49,6 @@ typedef struct
   GstAllocatorClass parent_class;
 } GstCMemAllocatorClass;
 
-GType gst_cmem_allocator_get_type (void);
 G_DEFINE_TYPE (GstCMemAllocator, gst_cmem_allocator, GST_TYPE_ALLOCATOR);
 
 /* initialize the fields */
@@ -151,6 +150,8 @@ _cmem_copy (GstMemoryContig * mem, gssize offset, gsize size)
 
   g_return_val_if_fail (mem, NULL);
 
+  GST_LOG ("Copy CMEM buffer %p", mem->data);
+
   if (size == -1)
     size = mem->mem.size > offset ? mem->mem.size - offset : 0;
 
@@ -248,7 +249,8 @@ _cmem_alloc (GstAllocator * allocator, gsize size, GstAllocationParams * params)
   gsize maxsize = size + params->prefix + params->padding;
   gsize align;
 
-  GST_DEBUG ("alloc from CMEM allocator");
+  GST_DEBUG ("allocating CMEM buffer: size %d, prefix %d, padding %d",
+      size, params->prefix, params->padding);
 
   /*
    * GstAllocationParams have an alignment that is a bitmask
@@ -273,6 +275,7 @@ _cmem_free (GstAllocator * allocator, GstMemory * mem)
   GST_CAT_DEBUG (GST_CAT_MEMORY, "free memory %p", cmem);
 
   if (cmem->alloc_size) {
+    GST_DEBUG ("free memory %p", cmem->data);
     Memory_cacheWb (cmem->data, cmem->alloc_size);
     Memory_free (cmem->data, cmem->alloc_size, &cmem->alloc_params);
   }
@@ -323,4 +326,52 @@ gst_cmem_init (void)
     GST_ERROR ("failed to create gst_cmem_allocator object");
   gst_allocator_register (GST_ALLOCATOR_CMEM, _cmem_allocator);
   GST_DEBUG ("cmem memory allocator registered!");
+}
+
+/**
+ * gst_cmem_cache_inv:
+ * @data: pointer to the buffer data.
+ * @size: size of the memory region to invalite.
+ * 
+ * Do a cache invalidate of the block of @size pointed to by @data
+ */
+void
+gst_cmem_cache_inv (guint8 * data, gint size)
+{
+  g_return_if_fail (data);
+
+  if (size > 0)
+    Memory_cacheInv (data, size);
+}
+
+/**
+ * gst_cmem_cache_inv:
+ * @data: pointer to the buffer data.
+ * @size: size of the memory region to invalite.
+ * 
+ * Do a cache write back of the block of @size pointed to by @data
+ */
+void
+gst_cmem_cache_wb (guint8 * data, gint size)
+{
+  g_return_if_fail (data);
+
+  if (size > 0)
+    Memory_cacheWb (data, size);
+}
+
+/**
+ * gst_cmem_cache_inv:
+ * @data: pointer to the buffer data.
+ * @size: size of the memory region to invalite.
+ * 
+ * Write back and invalidate a region of cache 
+ */
+void
+gst_cmem_cache_wb_inv (guint8 * data, gint size)
+{
+  g_return_if_fail (data);
+
+  if (size > 0)
+    Memory_cacheWbInv (data, size);
 }
