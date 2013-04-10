@@ -288,8 +288,8 @@ get_slice (GstCESliceBufferPool * spool, gint * size)
   e = priv->slices;
   while (e) {
     slice = (memSlice *) e->data;
-    GST_WARNING ("evaluating free slice from %d to %d", slice->start,
-        slice->end);
+    GST_DEBUG_OBJECT (spool, "evaluating free slice from %d to %d",
+        slice->start, slice->end);
     if (slice->size >= *size) {
       /* We mark all the memory as buffer at this point
        * to avoid merges while we are using the area
@@ -312,7 +312,7 @@ get_slice (GstCESliceBufferPool * spool, gint * size)
   }
 
   if (slice->start != priv->memory_block_size) {
-    GST_WARNING_OBJECT (spool,
+    GST_DEBUG_OBJECT (spool,
         "free memory not found, using our best available free block of size %d...",
         max_slice_available->size);
 
@@ -381,8 +381,7 @@ ce_slice_buffer_pool_release_buffer (GstBufferPool * pool, GstBuffer * buffer)
   GList *e;
 
   /* keep it around in our queue */
-  GST_WARNING_OBJECT (spool, "released buffer %p, %d", buffer,
-      gst_buffer_n_memory (buffer));
+  GST_DEBUG_OBJECT (spool, "released buffer %p", buffer);
   GST_SLICE_POOL_LOCK (spool);
 
   if (!priv->data || !priv->slices) {
