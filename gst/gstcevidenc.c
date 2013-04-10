@@ -158,6 +158,7 @@ struct _GstCEVidEncPrivate
 
   GstVideoFormat video_format;
   GstVideoCodecState *input_state;
+  GstVideoCodecState *output_state;
 
   /* Handle to the CMEM allocator */
   GstAllocator *allocator;
@@ -178,6 +179,8 @@ static gboolean gst_cevidenc_stop (GstVideoEncoder * encoder);
 static gboolean gst_cevidenc_set_format (GstVideoEncoder * encoder,
     GstVideoCodecState * state);
 static gboolean gst_cevidenc_propose_allocation (GstVideoEncoder * encoder,
+    GstQuery * query);
+static gboolean gst_cevidenc_decide_allocation (GstVideoEncoder * encoder,
     GstQuery * query);
 static GstFlowReturn gst_cevidenc_handle_frame (GstVideoEncoder * encoder,
     GstVideoCodecFrame * frame);
@@ -251,6 +254,7 @@ gst_cevidenc_class_init (GstCEVidEncClass * klass)
   venc_class->handle_frame = gst_cevidenc_handle_frame;
   venc_class->set_format = gst_cevidenc_set_format;
   venc_class->propose_allocation = gst_cevidenc_propose_allocation;
+  venc_class->decide_allocation = gst_cevidenc_decide_allocation;
 
   gobject_class->finalize = gst_cevidenc_finalize;
 }
@@ -475,36 +479,18 @@ gst_cevidenc_set_format (GstVideoEncoder * encoder, GstVideoCodecState * state)
   priv->input_state = gst_video_codec_state_ref (state);
 
   /* Set output state */
-  output_format =
-      gst_video_encoder_set_output_state (encoder, allowed_caps, state);
+  if (priv->output_state)
+    gst_video_codec_state_unref (priv->output_state);
 
-  if (!output_format) {
+  priv->output_state =
+      gst_video_encoder_set_output_state (encoder, allowed_caps, state);
+  if (!priv->output_state) {
     goto fail_set_caps;
   }
 
   if (codec_data) {
     GST_DEBUG_OBJECT (cevidenc, "setting the codec data");
-    output_format->codec_data = codec_data;
-  }
-  gst_video_codec_state_unref (output_format);
-
-  if (priv->outbuf_pool) {
-    GstStructure *config;
-    GstCaps *caps;
-
-    if (priv->input_state)
-      caps = priv->input_state->caps;
-
-    config = gst_buffer_pool_get_config (priv->outbuf_pool);
-    gst_buffer_pool_config_set_params (config, caps, priv->outbuf_size, 1, 3);
-    priv->alloc_params.align = 31;
-    gst_buffer_pool_config_set_allocator (config, priv->allocator,
-        &priv->alloc_params);
-    gst_buffer_pool_set_config (GST_BUFFER_POOL_CAST (priv->outbuf_pool),
-        config);
-
-    gst_buffer_pool_set_active (GST_BUFFER_POOL_CAST (priv->outbuf_pool), TRUE);
-    GST_DEBUG_OBJECT (cevidenc, "Caps %s", gst_caps_to_string (caps));
+    priv->output_state->codec_data = codec_data;
   }
 
   return TRUE;
@@ -538,7 +524,56 @@ gst_cevidenc_propose_allocation (GstVideoEncoder * encoder, GstQuery * query)
       query);
 }
 
-/**
+static gboolean
+gst_cevidenc_decide_allocation (GstVideoEncoder * encoder, GstQuery * query)
+{
+  GstCEVidEnc *cevidenc = (GstCEVidEnc *) encoder;
+  GstCEVidEncPrivate *priv = cevidenc->priv;
+  GstAllocator *allocator = NULL;
+  GstAllocationParams params;
+  GstBufferPool *pool = NULL;
+  GstStructure *config;
+  GstCaps *caps;
+
+  GST_LOG_OBJECT (cevidenc, "decide allocation");
+  if (!GST_VIDEO_ENCODER_CLASS (parent_class)->decide_allocation (encoder,
+          query))
+    return FALSE;
+
+  /* use our own pool */
+  pool = priv->outbuf_pool;
+  if (!pool)
+    return FALSE;
+
+  /* we got configuration from our peer or the decide_allocation method,
+   * parse them */
+  if (gst_query_get_n_allocation_params (query) > 0)
+    gst_query_parse_nth_allocation_param (query, 0, &allocator, &params);
+  else
+    gst_allocation_params_init (&params);
+
+  if (params.align < 31)
+    params.align = 31;
+
+  GST_DEBUG_OBJECT (cevidenc, "allocation params %d, %d %d, %d", params.flags,
+      params.align, params.padding, params.prefix);
+  priv->alloc_params = params;
+
+  if (priv->output_state)
+    caps = priv->output_state->caps;
+
+  GST_DEBUG_OBJECT (cevidenc, "configuring output pool");
+  config = gst_buffer_pool_get_config (pool);
+  gst_buffer_pool_config_set_params (config, caps, priv->outbuf_size, 1, 3);
+  gst_buffer_pool_config_set_allocator (config, priv->allocator,
+      &priv->alloc_params);
+  gst_buffer_pool_set_config (GST_BUFFER_POOL_CAST (pool), config);
+  gst_buffer_pool_set_active (GST_BUFFER_POOL_CAST (pool), TRUE);
+
+  return TRUE;
+}
+
+/*
  * gst_cevidenc_allocate_output_frame
  * 
  * Allocates a CMEM output buffer
@@ -611,8 +646,12 @@ gst_cevidenc_handle_frame (GstVideoEncoder * encoder,
 
     if (!gst_cevidenc_get_buffer_info (cevidenc))
       goto fail_set_buffer_stride;
-
   }
+
+  /* Making sure the output buffer pool is configured */
+  if (priv->first_buffer && gst_pad_check_reconfigure (encoder->srcpad))
+    gst_video_encoder_negotiate (GST_VIDEO_ENCODER (encoder));
+
   /* If there's no contiguous buffer metadata, it hasn't been
    * registered as contiguous, so we attempt to register it. If 
    * we can't, then this buffer is not contiguous and we fail. */
@@ -966,6 +1005,11 @@ gst_cevidenc_reset (GstVideoEncoder * encoder)
   if (priv->input_state) {
     gst_video_codec_state_unref (priv->input_state);
     priv->input_state = NULL;
+  }
+
+  if (priv->output_state) {
+    gst_video_codec_state_unref (priv->output_state);
+    priv->output_state = NULL;
   }
 
   if (cevidenc->codec_handle) {
