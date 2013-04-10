@@ -67,7 +67,7 @@ enum
   PROP_TARGETBITRATE,
   PROP_INTRAFRAMEINTERVAL,
   PROP_FORCE_FRAME,
-  PROP_CODEC_BASE
+  PROP_NUM_OUT_BUFFERS
 };
 
 #define PROP_ENCODINGPRESET_DEFAULT       XDM_HIGH_SPEED
@@ -75,6 +75,7 @@ enum
 #define PROP_TARGETBITRATE_DEFAULT        6000000
 #define PROP_INTRAFRAMEINTERVAL_DEFAULT   30
 #define PROP_FORCE_FRAME_DEFAULT          IVIDEO_NA_FRAME
+#define PROP_NUM_OUT_BUFFERS_DEFAULT      3
 
 #define GST_CE_VIDENC_RATE_TYPE (gst_cevidenc_rate_get_type())
 static GType
@@ -154,6 +155,7 @@ struct _GstCEVidEncPrivate
   gint bpp;
 
   gint32 outbuf_size;
+  gint num_out_buffers;
   GstBufferPool *outbuf_pool;
 
   GstVideoFormat video_format;
@@ -247,6 +249,12 @@ gst_cevidenc_class_init (GstCEVidEncClass * klass)
           "Force next frame to be encoded as a specific type",
           GST_CE_VIDENC_FORCE_FRAME_TYPE, PROP_FORCE_FRAME_DEFAULT,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property (gobject_class, PROP_NUM_OUT_BUFFERS,
+      g_param_spec_int ("num-out-buffers",
+          "Number of output buffers",
+          "Number of buffers to be used in the output buffer pool",
+          3, G_MAXINT32, PROP_NUM_OUT_BUFFERS_DEFAULT, G_PARAM_READWRITE));
 
   venc_class->open = gst_cevidenc_open;
   venc_class->close = gst_cevidenc_close;
@@ -564,7 +572,8 @@ gst_cevidenc_decide_allocation (GstVideoEncoder * encoder, GstQuery * query)
 
   GST_DEBUG_OBJECT (cevidenc, "configuring output pool");
   config = gst_buffer_pool_get_config (pool);
-  gst_buffer_pool_config_set_params (config, caps, priv->outbuf_size, 1, 3);
+  gst_buffer_pool_config_set_params (config, caps, priv->outbuf_size, 1,
+      priv->num_out_buffers);
   gst_buffer_pool_config_set_allocator (config, priv->allocator,
       &priv->alloc_params);
   gst_buffer_pool_set_config (GST_BUFFER_POOL_CAST (pool), config);
@@ -843,6 +852,11 @@ gst_cevidenc_set_property (GObject * object,
       GST_LOG_OBJECT (cevidenc, "forcing frame to %li", dyn_params->forceFrame);
       set_params = TRUE;
       break;
+    case PROP_NUM_OUT_BUFFERS:
+      cevidenc->priv->num_out_buffers = g_value_get_int (value);
+      GST_LOG_OBJECT (cevidenc,
+          "setting number of output buffers to %li",
+          cevidenc->priv->num_out_buffers);
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
@@ -901,6 +915,9 @@ gst_cevidenc_get_property (GObject * object,
       break;
     case PROP_FORCE_FRAME:
       g_value_set_enum (value, dyn_params->forceFrame);
+      break;
+    case PROP_NUM_OUT_BUFFERS:
+      g_value_set_int (value, cevidenc->priv->num_out_buffers);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -1018,6 +1035,8 @@ gst_cevidenc_reset (GstVideoEncoder * encoder)
   }
 
   GST_OBJECT_LOCK (cevidenc);
+
+  priv->num_out_buffers = PROP_NUM_OUT_BUFFERS;
 
   /* Set default values for codec static params */
   params->encodingPreset = PROP_ENCODINGPRESET_DEFAULT;
