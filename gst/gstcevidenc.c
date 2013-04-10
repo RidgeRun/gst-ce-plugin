@@ -49,7 +49,7 @@
 
 #include "gstce.h"
 #include "gstcevidenc.h"
-
+#include "gstceslicepool.h"
 #include <ti/sdo/ce/osal/Memory.h>
 
 enum
@@ -154,6 +154,8 @@ struct _GstCEVidEncPrivate
   gint bpp;
 
   gint32 outbuf_size;
+  GstBufferPool *outbuf_pool;
+
   GstVideoFormat video_format;
   GstVideoCodecState *input_state;
 
@@ -486,6 +488,25 @@ gst_cevidenc_set_format (GstVideoEncoder * encoder, GstVideoCodecState * state)
   }
   gst_video_codec_state_unref (output_format);
 
+  if (priv->outbuf_pool) {
+    GstStructure *config;
+    GstCaps *caps;
+
+    if (priv->input_state)
+      caps = priv->input_state->caps;
+
+    config = gst_buffer_pool_get_config (priv->outbuf_pool);
+    gst_buffer_pool_config_set_params (config, caps, priv->outbuf_size, 1, 3);
+    priv->alloc_params.align = 31;
+    gst_buffer_pool_config_set_allocator (config, priv->allocator,
+        &priv->alloc_params);
+    gst_buffer_pool_set_config (GST_BUFFER_POOL_CAST (priv->outbuf_pool),
+        config);
+
+    gst_buffer_pool_set_active (GST_BUFFER_POOL_CAST (priv->outbuf_pool), TRUE);
+    GST_DEBUG_OBJECT (cevidenc, "Caps %s", gst_caps_to_string (caps));
+  }
+
   return TRUE;
 
 fail_set_caps:
@@ -614,7 +635,8 @@ gst_cevidenc_handle_frame (GstVideoEncoder * encoder,
   }
 
   /* Allocate output buffer */
-  if (!gst_cevidenc_allocate_output_frame (cevidenc, &outbuf))
+  if (gst_buffer_pool_acquire_buffer (GST_BUFFER_POOL_CAST (priv->outbuf_pool),
+          &outbuf, NULL) != GST_FLOW_OK)
     goto fail_alloc;
 
   if (!gst_buffer_map (outbuf, &info_out, GST_MAP_WRITE))
@@ -640,12 +662,14 @@ gst_cevidenc_handle_frame (GstVideoEncoder * encoder,
   if (ret != VIDENC1_EOK)
     goto fail_encode;
 
-  GST_DEBUG_OBJECT (cevidenc, "encoded an output buffer of size %li at addr %p",
+  GST_DEBUG_OBJECT (cevidenc,
+      "encoded an output buffer %p of size %li at addr %p", outbuf,
       out_args.bytesGenerated, *priv->outbuf_desc.bufs);
 
   gst_buffer_unmap (outbuf, &info_out);
 
-  gst_buffer_set_size (outbuf, out_args.bytesGenerated);
+  gst_ce_slice_buffer_resize (GST_BUFFER_POOL_CAST (priv->outbuf_pool), outbuf,
+      out_args.bytesGenerated);
 
   /* Post-encode process */
   if (klass->post_process && !klass->post_process (cevidenc, outbuf))
@@ -655,7 +679,6 @@ gst_cevidenc_handle_frame (GstVideoEncoder * encoder,
     priv->first_buffer = FALSE;
 
   GST_DEBUG_OBJECT (cevidenc, "frame encoded succesfully");
-
   /* Get oldest frame */
   gst_video_codec_frame_unref (frame);
   frame = gst_video_encoder_get_oldest_frame (encoder);
@@ -868,6 +891,11 @@ gst_cevidenc_open (GstVideoEncoder * encoder)
   if (!priv->allocator)
     goto fail_no_allocator;
 
+  GST_DEBUG_OBJECT (cevidenc, "creating slice buffer pool");
+
+  if (!(priv->outbuf_pool = gst_ce_slice_buffer_pool_new ()))
+    goto fail_pool;
+
   return TRUE;
 
   /* Errors */
@@ -882,7 +910,11 @@ fail_no_allocator:
     GST_WARNING_OBJECT (cevidenc, "can't find the CMEM allocator");
     return FALSE;
   }
-
+fail_pool:
+  {
+    GST_WARNING_OBJECT (cevidenc, "can't create slice buffer pool");
+    return FALSE;
+  }
   return TRUE;
 }
 
@@ -902,6 +934,11 @@ gst_cevidenc_close (GstVideoEncoder * encoder)
   if (priv->allocator) {
     gst_object_unref (priv->allocator);
     priv->allocator = NULL;
+  }
+
+  if (priv->outbuf_pool) {
+    gst_object_unref (priv->outbuf_pool);
+    priv->outbuf_pool = NULL;
   }
 
   return TRUE;
@@ -1113,7 +1150,7 @@ fail_out:
   {
     GST_OBJECT_UNLOCK (cevidenc);
     if (header_buf)
-      buffer_unref (header_buf);
+      gst_buffer_unref (header_buf);
     return FALSE;
   }
 }
