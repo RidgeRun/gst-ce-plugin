@@ -26,7 +26,6 @@
 #include <xdc/std.h>
 #include <ti/sdo/ce/Engine.h>
 #include <ti/sdo/ce/image1/imgenc1.h>
-#include <ti/sdo/ce/video1/videnc1.h>
 
 #include "gstceutils.h"
 

@@ -31,7 +31,7 @@ GST_STATIC_PAD_TEMPLATE ("sink",
     GST_PAD_SINK,
     GST_PAD_ALWAYS,
     GST_STATIC_CAPS ("video/x-raw, "
-        "   format = (string){NV12,UYVY},"
+        "   format = (string) NV12,"
         "   framerate=(fraction)[ 0, 120], "
         "   width=(int)[ 128, 4080 ], " "   height=(int)[ 96, 4096 ]")
     );
@@ -101,7 +101,7 @@ gst_ce_jpegenc_class_init (GstCEJPEGEncClass * klass)
   GObjectClass *gobject_class;
   GstElementClass *element_class;
   GstCEImgEncClass *ceimgenc_class;
-
+  g_print ("Class init jpeg");
   gobject_class = (GObjectClass *) klass;
   element_class = (GstElementClass *) klass;
   ceimgenc_class = (GstCEImgEncClass *) klass;
@@ -146,18 +146,18 @@ gst_ce_jpegenc_init (GstCEJPEGEnc * jpegenc)
   GstCEImgEnc *ceimgenc = (GstCEImgEnc *) (jpegenc);
   IJPEGENC_Params *jpeg_params = NULL;
   IJPEGENC_DynamicParams *jpeg_dyn_params = NULL;
-
+  g_print ("Init jpeg");
   GST_DEBUG ("setup JPEG parameters");
   /* Alloc the params and set a default value */
   jpeg_params = g_malloc0 (sizeof (IJPEGENC_Params));
   if (!jpeg_params)
     goto fail_alloc;
-  *jpeg_params = IJPEGENC_PARAMS;
+  //*jpeg_params = IJPEGENC_PARAMS;
 
   jpeg_dyn_params = g_malloc0 (sizeof (IJPEGENC_DynamicParams));
   if (!jpeg_dyn_params)
     goto fail_alloc;
-  *jpeg_dyn_params = IJPEGENC_DYNAMICPARAMS;
+  //*jpeg_dyn_params = IJPEGENC_DYNAMICPARAMS;
 
   if (ceimgenc->codec_params) {
     GST_DEBUG ("codec params not NULL, copy and free them");
@@ -198,7 +198,7 @@ gst_ce_jpegenc_reset (GstCEImgEnc * ceimgenc)
   GstCEJPEGEnc *jpegenc = (GstCEJPEGEnc *) (ceimgenc);
   IJPEGENC_Params *jpeg_params;
   IJPEGENC_DynamicParams *jpeg_dyn_params;
-
+  g_print ("Reset jpeg");
   GST_DEBUG ("JPEG reset");
 
   if ((ceimgenc->codec_params->size != sizeof (IJPEGENC_Params)) ||
@@ -231,7 +231,7 @@ gst_ce_jpegenc_set_property (GObject * object, guint prop_id,
   IMGENC1_Status enc_status;
   gboolean set_params = FALSE;
   guint ret;
-
+  g_print ("Set property jpeg");
   // params = (IJPEGENC_Params *) ceimgenc->codec_params;
   dyn_params = (IJPEGENC_DynamicParams *) ceimgenc->codec_dyn_params;
 
@@ -276,7 +276,7 @@ gst_ce_jpegenc_get_property (GObject * object, guint prop_id,
   GstCEImgEnc *ceimgenc = (GstCEImgEnc *) (object);
   // IJPEGENC_Params *params;
   IJPEGENC_DynamicParams *dyn_params;
-
+  g_print ("Get property jpeg");
   // params = (IJPEGENC_Params *) ceimgenc->codec_params;
   dyn_params = (IJPEGENC_DynamicParams *) ceimgenc->codec_dyn_params;
 
