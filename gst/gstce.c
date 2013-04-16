@@ -48,8 +48,7 @@ plugin_init (GstPlugin * plugin)
   GType element_type;
   gint num_elements, i;
 
-  GST_DEBUG_CATEGORY_INIT (ce_debug, "ce", 0,
-      "TI plugin for CodecEngine debugging");
+  GST_DEBUG_CATEGORY_INIT (ce_debug, "ce", 0, "TI plugin for CodecEngine");
 
   /* Initialize CMEM allocator
    * Inside this function the Codec Engine is initialized*/

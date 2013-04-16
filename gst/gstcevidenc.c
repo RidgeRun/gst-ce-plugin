@@ -3,8 +3,6 @@
  *
  * Copyright (C) 2013 RidgeRun, LLC (http://www.ridgerun.com)
  *
- * Based on gst-libav plugin
- * 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
  * by the Free Software Foundation, either version 3 of the License, or
@@ -54,32 +52,27 @@
 
 enum
 {
-  /* FILL ME */
-  LAST_SIGNAL
-};
-
-enum
-{
   PROP_0,
-  PROP_RATECONTROL,
-  PROP_ENCODINGPRESET,
-  PROP_MAXBITRATE,
-  PROP_TARGETBITRATE,
-  PROP_INTRAFRAMEINTERVAL,
+  PROP_RATE_CONTROL,
+  PROP_ENCODING_PRESET,
+  PROP_MAX_BITRATE,
+  PROP_TARGET_BITRATE,
+  PROP_INTRA_FRAME_INTERVAL,
   PROP_FORCE_FRAME,
   PROP_NUM_OUT_BUFFERS
 };
 
-#define PROP_ENCODINGPRESET_DEFAULT       XDM_HIGH_SPEED
-#define PROP_MAXBITRATE_DEFAULT           6000000
-#define PROP_TARGETBITRATE_DEFAULT        6000000
-#define PROP_INTRAFRAMEINTERVAL_DEFAULT   30
+#define PROP_ENCODING_PRESET_DEFAULT      XDM_HIGH_SPEED
+#define PROP_RATE_CONTROL_DEFAULT         IVIDEO_RATECONTROLPRESET_DEFAULT
+#define PROP_MAX_BITRATE_DEFAULT          6000000
+#define PROP_TARGET_BITRATE_DEFAULT       6000000
+#define PROP_INTRA_FRAME_INTERVAL_DEFAULT 30
 #define PROP_FORCE_FRAME_DEFAULT          IVIDEO_NA_FRAME
 #define PROP_NUM_OUT_BUFFERS_DEFAULT      3
 
-#define GST_CE_VIDENC_RATE_TYPE (gst_cevidenc_rate_get_type())
+#define GST_CE_VIDENC_RATE_CONTROL_TYPE (gst_cevidenc_rate_control_get_type())
 static GType
-gst_cevidenc_rate_get_type (void)
+gst_cevidenc_rate_control_get_type (void)
 {
   static GType rate_type = 0;
 
@@ -89,7 +82,8 @@ gst_cevidenc_rate_get_type (void)
     {IVIDEO_TWOPASS, "Two pass rate, for non real-time applications",
         "Two Pass"},
     {IVIDEO_NONE, "No Rate Control is used", "None"},
-    {IVIDEO_USER_DEFINED, "User defined on extended parameters", "User"},
+    {IVIDEO_USER_DEFINED, "User defined on algorithm specific properties",
+        "User"},
     {0, NULL, NULL}
   };
 
@@ -99,7 +93,7 @@ gst_cevidenc_rate_get_type (void)
   return rate_type;
 }
 
-#define GST_CE_VIDENC_PRESET_TYPE (gst_cevidenc_preset_get_type())
+#define GST_CE_VIDENC_ENCODING_PRESET_TYPE (gst_cevidenc_preset_get_type())
 static GType
 gst_cevidenc_preset_get_type (void)
 {
@@ -108,7 +102,7 @@ gst_cevidenc_preset_get_type (void)
   static const GEnumValue preset_types[] = {
     {XDM_HIGH_QUALITY, "High quality", "quality"},
     {XDM_HIGH_SPEED, "High speed, for storage", "speed"},
-    {XDM_USER_DEFINED, "User defined on extended parameters", "user"},
+    {XDM_USER_DEFINED, "User defined on algorithm specific properties", "user"},
     {0, NULL, NULL}
   };
 
@@ -173,8 +167,6 @@ struct _GstCEVidEncPrivate
 };
 
 /* A number of function prototypes are given so we can refer to them later. */
-static void gst_cevidenc_finalize (GObject * object);
-
 static gboolean gst_cevidenc_open (GstVideoEncoder * encoder);
 static gboolean gst_cevidenc_close (GstVideoEncoder * encoder);
 static gboolean gst_cevidenc_stop (GstVideoEncoder * encoder);
@@ -191,6 +183,7 @@ static void gst_cevidenc_set_property (GObject * object,
     guint prop_id, const GValue * value, GParamSpec * pspec);
 static void gst_cevidenc_get_property (GObject * object,
     guint prop_id, GValue * value, GParamSpec * pspec);
+static void gst_cevidenc_finalize (GObject * object);
 
 static gboolean gst_cevidenc_reset (GstVideoEncoder * encoder);
 static gboolean gst_cevidenc_set_dynamic_params (GstCEVidEnc * cevidenc);
@@ -205,43 +198,48 @@ gst_cevidenc_class_init (GstCEVidEncClass * klass)
   GObjectClass *gobject_class;
   GstVideoEncoderClass *venc_class;
 
-  gobject_class = (GObjectClass *) klass;
-  venc_class = (GstVideoEncoderClass *) klass;
+  gobject_class = G_OBJECT_CLASS (klass);
+  venc_class = GST_VIDEO_ENCODER_CLASS (klass);
 
   g_type_class_add_private (klass, sizeof (GstCEVidEncPrivate));
 
+  /* 
+   * Not using GST_DEBUG_FUNCPTR with GObject
+   * virtual functions because no one will use them
+   */
   gobject_class->set_property = gst_cevidenc_set_property;
   gobject_class->get_property = gst_cevidenc_get_property;
+  gobject_class->finalize = gst_cevidenc_finalize;
 
-  g_object_class_install_property (gobject_class, PROP_RATECONTROL,
+  g_object_class_install_property (gobject_class, PROP_RATE_CONTROL,
       g_param_spec_enum ("rate-control", "Encoding rate control",
-          "Encoding rate control", GST_CE_VIDENC_RATE_TYPE,
-          IVIDEO_RATECONTROLPRESET_DEFAULT,
+          "Encoding rate control", GST_CE_VIDENC_RATE_CONTROL_TYPE,
+          PROP_RATE_CONTROL_DEFAULT,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
-  g_object_class_install_property (gobject_class, PROP_ENCODINGPRESET,
+  g_object_class_install_property (gobject_class, PROP_ENCODING_PRESET,
       g_param_spec_enum ("encoding-preset", "Encoding preset",
-          "Encoding preset", GST_CE_VIDENC_PRESET_TYPE,
-          PROP_ENCODINGPRESET_DEFAULT,
+          "Encoding preset", GST_CE_VIDENC_ENCODING_PRESET_TYPE,
+          PROP_ENCODING_PRESET_DEFAULT,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
-  g_object_class_install_property (gobject_class, PROP_MAXBITRATE,
+  g_object_class_install_property (gobject_class, PROP_MAX_BITRATE,
       g_param_spec_int ("max-bitrate",
           "Maximum bit rate",
-          "Maximum bit-rate to be supported in bits per second",
-          1000, 50000000, PROP_MAXBITRATE_DEFAULT, G_PARAM_READWRITE));
+          "Maximum bit rate to be supported in bits per second",
+          1000, 50000000, PROP_MAX_BITRATE_DEFAULT, G_PARAM_READWRITE));
 
-  g_object_class_install_property (gobject_class, PROP_TARGETBITRATE,
+  g_object_class_install_property (gobject_class, PROP_TARGET_BITRATE,
       g_param_spec_int ("target-bitrate",
           "Target bit rate",
-          "Target bit-rate in bits per second, should be <= than the maxbitrate",
-          1000, 20000000, PROP_TARGETBITRATE_DEFAULT, G_PARAM_READWRITE));
+          "Target bit rate in bits per second, should be <= than the maxbitrate",
+          1000, 20000000, PROP_TARGET_BITRATE_DEFAULT, G_PARAM_READWRITE));
 
-  g_object_class_install_property (gobject_class, PROP_INTRAFRAMEINTERVAL,
+  g_object_class_install_property (gobject_class, PROP_INTRA_FRAME_INTERVAL,
       g_param_spec_int ("intraframe-interval",
           "Intra frame interval",
           "Interval between two consecutive intra frames",
-          0, G_MAXINT32, PROP_INTRAFRAMEINTERVAL_DEFAULT, G_PARAM_READWRITE));
+          0, G_MAXINT32, PROP_INTRA_FRAME_INTERVAL_DEFAULT, G_PARAM_READWRITE));
 
   g_object_class_install_property (gobject_class, PROP_FORCE_FRAME,
       g_param_spec_enum ("force-frame",
@@ -256,13 +254,15 @@ gst_cevidenc_class_init (GstCEVidEncClass * klass)
           "Number of buffers to be used in the output buffer pool",
           3, G_MAXINT32, PROP_NUM_OUT_BUFFERS_DEFAULT, G_PARAM_READWRITE));
 
-  venc_class->open = gst_cevidenc_open;
-  venc_class->close = gst_cevidenc_close;
-  venc_class->stop = gst_cevidenc_stop;
-  venc_class->handle_frame = gst_cevidenc_handle_frame;
-  venc_class->set_format = gst_cevidenc_set_format;
-  venc_class->propose_allocation = gst_cevidenc_propose_allocation;
-  venc_class->decide_allocation = gst_cevidenc_decide_allocation;
+  venc_class->open = GST_DEBUG_FUNCPTR (gst_cevidenc_open);
+  venc_class->close = GST_DEBUG_FUNCPTR (gst_cevidenc_close);
+  venc_class->stop = GST_DEBUG_FUNCPTR (gst_cevidenc_stop);
+  venc_class->handle_frame = GST_DEBUG_FUNCPTR (gst_cevidenc_handle_frame);
+  venc_class->set_format = GST_DEBUG_FUNCPTR (gst_cevidenc_set_format);
+  venc_class->propose_allocation =
+      GST_DEBUG_FUNCPTR (gst_cevidenc_propose_allocation);
+  venc_class->decide_allocation =
+      GST_DEBUG_FUNCPTR (gst_cevidenc_decide_allocation);
 
   gobject_class->finalize = gst_cevidenc_finalize;
 }
@@ -281,7 +281,9 @@ gst_cevidenc_init (GstCEVidEnc * cevidenc)
     GST_DEBUG_OBJECT (cevidenc, "allocating codec params");
     cevidenc->codec_params = g_malloc0 (sizeof (VIDENC1_Params));
     if (!cevidenc->codec_params) {
-      GST_WARNING_OBJECT (cevidenc, "failed to allocate VIDENC1_Params");
+      GST_ELEMENT_ERROR (cevidenc, RESOURCE, NO_SPACE_LEFT,
+          (("failed to allocate VIDENC1_Params")), (NULL));
+
       return;
     }
     cevidenc->codec_params->size = sizeof (VIDENC1_Params);
@@ -291,7 +293,8 @@ gst_cevidenc_init (GstCEVidEnc * cevidenc)
     GST_DEBUG_OBJECT (cevidenc, "allocating codec dynamic params");
     cevidenc->codec_dyn_params = g_malloc0 (sizeof (VIDENC1_DynamicParams));
     if (!cevidenc->codec_dyn_params) {
-      GST_WARNING_OBJECT (cevidenc, "failed to allocate VIDENC1_DynamicParams");
+      GST_ELEMENT_ERROR (cevidenc, RESOURCE, NO_SPACE_LEFT,
+          (("failed to allocate VIDENC1_DynamicParams")), (NULL));
       return;
     }
     cevidenc->codec_dyn_params->size = sizeof (VIDENC1_DynamicParams);
@@ -307,9 +310,9 @@ gst_cevidenc_init (GstCEVidEnc * cevidenc)
 static void
 gst_cevidenc_finalize (GObject * object)
 {
-  GstCEVidEnc *cevidenc = (GstCEVidEnc *) (object);
+  GstCEVidEnc *cevidenc = GST_CEVIDENC (object);
 
-  /* Allocate the codec params */
+  /* Free the allocated resources */
   if (cevidenc->codec_params) {
     g_free (cevidenc->codec_params);
     cevidenc->codec_params = NULL;
@@ -337,7 +340,7 @@ gst_cevidenc_configure_codec (GstCEVidEnc * cevidenc)
   VIDENC1_DynamicParams *dyn_params;
   gint fps;
 
-  klass = (GstCEVidEncClass *) G_OBJECT_GET_CLASS (cevidenc);
+  klass = GST_CEVIDENC_CLASS (G_OBJECT_GET_CLASS (cevidenc));
   priv = cevidenc->priv;
   params = cevidenc->codec_params;
   dyn_params = cevidenc->codec_dyn_params;
@@ -345,6 +348,8 @@ gst_cevidenc_configure_codec (GstCEVidEnc * cevidenc)
   g_return_val_if_fail (params, FALSE);
   g_return_val_if_fail (dyn_params, FALSE);
   g_return_val_if_fail (klass->codec_name, FALSE);
+
+  GST_OBJECT_LOCK (cevidenc);
 
   /* Set the caps on the parameters of the encoder */
   switch (priv->video_format) {
@@ -365,8 +370,6 @@ gst_cevidenc_configure_codec (GstCEVidEnc * cevidenc)
 
   fps = (priv->fps_num * 1000) / priv->fps_den;
 
-  GST_OBJECT_LOCK (cevidenc);
-
   params->maxWidth = priv->inbuf_desc.frameWidth;
   params->maxHeight = priv->inbuf_desc.frameHeight;
   params->maxFrameRate = fps;
@@ -376,6 +379,7 @@ gst_cevidenc_configure_codec (GstCEVidEnc * cevidenc)
   dyn_params->refFrameRate = dyn_params->targetFrameRate = fps;
 
   if (cevidenc->codec_handle) {
+    /* TODO: test this use case to verify its properly handled */
     GST_DEBUG_OBJECT (cevidenc, "Closing old codec session");
     VIDENC1_delete (cevidenc->codec_handle);
   }
@@ -423,8 +427,8 @@ gst_cevidenc_set_format (GstVideoEncoder * encoder, GstVideoCodecState * state)
   GstBuffer *codec_data = NULL;
   gint i, bpp = 0;
 
-  GstCEVidEnc *cevidenc = (GstCEVidEnc *) encoder;
-  GstCEVidEncClass *klass = (GstCEVidEncClass *) G_OBJECT_GET_CLASS (cevidenc);
+  GstCEVidEnc *cevidenc = GST_CEVIDENC (encoder);
+  GstCEVidEncClass *klass = GST_CEVIDENC_CLASS (G_OBJECT_GET_CLASS (cevidenc));
   GstCEVidEncPrivate *priv = cevidenc->priv;
 
   GST_DEBUG_OBJECT (cevidenc, "extracting common video information");
@@ -460,8 +464,6 @@ gst_cevidenc_set_format (GstVideoEncoder * encoder, GstVideoCodecState * state)
   allowed_caps = gst_pad_get_allowed_caps (GST_VIDEO_ENCODER_SRC_PAD (encoder));
   if (!allowed_caps) {
     GST_DEBUG_OBJECT (cevidenc, "... but no peer, using template caps");
-    /* we need to copy because get_allowed_caps returns a ref, and
-     * get_pad_template_caps doesn't */
     allowed_caps =
         gst_pad_get_pad_template_caps (GST_VIDEO_ENCODER_SRC_PAD (encoder));
   }
@@ -473,13 +475,8 @@ gst_cevidenc_set_format (GstVideoEncoder * encoder, GstVideoCodecState * state)
       goto fail_set_caps;
   }
 
-  if (gst_caps_get_size (allowed_caps) > 1) {
-    GstCaps *newcaps;
-
-    newcaps = gst_caps_copy_nth (allowed_caps, 0);
-    gst_caps_unref (allowed_caps);
-    allowed_caps = newcaps;
-  }
+  /* Truncate to the first structure and fixate any unfixed fields */
+  allowed_caps = gst_caps_fixate (allowed_caps);
 
   /* Store input state and set output state */
   if (priv->input_state)
@@ -511,7 +508,7 @@ fail_set_caps:
 static gboolean
 gst_cevidenc_propose_allocation (GstVideoEncoder * encoder, GstQuery * query)
 {
-  GstCEVidEnc *cevidenc = (GstCEVidEnc *) encoder;
+  GstCEVidEnc *cevidenc = GST_CEVIDENC (encoder);
   GstCEVidEncPrivate *priv = cevidenc->priv;
   GstAllocationParams params;
 
@@ -611,9 +608,9 @@ static GstFlowReturn
 gst_cevidenc_handle_frame (GstVideoEncoder * encoder,
     GstVideoCodecFrame * frame)
 {
-  GstCEVidEnc *cevidenc = (GstCEVidEnc *) encoder;
+  GstCEVidEnc *cevidenc = GST_CEVIDENC (encoder);
   GstCEVidEncPrivate *priv = cevidenc->priv;
-  GstCEVidEncClass *klass = (GstCEVidEncClass *) G_OBJECT_GET_CLASS (cevidenc);
+  GstCEVidEncClass *klass = GST_CEVIDENC_CLASS (G_OBJECT_GET_CLASS (cevidenc));
   GstVideoInfo *info = &priv->input_state->info;
   GstVideoFrame vframe;
   GstMapInfo info_out;
@@ -690,7 +687,7 @@ gst_cevidenc_handle_frame (GstVideoEncoder * encoder,
   if (!gst_buffer_map (outbuf, &info_out, GST_MAP_WRITE))
     goto fail_map;
 
-  priv->outbuf_desc.bufs = (XDAS_Int8 **) & (info_out.data);
+  priv->outbuf_desc.bufs = (XDAS_Int8 **) & (info_out.data);;
 
   /* Set output and input arguments for the encoding process */
   in_args.size = sizeof (IVIDENC1_InArgs);
@@ -722,9 +719,6 @@ gst_cevidenc_handle_frame (GstVideoEncoder * encoder,
   /* Post-encode process */
   if (klass->post_process && !klass->post_process (cevidenc, outbuf))
     goto fail_post_encode;
-
-  if (priv->first_buffer)
-    priv->first_buffer = FALSE;
 
   GST_DEBUG_OBJECT (cevidenc, "frame encoded succesfully");
   /* Get oldest frame */
@@ -793,11 +787,12 @@ gst_cevidenc_set_property (GObject * object,
   gboolean set_params = FALSE;
 
   /* Get a pointer of the right type. */
-  cevidenc = (GstCEVidEnc *) (object);
-  klass = (GstCEVidEncClass *) G_OBJECT_GET_CLASS (cevidenc);
+  cevidenc = GST_CEVIDENC (object);
+  klass = GST_CEVIDENC_CLASS (G_OBJECT_GET_CLASS (cevidenc));
 
   if ((!cevidenc->codec_params) || (!cevidenc->codec_dyn_params)) {
-    GST_WARNING_OBJECT (cevidenc, "couldn't set property");
+    GST_WARNING_OBJECT (cevidenc,
+        "couldn't set property, no codec parameters defined");
     return;
   }
 
@@ -807,7 +802,8 @@ gst_cevidenc_set_property (GObject * object,
   GST_OBJECT_LOCK (cevidenc);
   /* Check the argument id to see which argument we're setting. */
   switch (prop_id) {
-    case PROP_RATECONTROL:
+
+    case PROP_RATE_CONTROL:
       if (!cevidenc->codec_handle) {
         params->rateControlPreset = g_value_get_enum (value);
         GST_LOG_OBJECT (cevidenc,
@@ -816,7 +812,7 @@ gst_cevidenc_set_property (GObject * object,
         goto fail_static_prop;
       }
       break;
-    case PROP_ENCODINGPRESET:
+    case PROP_ENCODING_PRESET:
       if (!cevidenc->codec_handle) {
         params->encodingPreset = g_value_get_enum (value);
         GST_LOG_OBJECT (cevidenc,
@@ -825,7 +821,7 @@ gst_cevidenc_set_property (GObject * object,
         goto fail_static_prop;
       }
       break;
-    case PROP_MAXBITRATE:
+    case PROP_MAX_BITRATE:
       if (!cevidenc->codec_handle) {
         params->maxBitRate = g_value_get_int (value);
         GST_LOG_OBJECT (cevidenc,
@@ -834,13 +830,13 @@ gst_cevidenc_set_property (GObject * object,
         goto fail_static_prop;
       }
       break;
-    case PROP_TARGETBITRATE:
+    case PROP_TARGET_BITRATE:
       dyn_params->targetBitRate = g_value_get_int (value);
       GST_LOG_OBJECT (cevidenc,
           "setting target bitrate to %li", dyn_params->targetBitRate);
       set_params = TRUE;
       break;
-    case PROP_INTRAFRAMEINTERVAL:
+    case PROP_INTRA_FRAME_INTERVAL:
       dyn_params->intraFrameInterval = g_value_get_int (value);
       GST_LOG_OBJECT (cevidenc,
           "setting intra frame interval to %li",
@@ -885,7 +881,7 @@ gst_cevidenc_get_property (GObject * object,
   VIDENC1_DynamicParams *dyn_params;
 
   /* It's not null if we got it, but it might not be ours */
-  cevidenc = (GstCEVidEnc *) (object);
+  cevidenc = GST_CEVIDENC (object);
   klass = (GstCEVidEncClass *) G_OBJECT_GET_CLASS (cevidenc);
 
   if ((!cevidenc->codec_params) || (!cevidenc->codec_dyn_params)) {
@@ -898,19 +894,19 @@ gst_cevidenc_get_property (GObject * object,
 
   GST_OBJECT_LOCK (cevidenc);
   switch (prop_id) {
-    case PROP_RATECONTROL:
+    case PROP_RATE_CONTROL:
       g_value_set_enum (value, params->rateControlPreset);
       break;
-    case PROP_ENCODINGPRESET:
+    case PROP_ENCODING_PRESET:
       g_value_set_enum (value, params->encodingPreset);
       break;
-    case PROP_MAXBITRATE:
+    case PROP_MAX_BITRATE:
       g_value_set_int (value, params->maxBitRate);
       break;
-    case PROP_TARGETBITRATE:
+    case PROP_TARGET_BITRATE:
       g_value_set_int (value, dyn_params->targetBitRate);
       break;
-    case PROP_INTRAFRAMEINTERVAL:
+    case PROP_INTRA_FRAME_INTERVAL:
       g_value_set_int (value, dyn_params->intraFrameInterval);
       break;
     case PROP_FORCE_FRAME:
@@ -929,7 +925,7 @@ gst_cevidenc_get_property (GObject * object,
 static gboolean
 gst_cevidenc_open (GstVideoEncoder * encoder)
 {
-  GstCEVidEnc *cevidenc = (GstCEVidEnc *) encoder;
+  GstCEVidEnc *cevidenc = GST_CEVIDENC (encoder);
   GstCEVidEncPrivate *priv = cevidenc->priv;
 
   GST_DEBUG_OBJECT (cevidenc, "opening %s Engine", CODEC_ENGINE);
@@ -977,7 +973,7 @@ fail_pool:
 static gboolean
 gst_cevidenc_close (GstVideoEncoder * encoder)
 {
-  GstCEVidEnc *cevidenc = (GstCEVidEnc *) encoder;
+  GstCEVidEnc *cevidenc = GST_CEVIDENC (encoder);
   GstCEVidEncPrivate *priv = cevidenc->priv;
 
   if (priv->engine_handle) {
@@ -1009,7 +1005,7 @@ gst_cevidenc_stop (GstVideoEncoder * encoder)
 static gboolean
 gst_cevidenc_reset (GstVideoEncoder * encoder)
 {
-  GstCEVidEnc *cevidenc = (GstCEVidEnc *) encoder;
+  GstCEVidEnc *cevidenc = GST_CEVIDENC (encoder);
   GstCEVidEncPrivate *priv = cevidenc->priv;
   GstCEVidEncClass *klass = (GstCEVidEncClass *) G_OBJECT_GET_CLASS (cevidenc);
 
@@ -1039,9 +1035,9 @@ gst_cevidenc_reset (GstVideoEncoder * encoder)
   priv->num_out_buffers = PROP_NUM_OUT_BUFFERS;
 
   /* Set default values for codec static params */
-  params->encodingPreset = PROP_ENCODINGPRESET_DEFAULT;
-  params->rateControlPreset = IVIDEO_RATECONTROLPRESET_DEFAULT;
-  params->maxBitRate = PROP_MAXBITRATE_DEFAULT;
+  params->encodingPreset = PROP_ENCODING_PRESET_DEFAULT;
+  params->rateControlPreset = PROP_RATE_CONTROL_DEFAULT;
+  params->maxBitRate = PROP_MAX_BITRATE_DEFAULT;
   params->dataEndianness = XDM_BYTE;
   params->maxInterFrameInterval = 1;
   params->inputChromaFormat = XDM_YUV_420P;
@@ -1049,8 +1045,8 @@ gst_cevidenc_reset (GstVideoEncoder * encoder)
   params->reconChromaFormat = XDM_CHROMA_NA;
 
   /* Set default values for codec dynamic params */
-  dyn_params->targetBitRate = PROP_TARGETBITRATE_DEFAULT;
-  dyn_params->intraFrameInterval = PROP_INTRAFRAMEINTERVAL_DEFAULT;
+  dyn_params->targetBitRate = PROP_TARGET_BITRATE_DEFAULT;
+  dyn_params->intraFrameInterval = PROP_INTRA_FRAME_INTERVAL_DEFAULT;
   dyn_params->generateHeader = XDM_ENCODE_AU;
   dyn_params->captureWidth = 0;
   dyn_params->forceFrame = PROP_FORCE_FRAME_DEFAULT;
