@@ -512,17 +512,16 @@ ce_slice_buffer_pool_acquire_buffer (GstBufferPool * pool, GstBuffer ** buffer,
     GstBufferPoolAcquireParams * params)
 {
   GstCESliceBufferPool *spool = GST_CE_SLICE_BUFFER_POOL_CAST (pool);
-  GstCESliceBufferPoolPrivate *priv = spool->priv;
   GstFlowReturn result;
 
   if (G_UNLIKELY (GST_BUFFER_POOL_IS_FLUSHING (pool)))
     goto flushing;
 
   /* Allocate buffer */
-  GST_LOG_OBJECT (pool, "trying to allocate buffer");
+  GST_LOG_OBJECT (spool, "trying to allocate buffer");
   result = ce_slice_buffer_pool_buffer_alloc (pool, buffer, params);
   if (G_LIKELY (result == GST_FLOW_OK)) {
-    GST_LOG_OBJECT (pool, "acquired buffer %p", *buffer);
+    GST_LOG_OBJECT (spool, "acquired buffer %p", *buffer);
     goto out;
   }
 
@@ -541,7 +540,7 @@ out:
   /* ERRORS */
 flushing:
   {
-    GST_DEBUG_OBJECT (pool, "we are flushing");
+    GST_DEBUG_OBJECT (spool, "we are flushing");
     return GST_FLOW_FLUSHING;
   }
 }
@@ -618,7 +617,7 @@ gst_ce_slice_buffer_resize (GstCESliceBufferPool * spool, GstBuffer * buffer,
     slice = (memSlice *) element->data;
     if (slice->start == epos) {
       unused = buffer_size - size;
-      GST_DEBUG_OBJECT ("adjusting slice start from %d to %d",
+      GST_DEBUG_OBJECT (spool, "adjusting slice start from %d to %d",
           slice->start, slice->start - unused);
       slice->start -= unused;
       slice->size += unused;

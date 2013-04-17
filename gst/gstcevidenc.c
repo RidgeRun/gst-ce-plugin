@@ -423,7 +423,6 @@ static gboolean
 gst_cevidenc_set_format (GstVideoEncoder * encoder, GstVideoCodecState * state)
 {
   GstCaps *allowed_caps;
-  GstVideoCodecState *output_format;
   GstBuffer *codec_data = NULL;
   gint i, bpp = 0;
 
@@ -713,8 +712,8 @@ gst_cevidenc_handle_frame (GstVideoEncoder * encoder,
 
   gst_buffer_unmap (outbuf, &info_out);
 
-  gst_ce_slice_buffer_resize (GST_BUFFER_POOL_CAST (priv->outbuf_pool), outbuf,
-      out_args.bytesGenerated);
+  gst_ce_slice_buffer_resize (GST_CE_SLICE_BUFFER_POOL_CAST (priv->outbuf_pool),
+      outbuf, out_args.bytesGenerated);
 
   /* Post-encode process */
   if (klass->post_process && !klass->post_process (cevidenc, outbuf))
@@ -851,7 +850,7 @@ gst_cevidenc_set_property (GObject * object,
     case PROP_NUM_OUT_BUFFERS:
       cevidenc->priv->num_out_buffers = g_value_get_int (value);
       GST_LOG_OBJECT (cevidenc,
-          "setting number of output buffers to %li",
+          "setting number of output buffers to %d",
           cevidenc->priv->num_out_buffers);
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
