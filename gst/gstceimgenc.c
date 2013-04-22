@@ -55,72 +55,11 @@ enum
 {
   PROP_0,
   PROP_MAX_SCANS,
-  PROP_FORCE_CHROMA_FORMAT,
-  PROP_DATA_ENDIANNESS,
   PROP_QUALITY_VALUE,
-  PROP_CODEC_BASE
 };
 
 #define  PROP_MAX_SCANS_DEFAULT 15
-#define  PROP_FORCE_CHROMA_FORMAT_DEFAULT XDM_YUV_420P
-#define  PROP_DATA_ENDIANNESS_DEFAULT XDM_BYTE
-#define  PROP_QUALITY_VALUE_DEFAULT 15
-
-#define GST_CE_IMGENC_CHROMA_FORMAT_TYPE (gst_ceimgenc_chroma_format_get_type())
-static GType
-gst_ceimgenc_chroma_format_get_type (void)
-{
-  static GType chroma_format_type = 0;
-
-  static const GEnumValue chroma_format_types[] = {
-    {XDM_CHROMA_NA, "Chroma format not applicable", "NA"},
-    {XDM_YUV_420P, "YUV 4:2:0 planer", "YUV420P"},
-    {XDM_YUV_422P, "YUV 4:2:2 planer", "YUV422P"},
-    {XDM_YUV_422IBE, "YUV 4:2:2 interleaved big endian", "YUV422IBE"},
-    {XDM_YUV_422ILE, "YUV 4:2:2 interleaved little endian", "YUV422ILE"},
-    {XDM_YUV_444P, "YUV 4:4:4 planer", "YUV444P"},
-    {XDM_YUV_411P, "YUV 4:1:1 planer", "YUV411P"},
-    {XDM_YUV_420SP, "YUV 4:2:0 semi-planer", "YUV420SP"},
-    {XDM_YUV_444ILE, "YUV 4:4:4 interleaved little endian", "YUV444ILE"},
-    {XDM_GRAY, "Gray format", "Gray"},
-    {XDM_RGB, "RGB color format", "RGB"},
-    {XDM_RGB555, "RGB 555 color format", "RGB555"},
-    {XDM_RGB565, "RGB 565 color format", "RGB565"},
-    {XDM_ARGB8888, "Alpha plane", "ARGB8888"},
-    {XDM_CHROMAFORMAT_DEFAULT, "Default setting", "Default"},
-    {0, NULL, NULL}
-  };
-
-  if (!chroma_format_type) {
-    chroma_format_type =
-        g_enum_register_static ("GstCEImgEncChromaFormat", chroma_format_types);
-  }
-  return chroma_format_type;
-}
-
-#define GST_CE_IMGENC_DATA_FORMAT_TYPE (gst_ceimgenc_data_format_get_type())
-static GType
-gst_ceimgenc_data_format_get_type (void)
-{
-  static GType data_format_type = 0;
-
-  static const GEnumValue data_format_types[] = {
-    {XDM_BYTE, "Big endian stream", "BYTE"},
-    {XDM_LE_16, "16 bit little endian stream", "LE16"},
-    {XDM_LE_32, "32 bit little endian stream", "LE32"},
-    {XDM_LE_64, "64 bit little endian stream", "LE64"},
-    {XDM_BE_16, "16 bit big endian stream", "BE16"},
-    {XDM_BE_32, "32 bit big endian stream", "BE32"},
-    {XDM_BE_64, "64 bit big endian stream", "BE64"},
-    {0, NULL, NULL}
-  };
-
-  if (!data_format_type) {
-    data_format_type =
-        g_enum_register_static ("GstCEImgEncDataFormat", data_format_types);
-  }
-  return data_format_type;
-}
+#define  PROP_QUALITY_VALUE_DEFAULT 75
 
 #define GST_CEIMGENC_GET_PRIVATE(obj)  \
     (G_TYPE_INSTANCE_GET_PRIVATE ((obj), GST_TYPE_CEIMGENC, GstCEImgEncPrivate))
@@ -186,18 +125,6 @@ gst_ceimgenc_class_init (GstCEImgEncClass * klass)
       g_param_spec_int ("maxScans", "Maximum number of scans",
           "Maximum number of scans", 1, 100,
           PROP_MAX_SCANS_DEFAULT, G_PARAM_READWRITE));
-
-  g_object_class_install_property (gobject_class, PROP_FORCE_CHROMA_FORMAT,
-      g_param_spec_enum ("forceChromaFormat", "Force chroma format",
-          "Force encoding in given Chroma format",
-          GST_CE_IMGENC_CHROMA_FORMAT_TYPE, PROP_FORCE_CHROMA_FORMAT_DEFAULT,
-          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
-
-  g_object_class_install_property (gobject_class, PROP_DATA_ENDIANNESS,
-      g_param_spec_enum ("dataEndianness", "Data endianness",
-          "Endianness of output data", GST_CE_IMGENC_DATA_FORMAT_TYPE,
-          PROP_DATA_ENDIANNESS_DEFAULT,
-          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
   g_object_class_install_property (gobject_class, PROP_QUALITY_VALUE,
       g_param_spec_int ("qValue", "Quality value",
@@ -495,7 +422,7 @@ gst_ceimgenc_allocate_output_frame (GstCEImgEnc * ceimgenc, GstBuffer ** buf)
   gst_video_encoder_get_allocator ((GstVideoEncoder *) ceimgenc,
       &priv->allocator, &priv->alloc_params);
 
-  *buf = gst_buffer_new_allocate (priv->allocator, priv->outbuf_size * 2,
+  *buf = gst_buffer_new_allocate (priv->allocator, priv->outbuf_size,
       &priv->alloc_params);
 
   if (!*buf) {
@@ -662,27 +589,9 @@ gst_ceimgenc_set_property (GObject * object,
   switch (prop_id) {
     case PROP_MAX_SCANS:
       if (!ceimgenc->codec_handle) {
-        params->maxScans = g_value_get_enum (value);
+        params->maxScans = g_value_get_int (value);
         GST_LOG_OBJECT (ceimgenc,
             "setting maximum number of scans to %li", params->maxScans);
-      } else {
-        goto fail_static_prop;
-      }
-      break;
-    case PROP_FORCE_CHROMA_FORMAT:
-      if (!ceimgenc->codec_handle) {
-        params->forceChromaFormat = g_value_get_enum (value);
-        GST_LOG_OBJECT (ceimgenc,
-            "setting force chroma format to %li", params->forceChromaFormat);
-      } else {
-        goto fail_static_prop;
-      }
-      break;
-    case PROP_DATA_ENDIANNESS:
-      if (!ceimgenc->codec_handle) {
-        params->dataEndianness = g_value_get_enum (value);
-        GST_LOG_OBJECT (ceimgenc,
-            "setting data endianness to %li", params->dataEndianness);
       } else {
         goto fail_static_prop;
       }
@@ -741,13 +650,7 @@ gst_ceimgenc_get_property (GObject * object,
   GST_OBJECT_LOCK (ceimgenc);
   switch (prop_id) {
     case PROP_MAX_SCANS:
-      g_value_set_enum (value, params->maxScans);
-      break;
-    case PROP_FORCE_CHROMA_FORMAT:
-      g_value_set_enum (value, params->forceChromaFormat);
-      break;
-    case PROP_DATA_ENDIANNESS:
-      g_value_set_enum (value, params->dataEndianness);
+      g_value_set_int (value, params->maxScans);
       break;
     case PROP_QUALITY_VALUE:
       g_value_set_int (value, dyn_params->qValue);
@@ -852,9 +755,9 @@ gst_ceimgenc_reset (GstVideoEncoder * encoder)
   GST_OBJECT_LOCK (ceimgenc);
 
   /* Set default values for codec static params */
-  params->forceChromaFormat = PROP_FORCE_CHROMA_FORMAT_DEFAULT;
-  params->dataEndianness = PROP_DATA_ENDIANNESS_DEFAULT;
-  params->maxScans = PROP_MAX_SCANS_DEFAULT;;
+  params->forceChromaFormat = XDM_YUV_420P;
+  params->dataEndianness = XDM_BYTE;
+  params->maxScans = PROP_MAX_SCANS_DEFAULT;
 
   /* Set default values for codec dynamic params */
   dyn_params->qValue = PROP_QUALITY_VALUE_DEFAULT;

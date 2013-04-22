@@ -49,11 +49,9 @@ GST_STATIC_PAD_TEMPLATE ("src",
 enum
 {
   PROP_BASE = 0,
-  PROP_DISABLE_EOI,
   PROP_ROTATION,
 };
 
-#define JPEG_DEFAULT_DISABLE_EOI XDM_DEFAULT
 #define JPEG_DEFAULT_ROTATION 0
 
 enum
@@ -111,9 +109,6 @@ gst_ce_jpegenc_class_init (GstCEJPEGEncClass * klass)
   gobject_class->set_property = gst_ce_jpegenc_set_property;
   gobject_class->get_property = gst_ce_jpegenc_get_property;
 
-  g_object_class_install_property (gobject_class, PROP_DISABLE_EOI,
-      g_param_spec_boolean ("disableEOI", "Disable EOI",
-          "Disable End of Image", JPEG_DEFAULT_DISABLE_EOI, G_PARAM_READWRITE));
   g_object_class_install_property (gobject_class, PROP_ROTATION,
       g_param_spec_enum ("rotation", "Rotation",
           "Set the rotation angle", GST_CE_JPEGENC_ROTATION_TYPE,
@@ -204,7 +199,7 @@ gst_ce_jpegenc_reset (GstCEImgEnc * ceimgenc)
   jpeg_params->halfBufCB = NULL;
   jpeg_params->halfBufCBarg = NULL;
 
-  jpeg_dyn_params->disableEOI = JPEG_DEFAULT_DISABLE_EOI;
+  jpeg_dyn_params->disableEOI = 0;
   jpeg_dyn_params->rotation = JPEG_DEFAULT_ROTATION;
   jpeg_dyn_params->rstInterval = 84;
   jpeg_dyn_params->customQ = NULL;
@@ -232,9 +227,6 @@ gst_ce_jpegenc_set_property (GObject * object, guint prop_id,
   }
 
   switch (prop_id) {
-    case PROP_DISABLE_EOI:
-      dyn_params->disableEOI = g_value_get_enum (value);
-      break;
     case PROP_ROTATION:
       dyn_params->rotation = g_value_get_enum (value);
       break;
@@ -277,9 +269,6 @@ gst_ce_jpegenc_get_property (GObject * object, guint prop_id,
   }
 
   switch (prop_id) {
-    case PROP_DISABLE_EOI:
-      g_value_set_enum (value, dyn_params->disableEOI);
-      break;
     case PROP_ROTATION:
       g_value_set_enum (value, dyn_params->rotation);
       break;
