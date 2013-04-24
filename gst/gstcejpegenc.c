@@ -93,6 +93,9 @@ static void gst_ce_jpegenc_set_property (GObject * object, guint prop_id,
 #define gst_ce_jpegenc_parent_class parent_class
 G_DEFINE_TYPE (GstCEJPEGEnc, gst_ce_jpegenc, GST_TYPE_CEIMGENC);
 
+/**
+ * JPEG encoder class initialization function
+ */
 static void
 gst_ce_jpegenc_class_init (GstCEJPEGEncClass * klass)
 {
@@ -109,6 +112,7 @@ gst_ce_jpegenc_class_init (GstCEJPEGEncClass * klass)
   gobject_class->set_property = gst_ce_jpegenc_set_property;
   gobject_class->get_property = gst_ce_jpegenc_get_property;
 
+  /* Initialization of the JPEG encoder properties */
   g_object_class_install_property (gobject_class, PROP_ROTATION,
       g_param_spec_enum ("rotation", "Rotation",
           "Set the rotation angle", GST_CE_JPEGENC_ROTATION_TYPE,
@@ -129,6 +133,9 @@ gst_ce_jpegenc_class_init (GstCEJPEGEncClass * klass)
   ceimgenc_class->reset = gst_ce_jpegenc_reset;
 }
 
+/**
+ * JPEG encoder initialization function
+ */
 static void
 gst_ce_jpegenc_init (GstCEJPEGEnc * jpegenc)
 {
@@ -136,16 +143,15 @@ gst_ce_jpegenc_init (GstCEJPEGEnc * jpegenc)
   IJPEGENC_Params *jpeg_params = NULL;
   IJPEGENC_DynamicParams *jpeg_dyn_params = NULL;
 
-  /* Alloc the params and set a default value */
+  /* Allocate the JPEG encoder parameters */
   jpeg_params = g_malloc0 (sizeof (IJPEGENC_Params));
   if (!jpeg_params)
     goto fail_alloc;
-  //*jpeg_params = IJPEGENC_PARAMS;
 
+  /* Allocate the JPEG encoder dynamic parameters */
   jpeg_dyn_params = g_malloc0 (sizeof (IJPEGENC_DynamicParams));
   if (!jpeg_dyn_params)
     goto fail_alloc;
-  //*jpeg_dyn_params = IJPEGENC_DYNAMICPARAMS;
 
   if (ceimgenc->codec_params) {
     GST_DEBUG ("codec params not NULL, copy and free them");
@@ -161,7 +167,7 @@ gst_ce_jpegenc_init (GstCEJPEGEnc * jpegenc)
   }
   ceimgenc->codec_dyn_params = (IMGENC1_DynamicParams *) jpeg_dyn_params;
 
-  /* Add the extends params to the original params */
+  /* Add the extends parameters to the original parameters */
   ceimgenc->codec_params->size = sizeof (IJPEGENC_Params);
   ceimgenc->codec_dyn_params->size = sizeof (IJPEGENC_DynamicParams);
 
@@ -180,6 +186,9 @@ fail_alloc:
   }
 }
 
+/**
+ * Reset JPEG encoder
+ */
 static void
 gst_ce_jpegenc_reset (GstCEImgEnc * ceimgenc)
 {
@@ -194,8 +203,8 @@ gst_ce_jpegenc_reset (GstCEImgEnc * ceimgenc)
   jpeg_params = (IJPEGENC_Params *) ceimgenc->codec_params;
   jpeg_dyn_params = (IJPEGENC_DynamicParams *) ceimgenc->codec_dyn_params;
 
-  GST_DEBUG ("setup JPEG parameters");
-  /* Setting properties defaults */
+  GST_DEBUG ("setup JPEG defaults parameters");
+
   jpeg_params->halfBufCB = NULL;
   jpeg_params->halfBufCBarg = NULL;
 
@@ -207,21 +216,22 @@ gst_ce_jpegenc_reset (GstCEImgEnc * ceimgenc)
   return;
 }
 
+/**
+ * Sets custom properties to JPEG encoder
+ */
 static void
 gst_ce_jpegenc_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec)
 {
   GstCEImgEnc *ceimgenc = (GstCEImgEnc *) (object);
-  // IJPEGENC_Params *params;
   IJPEGENC_DynamicParams *dyn_params;
   IMGENC1_Status enc_status;
   gboolean set_params = FALSE;
   guint ret;
 
-  // params = (IJPEGENC_Params *) ceimgenc->codec_params;
   dyn_params = (IJPEGENC_DynamicParams *) ceimgenc->codec_dyn_params;
 
-  if (!dyn_params) {            //(!params) || (!dyn_params)
+  if (!dyn_params) {
     GST_WARNING_OBJECT (ceimgenc, "couldn't set property");
     return;
   }
@@ -247,23 +257,21 @@ gst_ce_jpegenc_set_property (GObject * object, guint prop_id,
   }
 
   return;
-  //fail_static_prop:
-  //GST_WARNING_OBJECT (ceimgenc, "can't set static property when "
-  //    "the codec is already configured");
 }
 
+/**
+ * Gets custom properties from JPEG encoder
+ */
 static void
 gst_ce_jpegenc_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec)
 {
   GstCEImgEnc *ceimgenc = (GstCEImgEnc *) (object);
-  // IJPEGENC_Params *params;
   IJPEGENC_DynamicParams *dyn_params;
 
-  // params = (IJPEGENC_Params *) ceimgenc->codec_params;
   dyn_params = (IJPEGENC_DynamicParams *) ceimgenc->codec_dyn_params;
 
-  if (!dyn_params) {            //(!params) || (!dyn_params)
+  if (!dyn_params) {
     GST_WARNING_OBJECT (ceimgenc, "couldn't set property");
     return;
   }
