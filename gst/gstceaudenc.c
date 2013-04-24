@@ -371,6 +371,7 @@ gst_ceaudenc_allocate_output_frame (GstCEAudEnc * ceaudenc, GstBuffer ** buf)
   GstCEAudEncPrivate *priv = ceaudenc->priv;
 
   /* Get allocator parameters */
+
   gst_audio_encoder_get_allocator ((GstAudioEncoder *) ceaudenc, NULL,
       &priv->alloc_params);
 
@@ -554,8 +555,26 @@ gst_ceaudenc_reset (GstAudioEncoder * encoder)
   GST_OBJECT_LOCK (ceaudenc);
 
   /* Set default values for codec static params */
+  params->sampleRate = 48000;
+  params->bitRate = 128000;
+  params->channelMode = IAUDIO_2_0;
+  params->dataEndianness = XDM_LE_16;
+  params->encMode = IAUDIO_CBR;
+  params->inputFormat = IAUDIO_INTERLEAVED;
+  params->inputBitsPerSample = 16;
+  params->maxBitRate = 144000;
+  params->dualMonoMode = IAUDIO_DUALMONO_LR;
+  params->crcFlag = XDAS_FALSE;
+  params->ancFlag = XDAS_FALSE;
+  params->lfeFlag = XDAS_FALSE;
 
   /* Set default values for codec dynamic params */
+  dyn_params->bitRate = 128000;
+  dyn_params->sampleRate = 48000;
+  dyn_params->channelMode = IAUDIO_2_0;
+  dyn_params->lfeFlag = XDAS_FALSE;
+  dyn_params->dualMonoMode = IAUDIO_DUALMONO_LR;
+  dyn_params->inputBitsPerSample = 16;
 
   GST_OBJECT_UNLOCK (ceaudenc);
 
