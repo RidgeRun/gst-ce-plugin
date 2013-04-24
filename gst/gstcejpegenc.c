@@ -31,7 +31,7 @@ GST_STATIC_PAD_TEMPLATE ("sink",
     GST_PAD_SINK,
     GST_PAD_ALWAYS,
     GST_STATIC_CAPS ("video/x-raw, "
-        "   format = (string) NV12,"
+        "   format = (string) {NV12,UYVY},"
         "   framerate=(fraction)[ 0, 120], "
         "   width=(int)[ 128, 4080 ], " "   height=(int)[ 96, 4096 ]")
     );

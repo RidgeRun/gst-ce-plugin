@@ -419,8 +419,8 @@ gst_ceimgenc_allocate_output_frame (GstCEImgEnc * ceimgenc, GstBuffer ** buf)
   GstCEImgEncPrivate *priv = ceimgenc->priv;
 
   /*Get allocator parameters */
-  gst_video_encoder_get_allocator ((GstVideoEncoder *) ceimgenc,
-      &priv->allocator, &priv->alloc_params);
+  gst_video_encoder_get_allocator ((GstVideoEncoder *) ceimgenc, NULL,
+      &priv->alloc_params);
 
   *buf = gst_buffer_new_allocate (priv->allocator, priv->outbuf_size,
       &priv->alloc_params);
@@ -512,6 +512,7 @@ gst_ceimgenc_handle_frame (GstVideoEncoder * encoder,
   gst_buffer_unmap (outbuf, &info_out);
 
   gst_buffer_set_size (outbuf, out_args.bytesGenerated);
+
 
   /* Post-encode process */
   if (klass->post_process && !klass->post_process (ceimgenc, outbuf))
