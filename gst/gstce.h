@@ -22,7 +22,9 @@
 #define __GST_CEPLUGIN_H__
 
 #include <gst/gst.h>
-#include <config.h>
+#ifdef HAVE_CONFIG_H
+#  include <config.h>
+#endif
 
 G_BEGIN_DECLS
 

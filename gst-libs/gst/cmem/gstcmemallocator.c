@@ -36,7 +36,9 @@ typedef struct
   guint8 *data;
   guint32 alloc_size;
   Memory_AllocParams alloc_params;
-
+  /*Parameters used by wrapped memory */
+  gpointer user_data;
+  GDestroyNotify notify;
 } GstMemoryContig;
 
 typedef struct
@@ -49,21 +51,24 @@ typedef struct
   GstAllocatorClass parent_class;
 } GstCMemAllocatorClass;
 
-GType gst_cmem_allocator_get_type (void);
 G_DEFINE_TYPE (GstCMemAllocator, gst_cmem_allocator, GST_TYPE_ALLOCATOR);
 
 /* initialize the fields */
 static void
 _cmem_init (GstMemoryContig * mem, GstMemoryFlags flags, GstMemory * parent,
     gsize alloc_size, gpointer data, gsize maxsize, gsize align, gsize offset,
-    gsize size, Memory_AllocParams * alloc_params)
+    gsize size, Memory_AllocParams * alloc_params, gpointer user_data,
+    GDestroyNotify notify)
 {
   gst_memory_init (GST_MEMORY_CAST (mem),
       flags, _cmem_allocator, parent, maxsize, align, offset, size);
 
   mem->alloc_size = alloc_size;
   mem->data = data;
-  mem->alloc_params = *alloc_params;
+  if (alloc_params)
+    mem->alloc_params = *alloc_params;
+  mem->user_data = user_data;
+  mem->notify = notify;
 }
 
 /* allocate the memory and structure in one block */
@@ -93,7 +98,7 @@ _cmem_new_mem_block (gsize maxsize, gsize align, gsize offset, gsize size)
   }
 
   _cmem_init (mem, 0, NULL, maxsize, data, maxsize,
-      align, offset, size, &params);
+      align, offset, size, &params, NULL, NULL);
 
   GST_DEBUG ("succesfull CMEM allocation");
 
@@ -150,6 +155,8 @@ _cmem_copy (GstMemoryContig * mem, gssize offset, gsize size)
   gsize align;
 
   g_return_val_if_fail (mem, NULL);
+
+  GST_LOG ("Copy CMEM buffer %p", mem->data);
 
   if (size == -1)
     size = mem->mem.size > offset ? mem->mem.size - offset : 0;
@@ -208,7 +215,7 @@ _cmem_share (GstMemoryContig * mem, gssize offset, gsize size)
   _cmem_init (sub, GST_MINI_OBJECT_FLAGS (parent) |
       GST_MINI_OBJECT_FLAG_LOCK_READONLY, parent, 0, mem->data,
       mem->mem.maxsize, mem->mem.align, mem->mem.offset + offset,
-      size, &mem->alloc_params);
+      size, &mem->alloc_params, NULL, NULL);
 
   return sub;
 }
@@ -248,7 +255,8 @@ _cmem_alloc (GstAllocator * allocator, gsize size, GstAllocationParams * params)
   gsize maxsize = size + params->prefix + params->padding;
   gsize align;
 
-  GST_DEBUG ("alloc from CMEM allocator");
+  GST_DEBUG ("allocating CMEM buffer: size %d, prefix %d, padding %d",
+      size, params->prefix, params->padding);
 
   /*
    * GstAllocationParams have an alignment that is a bitmask
@@ -270,9 +278,13 @@ _cmem_free (GstAllocator * allocator, GstMemory * mem)
 {
   GstMemoryContig *cmem = (GstMemoryContig *) mem;
 
-  GST_CAT_DEBUG (GST_CAT_MEMORY, "free memory %p", cmem);
+  GST_DEBUG ("cmem free memory %p", cmem);
+
+  if (cmem->notify)
+    cmem->notify (cmem->user_data);
 
   if (cmem->alloc_size) {
+    GST_DEBUG ("free memory %p", cmem->data);
     Memory_cacheWb (cmem->data, cmem->alloc_size);
     Memory_free (cmem->data, cmem->alloc_size, &cmem->alloc_params);
   }
@@ -323,4 +335,90 @@ gst_cmem_init (void)
     GST_ERROR ("failed to create gst_cmem_allocator object");
   gst_allocator_register (GST_ALLOCATOR_CMEM, _cmem_allocator);
   GST_DEBUG ("cmem memory allocator registered!");
+}
+
+/**
+ * gst_cmem_cache_inv:
+ * @data: pointer to the buffer data.
+ * @size: size of the memory region to invalite.
+ * 
+ * Do a cache invalidate of the block of @size pointed to by @data
+ */
+void
+gst_cmem_cache_inv (guint8 * data, gint size)
+{
+  g_return_if_fail (data);
+
+  if (size > 0)
+    Memory_cacheInv (data, size);
+}
+
+/**
+ * gst_cmem_cache_inv:
+ * @data: pointer to the buffer data.
+ * @size: size of the memory region to invalite.
+ * 
+ * Do a cache write back of the block of @size pointed to by @data
+ */
+void
+gst_cmem_cache_wb (guint8 * data, gint size)
+{
+  g_return_if_fail (data);
+
+  if (size > 0)
+    Memory_cacheWb (data, size);
+}
+
+/**
+ * gst_cmem_cache_inv:
+ * @data: pointer to the buffer data.
+ * @size: size of the memory region to invalite.
+ * 
+ * Write back and invalidate a region of cache 
+ */
+void
+gst_cmem_cache_wb_inv (guint8 * data, gint size)
+{
+  g_return_if_fail (data);
+
+  if (size > 0)
+    Memory_cacheWbInv (data, size);
+}
+
+
+/**
+ * gst_memory_new_wrapped:
+ * @flags: #GstMemoryFlags
+ * @data: data to wrap
+ * @maxsize: allocated size of @data
+ * @offset: offset in @data
+ * @size: size of valid data
+ * @user_data: user_data
+ * @notify: called with @user_data when the memory is freed
+ * 
+ * Allocate a new cmem memory block that wraps the given @data. The 
+ * @data is not freed when the memory is freed.
+ *
+ * Returns: a new #GstMemory.
+ */
+GstMemory *
+gst_cmem_new_wrapped (GstMemoryFlags flags, gpointer data,
+    gsize maxsize, gsize offset, gsize size, gpointer user_data,
+    GDestroyNotify notify)
+{
+  GstMemoryContig *mem;
+
+  GST_LOG ("new wrapped CMEM memory");
+
+  g_return_val_if_fail (data != NULL, NULL);
+  g_return_val_if_fail (offset + size <= maxsize, NULL);
+
+  mem = g_slice_alloc (sizeof (GstMemoryContig));
+  if (!mem)
+    return NULL;
+
+  _cmem_init (mem, flags, NULL, 0, data, maxsize, 0, offset,
+      size, NULL, user_data, notify);
+
+  return (GstMemory *) mem;
 }

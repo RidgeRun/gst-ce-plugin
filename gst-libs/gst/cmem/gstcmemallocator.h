@@ -15,15 +15,29 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses>.
  *
  */
- 
+
 #ifndef _GST_CMEM_ALLOCATOR_H_
 #define _GST_CMEM_ALLOCATOR_H_
 
 #include <gst/gst.h>
 #include <gst/gstmemory.h>
 
+G_BEGIN_DECLS
 #define GST_ALLOCATOR_CMEM "ContiguousMemory"
+#define GST_TYPE_CMEM_ALLOCATOR \
+  (gst_cmem_allocator_get_type())
+#define GST_IS_CMEM_ALLOCATOR(obj) \
+  (G_TYPE_CHECK_INSTANCE_TYPE((obj),GST_TYPE_CMEM_ALLOCATOR))
+    GType gst_cmem_allocator_get_type (void);
 
 void gst_cmem_init (void);
+void gst_cmem_cache_inv (guint8 * data, gint size);
+void gst_cmem_cache_wb (guint8 * data, gint size);
+void gst_cmem_cache_wb_inv (guint8 * data, gint size);
 
+GstMemory *gst_cmem_new_wrapped (GstMemoryFlags flags, gpointer data,
+    gsize maxsize, gsize offset, gsize size, gpointer user_data,
+    GDestroyNotify notify);
+
+G_END_DECLS
 #endif /*_GST_CMEM_ALLOCATOR_H_*/

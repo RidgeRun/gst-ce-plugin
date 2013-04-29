@@ -24,17 +24,6 @@
 
 #include "gstceh264enc.h"
 
-GstStaticCaps gst_ce_h264enc_sink_caps = GST_STATIC_CAPS ("video/x-raw, "
-    "   format = (string) NV12,"
-    "   framerate=(fraction)[ 0, 120], "
-    "   width=(int)[ 128, 4080 ], " "   height=(int)[ 96, 4096 ]");
-
-GstStaticCaps gst_ce_h264enc_src_caps = GST_STATIC_CAPS ("video/x-h264, "
-    "   framerate=(fraction)[ 0, 120], "
-    "   width=(int)[ 128, 4080 ], "
-    "   height=(int)[ 96, 4096 ],"
-    "   stream-format = (string) { avc, byte-stream }");
-
 /* *INDENT-OFF* */
 static GstStaticPadTemplate gst_ce_h264enc_sink_pad_template =
 GST_STATIC_PAD_TEMPLATE ("sink",
@@ -62,7 +51,6 @@ GST_STATIC_PAD_TEMPLATE ("src",
 
 enum
 {
-  PROP_BASE = 0,
   PROP_BYTESTREAM,
   PROP_HEADERS,
   PROP_SINGLE_NALU,
@@ -393,9 +381,9 @@ gst_ce_h264enc_class_init (GstCEH264EncClass * klass)
   GstElementClass *element_class;
   GstCEVidEncClass *cevidenc_class;
 
-  gobject_class = (GObjectClass *) klass;
-  element_class = (GstElementClass *) klass;
-  cevidenc_class = (GstCEVidEncClass *) klass;
+  gobject_class = G_OBJECT_CLASS (klass);
+  element_class = GST_ELEMENT_CLASS (klass);
+  cevidenc_class = GST_CEVIDENC_CLASS (klass);
 
   parent_class = g_type_class_peek_parent (klass);
 
@@ -405,7 +393,8 @@ gst_ce_h264enc_class_init (GstCEH264EncClass * klass)
   g_object_class_install_property (gobject_class, PROP_BYTESTREAM,
       g_param_spec_boolean ("bytestream",
           "Byte-stream",
-          "Generate h264 NAL unit stream instead of 'packetized' stream (no codec_data is generated)",
+          "Generate h264 NAL unit stream instead of 'packetized' "
+          "stream (no codec_data is generated)",
           PROP_BYTESTREAM_DEFAULT, G_PARAM_READWRITE));
 
   g_object_class_install_property (gobject_class, PROP_HEADERS,
@@ -535,7 +524,7 @@ gst_ce_h264enc_class_init (GstCEH264EncClass * klass)
   cevidenc_class->post_process = gst_ce_h264enc_post_process;
   /*$
    * TODO
-   * Set cevidenc klass virtual functions
+   * Do we want to set h264 specific debug?
    */
   //~ GST_DEBUG_CATEGORY_INIT (h264enc_debug, "ce_h264enc", 0,
   //~ "H.264 encoding element");
@@ -544,11 +533,11 @@ gst_ce_h264enc_class_init (GstCEH264EncClass * klass)
 static void
 gst_ce_h264enc_init (GstCEH264Enc * h264enc)
 {
-  GstCEVidEnc *cevidenc = (GstCEVidEnc *) (h264enc);
+  GstCEVidEnc *cevidenc = GST_CEVIDENC (h264enc);
   IH264VENC_Params *h264_params = NULL;
   IH264VENC_DynamicParams *h264_dyn_params = NULL;
 
-  GST_DEBUG ("setup H.264 parameters");
+  GST_DEBUG_OBJECT (h264enc, "setup H.264 parameters");
   /* Alloc the params and set a default value */
   h264_params = g_malloc0 (sizeof (IH264VENC_Params));
   if (!h264_params)
@@ -561,14 +550,15 @@ gst_ce_h264enc_init (GstCEH264Enc * h264enc)
   *h264_dyn_params = H264VENC_TI_IH264VENC_DYNAMICPARAMS;
 
   if (cevidenc->codec_params) {
-    GST_DEBUG ("codec params not NULL, copy and free them");
+    GST_DEBUG_OBJECT (h264enc, "codec params not NULL, copy and free them");
     h264_params->videncParams = *cevidenc->codec_params;
     g_free (cevidenc->codec_params);
   }
   cevidenc->codec_params = (VIDENC1_Params *) h264_params;
 
   if (cevidenc->codec_dyn_params) {
-    GST_DEBUG ("codec dynamic params not NULL, copy and free them");
+    GST_DEBUG_OBJECT (h264enc,
+        "codec dynamic params not NULL, copy and free them");
     h264_dyn_params->videncDynamicParams = *cevidenc->codec_dyn_params;
     g_free (cevidenc->codec_dyn_params);
   }
@@ -605,7 +595,7 @@ gst_ce_h264enc_fetch_header (guint8 * data, gint buffer_size,
 
   const gint32 start_code = 0x00000001;
 
-  GST_DEBUG ("fetching header PPS and SPS");
+  GST_LOG ("fetching header PPS and SPS");
   GST_MEMDUMP ("Header", data, buffer_size);
   /*Initialize to a pattern that does not match the start code */
   state = ~(start_code);
@@ -661,7 +651,7 @@ gst_ce_h264enc_get_codec_data (GstCEH264Enc * h264enc, GstBuffer ** codec_data)
 
   GST_DEBUG_OBJECT (h264enc, "generating codec data..");
 
-  if (!gst_cevidenc_get_header ((GstCEVidEnc *) h264enc, &buf,
+  if (!gst_cevidenc_get_header (GST_CEVIDENC (h264enc), &buf,
           &h264enc->header_size))
     return FALSE;
 
@@ -741,7 +731,7 @@ static gboolean
 gst_ce_h264enc_set_src_caps (GstCEVidEnc * cevidenc, GstCaps ** caps,
     GstBuffer ** codec_data)
 {
-  GstCEH264Enc *h264enc = (GstCEH264Enc *) (cevidenc);
+  GstCEH264Enc *h264enc = GST_CE_H264ENC (cevidenc);
   GstStructure *s;
   const gchar *stream_format;
   gboolean ret = TRUE;
@@ -790,11 +780,11 @@ gst_ce_h264enc_set_src_caps (GstCEVidEnc * cevidenc, GstCaps ** caps,
 static void
 gst_ce_h264enc_reset (GstCEVidEnc * cevidenc)
 {
-  GstCEH264Enc *h264enc = (GstCEH264Enc *) (cevidenc);
+  GstCEH264Enc *h264enc = GST_CE_H264ENC (cevidenc);
   IH264VENC_Params *h264_params;
   IH264VENC_DynamicParams *h264_dyn_params;
 
-  GST_DEBUG ("H.264 reset");
+  GST_DEBUG_OBJECT (h264enc, "H.264 reset");
 
   if ((cevidenc->codec_params->size != sizeof (IH264VENC_Params)) ||
       (cevidenc->codec_dyn_params->size != sizeof (IH264VENC_DynamicParams)))
@@ -803,7 +793,7 @@ gst_ce_h264enc_reset (GstCEVidEnc * cevidenc)
   h264_params = (IH264VENC_Params *) cevidenc->codec_params;
   h264_dyn_params = (IH264VENC_DynamicParams *) cevidenc->codec_dyn_params;
 
-  GST_DEBUG ("setup H.264 parameters");
+  GST_DEBUG_OBJECT (h264enc, "setup H.264 parameters");
   /* Setting properties defaults */
   h264enc->byte_stream = PROP_BYTESTREAM_DEFAULT;
   h264enc->single_nalu = PROP_SINGLE_NALU_DEFAULT;
@@ -833,7 +823,7 @@ gst_ce_h264enc_reset (GstCEVidEnc * cevidenc)
 static gboolean
 gst_ce_h264enc_post_process (GstCEVidEnc * cevidenc, GstBuffer * buffer)
 {
-  GstCEH264Enc *h264enc = (GstCEH264Enc *) (cevidenc);
+  GstCEH264Enc *h264enc = GST_CE_H264ENC (cevidenc);
   GstMapInfo info;
   guint8 *data;
   gint i, mark = 0;
@@ -928,8 +918,8 @@ static void
 gst_ce_h264enc_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec)
 {
-  GstCEVidEnc *cevidenc = (GstCEVidEnc *) (object);
-  GstCEH264Enc *h264enc = (GstCEH264Enc *) (object);
+  GstCEVidEnc *cevidenc = GST_CEVIDENC (object);
+  GstCEH264Enc *h264enc = GST_CE_H264ENC (object);
   IH264VENC_Params *params;
   IH264VENC_DynamicParams *dyn_params;
   VIDENC1_Status enc_status;
@@ -1069,8 +1059,8 @@ static void
 gst_ce_h264enc_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec)
 {
-  GstCEVidEnc *cevidenc = (GstCEVidEnc *) (object);
-  GstCEH264Enc *h264enc = (GstCEH264Enc *) (object);
+  GstCEVidEnc *cevidenc = GST_CEVIDENC (object);
+  GstCEH264Enc *h264enc = GST_CE_H264ENC (object);
   IH264VENC_Params *params;
   IH264VENC_DynamicParams *dyn_params;
 

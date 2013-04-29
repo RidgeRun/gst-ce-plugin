@@ -19,3 +19,4 @@ libgstce_la_LIBTOOLFLAGS = --tag=disable-static
 noinst_HEADERS = gstce.h \
  gstcevidenc.h gstceh264enc.h \
  gstceimgenc.h gstcejpegenc.h
+
