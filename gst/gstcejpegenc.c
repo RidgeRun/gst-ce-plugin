@@ -50,10 +50,11 @@ enum
 {
   PROP_BASE = 0,
   PROP_ROTATION,
+  PROP_DISABLE_EOI,
 };
 
 #define JPEG_DEFAULT_ROTATION 0
-
+#define JPEG_DEFAULT_DISABLE_EOI 0
 enum
 {
   GST_CE_JPEGENC_ANGLE_0 = 0,
@@ -117,6 +118,10 @@ gst_ce_jpegenc_class_init (GstCEJPEGEncClass * klass)
       g_param_spec_enum ("rotation", "Rotation",
           "Set the rotation angle", GST_CE_JPEGENC_ROTATION_TYPE,
           JPEG_DEFAULT_ROTATION, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+  g_object_class_install_property (gobject_class, PROP_DISABLE_EOI,
+      g_param_spec_boolean ("disableEOI", "disable EOI",
+          "Disable End of Image, for video pipelines is recommended set this to true",
+          0, G_PARAM_READWRITE));
 
   /* pad templates */
   gst_element_class_add_pad_template (element_class,
@@ -208,7 +213,7 @@ gst_ce_jpegenc_reset (GstCEImgEnc * ceimgenc)
   jpeg_params->halfBufCB = NULL;
   jpeg_params->halfBufCBarg = NULL;
 
-  jpeg_dyn_params->disableEOI = 0;
+  jpeg_dyn_params->disableEOI = JPEG_DEFAULT_DISABLE_EOI;
   jpeg_dyn_params->rotation = JPEG_DEFAULT_ROTATION;
   jpeg_dyn_params->rstInterval = 84;
   jpeg_dyn_params->customQ = NULL;
@@ -239,6 +244,9 @@ gst_ce_jpegenc_set_property (GObject * object, guint prop_id,
   switch (prop_id) {
     case PROP_ROTATION:
       dyn_params->rotation = g_value_get_enum (value);
+      break;
+    case PROP_DISABLE_EOI:
+      dyn_params->disableEOI = g_value_get_boolean (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -279,6 +287,9 @@ gst_ce_jpegenc_get_property (GObject * object, guint prop_id,
   switch (prop_id) {
     case PROP_ROTATION:
       g_value_set_enum (value, dyn_params->rotation);
+      break;
+    case PROP_DISABLE_EOI:
+      g_value_set_boolean (value, dyn_params->disableEOI);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);

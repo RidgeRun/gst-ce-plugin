@@ -20,6 +20,7 @@ check_PROGRAMS = \
 	generic/plugin-test		\
 	generic/states			\
 	elements/ce_h264enc		\
+	elements/ce_jpegenc		\
 	libs/cmem
 
 elements_ce_h264enc_LDADD = $(GST_PLUGINS_BASE_LIBS) \
