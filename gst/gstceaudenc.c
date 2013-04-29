@@ -52,8 +52,12 @@
 enum
 {
   PROP_0,
-
+  PROP_BITRATE,
+  PROP_MAX_BITRATE,
 };
+
+#define PROP_BITRATE_DEFAULT         128000
+#define PROP_MAX_BITRATE_DEFAULT     128000
 
 #define GST_CEAUDENC_GET_PRIVATE(obj)  \
     (G_TYPE_INSTANCE_GET_PRIVATE ((obj), GST_TYPE_CEAUDENC, GstCEAudEncPrivate))
@@ -124,10 +128,16 @@ gst_ceaudenc_class_init (GstCEAudEncClass * klass)
   gobject_class->get_property = gst_ceaudenc_get_property;
   gobject_class->finalize = gst_ceaudenc_finalize;
 
-  /* 
-   * TODO:
-   * Add properties 
-   */
+  g_object_class_install_property (gobject_class, PROP_BITRATE,
+      g_param_spec_int ("bitrate",
+          "Bit rate",
+          "Average bit rate in bps",
+          0, G_MAXINT32, PROP_BITRATE_DEFAULT, G_PARAM_READWRITE));
+  g_object_class_install_property (gobject_class, PROP_MAX_BITRATE,
+      g_param_spec_int ("max-bitrate",
+          "Max bitrate for VBR encoding",
+          "Max bitrate for VBR encoding",
+          0, G_MAXINT32, PROP_MAX_BITRATE_DEFAULT, G_PARAM_READWRITE));
 
   venc_class->open = GST_DEBUG_FUNCPTR (gst_ceaudenc_open);
   venc_class->close = GST_DEBUG_FUNCPTR (gst_ceaudenc_close);
@@ -481,14 +491,19 @@ gst_ceaudenc_set_property (GObject * object,
         "couldn't set property, no codec parameters defined");
     return;
   }
-
   params = (AUDENC1_Params *) ceaudenc->codec_params;
   dyn_params = (AUDENC1_DynamicParams *) ceaudenc->codec_dyn_params;
 
   GST_OBJECT_LOCK (ceaudenc);
   /* Check the argument id to see which argument we're setting. */
   switch (prop_id) {
-
+    case PROP_BITRATE:
+      params->bitRate = g_value_get_int (value);
+      dyn_params->bitRate = params->bitRate;
+      break;
+    case PROP_MAX_BITRATE:
+      params->maxBitRate = g_value_get_int (value);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
@@ -530,6 +545,12 @@ gst_ceaudenc_get_property (GObject * object,
 
   GST_OBJECT_LOCK (ceaudenc);
   switch (prop_id) {
+    case PROP_BITRATE:
+      g_value_set_int (value, params->bitRate);
+      break;
+    case PROP_MAX_BITRATE:
+      g_value_set_int (value, params->maxBitRate);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
@@ -625,20 +646,20 @@ gst_ceaudenc_reset (GstAudioEncoder * encoder)
 
   /* Set default values for codec static params */
   params->sampleRate = 48000;
-  params->bitRate = 128000;
+  params->bitRate = PROP_BITRATE_DEFAULT;
   params->channelMode = IAUDIO_2_0;
   params->dataEndianness = XDM_LE_16;
   params->encMode = IAUDIO_CBR;
   params->inputFormat = IAUDIO_INTERLEAVED;
   params->inputBitsPerSample = 16;
-  params->maxBitRate = 128000;
+  params->maxBitRate = PROP_MAX_BITRATE_DEFAULT;
   params->dualMonoMode = IAUDIO_DUALMONO_LR;
   params->crcFlag = XDAS_FALSE;
   params->ancFlag = XDAS_FALSE;
   params->lfeFlag = XDAS_FALSE;
 
   /* Set default values for codec dynamic params */
-  dyn_params->bitRate = 128000;
+  dyn_params->bitRate = PROP_BITRATE_DEFAULT;
   dyn_params->sampleRate = 48000;
   dyn_params->channelMode = IAUDIO_2_0;
   dyn_params->lfeFlag = XDAS_FALSE;
