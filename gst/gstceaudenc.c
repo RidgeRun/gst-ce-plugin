@@ -324,7 +324,7 @@ gst_ceaudenc_set_format (GstAudioEncoder * encoder, GstAudioInfo * info)
 
   if (klass->set_src_caps) {
     GST_DEBUG ("use custom set src caps");
-    if (!klass->set_src_caps (ceaudenc, &allowed_caps, &codec_data))
+    if (!klass->set_src_caps (ceaudenc, info, &allowed_caps, &codec_data))
       goto fail_set_caps;
   }
 
