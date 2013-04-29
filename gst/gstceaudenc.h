@@ -22,6 +22,7 @@
 #define __GST_CE_AUDENC_H__
 
 #include <gst/audio/gstaudioencoder.h>
+
 #include <xdc/std.h>
 #include <ti/sdo/ce/Engine.h>
 #include <ti/sdo/ce/audio1/audenc1.h>
@@ -76,6 +77,7 @@ struct _GstCEAudEncClass
 
   /*< public > */
   const gchar *codec_name;
+ gint samples;
 
   /* virtual methods for subclasses */
   void (*reset) (GstCEAudEnc * ceaudenc);

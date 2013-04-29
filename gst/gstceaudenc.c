@@ -69,6 +69,8 @@ struct _GstCEAudEncPrivate
   gint width;
   gint depth;
   gint bpf;
+  gint samples;
+
   /* Handle to the CMEM allocator */
   GstAllocator *allocator;
   GstAllocationParams alloc_params;
@@ -76,7 +78,7 @@ struct _GstCEAudEncPrivate
   /* Codec Data */
   Engine_Handle engine_handle;
   XDM1_BufDesc inbuf_desc;
-  XDM_BufDesc outbuf_desc;
+  XDM1_BufDesc outbuf_desc;
 };
 
 /* A number of function prototypes are given so we can refer to them later. */
@@ -216,9 +218,11 @@ gst_ceaudenc_configure_codec (GstCEAudEnc * ceaudenc)
   g_return_val_if_fail (params, FALSE);
   g_return_val_if_fail (dyn_params, FALSE);
   g_return_val_if_fail (klass->codec_name, FALSE);
+  g_return_val_if_fail (klass->samples, FALSE);
 
   GST_OBJECT_LOCK (ceaudenc);
 
+  priv->samples = klass->samples;
   switch (priv->channels) {
     case (1):
       params->channelMode = dyn_params->channelMode = IAUDIO_1_0;
@@ -229,8 +233,8 @@ gst_ceaudenc_configure_codec (GstCEAudEnc * ceaudenc)
       break;
     default:
       goto fail_channels;
-
   }
+
   params->sampleRate = dyn_params->sampleRate = priv->rate;
   params->inputBitsPerSample = priv->width;
 
@@ -311,6 +315,7 @@ gst_ceaudenc_set_format (GstAudioEncoder * encoder, GstAudioInfo * info)
         gst_pad_get_pad_template_caps (GST_AUDIO_ENCODER_SRC_PAD (encoder));
   }
 
+  allowed_caps = gst_caps_make_writable (allowed_caps);
   gst_caps_set_simple (allowed_caps,
       "rate", G_TYPE_INT, priv->rate,
       "channels", G_TYPE_INT, priv->channels, (char *) NULL);
@@ -329,6 +334,11 @@ gst_ceaudenc_set_format (GstAudioEncoder * encoder, GstAudioInfo * info)
   if (!gst_audio_encoder_set_output_format (GST_AUDIO_ENCODER (ceaudenc),
           allowed_caps))
     goto fail_set_caps;
+
+  /* report needs to base class */
+  gst_audio_encoder_set_frame_samples_min (encoder, priv->samples);
+  gst_audio_encoder_set_frame_samples_max (encoder, priv->samples);
+  gst_audio_encoder_set_frame_max (encoder, 1);
 
   return TRUE;
 
@@ -389,8 +399,67 @@ gst_ceaudenc_allocate_output_frame (GstCEAudEnc * ceaudenc, GstBuffer ** buf)
 static GstFlowReturn
 gst_ceaudenc_handle_frame (GstAudioEncoder * encoder, GstBuffer * buffer)
 {
+  GstCEAudEnc *ceaudenc = GST_CEAUDENC (encoder);
+  GstCEAudEncPrivate *priv = ceaudenc->priv;
+  GstBuffer *outbuf = NULL;
+  GstBuffer *inbuf = NULL;
+  GstMapInfo info_in, info_out;
+  AUDENC1_InArgs in_args;
+  AUDENC1_OutArgs out_args;
+  gint32 status;
+
+  priv->inbuf_desc.descs[0].bufSize = 4100;
+  gst_buffer_map (buffer, &info_in, GST_MAP_READ);
+  inbuf = gst_buffer_new_allocate (priv->allocator,
+      priv->inbuf_desc.descs[0].bufSize, &priv->alloc_params);
+  gst_buffer_fill (inbuf, 0, info_in.data, info_in.size);
+  gst_buffer_unmap (buffer, &info_in);
+
+  gst_buffer_map (inbuf, &info_in, GST_MAP_READ);
+  priv->inbuf_desc.descs[0].buf = (XDAS_Int8 *) info_in.data;
+  /* TODO: Should check input size? */
+  GST_DEBUG_OBJECT (ceaudenc, "input buffer %p of size %li",
+      priv->inbuf_desc.descs[0].buf, priv->inbuf_desc.descs[0].bufSize);
+
+  if (!gst_ceaudenc_allocate_output_frame (ceaudenc, &outbuf))
+    goto fail_alloc;
+  gst_buffer_map (outbuf, &info_out, GST_MAP_WRITE);
+  priv->outbuf_desc.descs[0].buf = (XDAS_Int8 *) info_out.data;
+
+  GST_DEBUG_OBJECT (ceaudenc, "output buffer %p of size %li",
+      priv->outbuf_desc.descs[0].buf, priv->outbuf_desc.descs[0].bufSize);
+  /* Encode process */
+  in_args.size = sizeof (AUDENC1_InArgs);
+  in_args.numInSamples = priv->samples;
+  in_args.ancData.bufSize = 0;
+  in_args.ancData.buf = (XDAS_Int8 *) NULL;
+
+  out_args.size = sizeof (AUDENC1_OutArgs);
+  out_args.extendedError = 0;
+
+  /* Encode the audio buffer */
+  status = AUDENC1_process (ceaudenc->codec_handle, &priv->inbuf_desc,
+      &priv->outbuf_desc, &in_args, (AUDENC1_OutArgs *) & out_args);
+  if (status != AUDENC1_EOK)
+    goto fail_encode;
+
+  gst_buffer_unmap (inbuf, &info_in);
+  gst_buffer_unmap (outbuf, &info_out);
 
   return GST_FLOW_OK;
+fail_alloc:
+  {
+    GST_ERROR_OBJECT (ceaudenc, "Failed to get output buffer");
+    return GST_FLOW_ERROR;
+  }
+fail_encode:
+  {
+    gst_buffer_unmap (outbuf, &info_out);
+    GST_ERROR_OBJECT (ceaudenc,
+        "Failed encode process with extended error: 0x%x %d",
+        (unsigned int) out_args.extendedError, status);
+    return GST_FLOW_ERROR;
+  }
 }
 
 static void
@@ -562,7 +631,7 @@ gst_ceaudenc_reset (GstAudioEncoder * encoder)
   params->encMode = IAUDIO_CBR;
   params->inputFormat = IAUDIO_INTERLEAVED;
   params->inputBitsPerSample = 16;
-  params->maxBitRate = 144000;
+  params->maxBitRate = 128000;
   params->dualMonoMode = IAUDIO_DUALMONO_LR;
   params->crcFlag = XDAS_FALSE;
   params->ancFlag = XDAS_FALSE;
@@ -642,7 +711,7 @@ gst_ceaudenc_get_buffer_info (GstCEAudEnc * ceaudenc)
 
   priv->outbuf_size = enc_status.bufInfo.minOutBufSize[0];
   priv->outbuf_desc.numBufs = 1;
-  priv->outbuf_desc.bufSizes = (XDAS_Int32 *) & priv->outbuf_size;
+  priv->outbuf_desc.descs[0].bufSize = priv->outbuf_size;
 
   GST_DEBUG_OBJECT (ceaudenc, "output buffer size = %d", priv->outbuf_size);
 
