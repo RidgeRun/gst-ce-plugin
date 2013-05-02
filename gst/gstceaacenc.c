@@ -140,10 +140,9 @@ gst_ce_aacenc_class_init (GstCEAACEncClass * klass)
       "Melissa Montero <melissa.montero@ridgerun.com>");
 
   ceaudenc_class->codec_name = "aaclcenc";
-  ceaudenc_class->samples = 1026;
+  ceaudenc_class->samples = 1024;
   ceaudenc_class->reset = gst_ce_aacenc_reset;
   ceaudenc_class->set_src_caps = gst_ce_aacenc_set_src_caps;
-  ceaudenc_class->post_process = gst_ce_aacenc_post_process;
   /*$
    * TODO
    * Do we want to set aac specific debug?
@@ -157,7 +156,6 @@ gst_ce_aacenc_init (GstCEAACEnc * aacenc)
 {
   GstCEAudEnc *ceaudenc = GST_CEAUDENC (aacenc);
   ITTIAM_EAACPLUSENC_Params *aac_params = NULL;
-  ITTIAM_EAACPLUSENC_DynamicParams *aac_dyn_params = NULL;
 
   GST_DEBUG_OBJECT (aacenc, "setup AAC parameters");
   /* Alloc the params and set a default value */
@@ -166,10 +164,6 @@ gst_ce_aacenc_init (GstCEAACEnc * aacenc)
     goto fail_alloc;
   *aac_params = EAACPLUSENCODER_ITTIAM_PARAMS;
 
-  aac_dyn_params = g_malloc0 (sizeof (ITTIAM_EAACPLUSENC_DynamicParams));
-  if (!aac_dyn_params)
-    goto fail_alloc;
-
   if (ceaudenc->codec_params) {
     GST_DEBUG_OBJECT (aacenc, "codec params not NULL, copy and free them");
     aac_params->s_iaudenc_params = *ceaudenc->codec_params;
@@ -177,17 +171,9 @@ gst_ce_aacenc_init (GstCEAACEnc * aacenc)
   }
   ceaudenc->codec_params = (AUDENC1_Params *) aac_params;
 
-  if (ceaudenc->codec_dyn_params) {
-    GST_DEBUG_OBJECT (aacenc,
-        "codec dynamic params not NULL, copy and free them");
-    aac_dyn_params->s_iaudenc_dynamic_params = *ceaudenc->codec_dyn_params;
-    g_free (ceaudenc->codec_dyn_params);
-  }
-  ceaudenc->codec_dyn_params = (AUDENC1_DynamicParams *) aac_dyn_params;
-
   /* Add the extends params to the original params */
   ceaudenc->codec_params->size = sizeof (ITTIAM_EAACPLUSENC_Params);
-  ceaudenc->codec_dyn_params->size = sizeof (ITTIAM_EAACPLUSENC_DynamicParams);
+
   gst_ce_aacenc_reset (ceaudenc);
 
   return;
@@ -195,8 +181,6 @@ fail_alloc:
   {
     GST_WARNING_OBJECT (ceaudenc, "failed to allocate H.AAC params");
     if (aac_params)
-      g_free (aac_params);
-    if (aac_dyn_params)
       g_free (aac_params);
     return;
   }
@@ -207,7 +191,6 @@ gst_ce_aacenc_set_src_caps (GstCEAudEnc * ceaudenc, GstAudioInfo * info,
     GstCaps ** caps, GstBuffer ** codec_data)
 {
   GstCEAACEnc *aacenc = GST_CE_AACENC (ceaudenc);
-  GstStructure *s;
   const gchar *stream_format = NULL;
   gboolean ret = TRUE;
 
@@ -217,8 +200,6 @@ gst_ce_aacenc_set_src_caps (GstCEAudEnc * ceaudenc, GstAudioInfo * info,
   GST_DEBUG_OBJECT (aacenc, "setting AAC caps");
   if (*caps && gst_caps_get_size (*caps) > 0) {
     GstStructure *s = gst_caps_get_structure (*caps, 0);
-    const gchar *str = NULL;
-    gint i = 4;
 
     if ((stream_format = gst_structure_get_string (s, "stream-format"))) {
       if (strcmp (stream_format, "adts") == 0) {
@@ -282,19 +263,12 @@ gst_ce_aacenc_reset (GstCEAudEnc * ceaudenc)
   return;
 }
 
-static gboolean
-gst_ce_aacenc_post_process (GstCEAudEnc * ceaudenc, GstBuffer * buffer)
-{
-  return TRUE;
-}
-
 static void
 gst_ce_aacenc_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec)
 {
   GstCEAudEnc *ceaudenc = GST_CEAUDENC (object);
   ITTIAM_EAACPLUSENC_Params *params;
-  guint tmp;
 
   params = (ITTIAM_EAACPLUSENC_Params *) ceaudenc->codec_params;
 
@@ -332,7 +306,7 @@ gst_ce_aacenc_get_property (GObject * object, guint prop_id,
 {
   GstCEAudEnc *ceaudenc = GST_CEAUDENC (object);
   ITTIAM_EAACPLUSENC_Params *params;
-  gint tmp;
+
   params = (ITTIAM_EAACPLUSENC_Params *) ceaudenc->codec_params;
 
   if (!params) {
