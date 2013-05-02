@@ -49,6 +49,7 @@
 
 #include "gstce.h"
 #include "gstceimgenc.h"
+#include "gstceslicepool.h"
 
 #include <ti/sdo/ce/osal/Memory.h>
 
@@ -56,23 +57,31 @@ enum
 {
   PROP_0,
   PROP_QUALITY_VALUE,
+  PROP_NUM_OUT_BUFFERS
 };
 
-#define  PROP_QUALITY_VALUE_DEFAULT 75
+#define PROP_QUALITY_VALUE_DEFAULT 75
+#define PROP_NUM_OUT_BUFFERS_DEFAULT 3
 
 #define GST_CEIMGENC_GET_PRIVATE(obj)  \
     (G_TYPE_INSTANCE_GET_PRIVATE ((obj), GST_TYPE_CEIMGENC, GstCEImgEncPrivate))
 
 struct _GstCEImgEncPrivate
 {
+  gboolean first_buffer;
+
   /* Basic properties */
   XDAS_Int32 frameWidth;
   XDAS_Int32 frameHeight;
   XDAS_Int32 framePitch;
 
   gint32 outbuf_size;
+  gint num_out_buffers;
+  GstBufferPool *outbuf_pool;
+
   GstVideoFormat video_format;
   GstVideoCodecState *input_state;
+  GstVideoCodecState *output_state;
 
   /* Handle to the CMEM allocator */
   GstAllocator *allocator;
@@ -85,8 +94,6 @@ struct _GstCEImgEncPrivate
 };
 
 /* A number of function prototypes are given so we can refer to them later */
-static void gst_ceimgenc_finalize (GObject * object);
-
 static gboolean gst_ceimgenc_open (GstVideoEncoder * encoder);
 static gboolean gst_ceimgenc_close (GstVideoEncoder * encoder);
 static gboolean gst_ceimgenc_stop (GstVideoEncoder * encoder);
@@ -94,13 +101,19 @@ static gboolean gst_ceimgenc_set_format (GstVideoEncoder * encoder,
     GstVideoCodecState * state);
 static gboolean gst_ceimgenc_propose_allocation (GstVideoEncoder * encoder,
     GstQuery * query);
+static gboolean gst_ceimgenc_decide_allocation (GstVideoEncoder * encoder,
+    GstQuery * query);
 static GstFlowReturn gst_ceimgenc_handle_frame (GstVideoEncoder * encoder,
     GstVideoCodecFrame * frame);
-static gboolean gst_ceimgenc_reset (GstVideoEncoder * encoder);
+
 static void gst_ceimgenc_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec);
 static void gst_ceimgenc_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec);
+static gboolean gst_ceimgenc_reset (GstVideoEncoder * encoder);
+static void gst_ceimgenc_finalize (GObject * object);
+static gboolean gst_ceimgenc_set_dynamic_params (GstCEImgEnc * ceimgenc);
+static gboolean gst_ceimgenc_get_buffer_info (GstCEImgEnc * ceimgenc);
 
 #define gst_ceimgenc_parent_class parent_class
 G_DEFINE_TYPE (GstCEImgEnc, gst_ceimgenc, GST_TYPE_VIDEO_ENCODER);
@@ -114,8 +127,8 @@ gst_ceimgenc_class_init (GstCEImgEncClass * klass)
   GObjectClass *gobject_class;
   GstVideoEncoderClass *venc_class;
 
-  gobject_class = (GObjectClass *) klass;
-  venc_class = (GstVideoEncoderClass *) klass;
+  gobject_class = G_OBJECT_CLASS (klass);
+  venc_class = GST_VIDEO_ENCODER_CLASS (klass);
 
   g_type_class_add_private (klass, sizeof (GstCEImgEncPrivate));
 
@@ -127,13 +140,21 @@ gst_ceimgenc_class_init (GstCEImgEncClass * klass)
       g_param_spec_int ("qValue", "Quality value",
           "Quality factor for encoder", 2, 97,
           PROP_QUALITY_VALUE_DEFAULT, G_PARAM_READWRITE));
+  g_object_class_install_property (gobject_class, PROP_NUM_OUT_BUFFERS,
+      g_param_spec_int ("num-out-buffers",
+          "Number of output buffers",
+          "Number of buffers to be used in the output buffer pool",
+          3, G_MAXINT32, PROP_NUM_OUT_BUFFERS_DEFAULT, G_PARAM_READWRITE));
 
-  venc_class->open = gst_ceimgenc_open;
-  venc_class->close = gst_ceimgenc_close;
-  venc_class->stop = gst_ceimgenc_stop;
-  venc_class->handle_frame = gst_ceimgenc_handle_frame;
-  venc_class->set_format = gst_ceimgenc_set_format;
-  venc_class->propose_allocation = gst_ceimgenc_propose_allocation;
+  venc_class->open = GST_DEBUG_FUNCPTR (gst_ceimgenc_open);
+  venc_class->close = GST_DEBUG_FUNCPTR (gst_ceimgenc_close);
+  venc_class->stop = GST_DEBUG_FUNCPTR (gst_ceimgenc_stop);
+  venc_class->handle_frame = GST_DEBUG_FUNCPTR (gst_ceimgenc_handle_frame);
+  venc_class->set_format = GST_DEBUG_FUNCPTR (gst_ceimgenc_set_format);
+  venc_class->propose_allocation =
+      GST_DEBUG_FUNCPTR (gst_ceimgenc_propose_allocation);
+  venc_class->decide_allocation =
+      GST_DEBUG_FUNCPTR (gst_ceimgenc_decide_allocation);
 
   gobject_class->finalize = gst_ceimgenc_finalize;
 }
@@ -145,6 +166,8 @@ static void
 gst_ceimgenc_init (GstCEImgEnc * ceimgenc)
 {
   GstCEImgEncPrivate *priv;
+
+  GST_DEBUG_OBJECT (ceimgenc, "initialize encoder");
 
   priv = ceimgenc->priv = GST_CEIMGENC_GET_PRIVATE (ceimgenc);
 
@@ -170,6 +193,7 @@ gst_ceimgenc_init (GstCEImgEnc * ceimgenc)
     ceimgenc->codec_dyn_params->size = sizeof (IMGENC1_DynamicParams);
   }
 
+  priv->first_buffer = TRUE;
   priv->engine_handle = NULL;
   priv->allocator = NULL;
 
@@ -182,7 +206,7 @@ gst_ceimgenc_init (GstCEImgEnc * ceimgenc)
 static void
 gst_ceimgenc_finalize (GObject * object)
 {
-  GstCEImgEnc *ceimgenc = (GstCEImgEnc *) (object);
+  GstCEImgEnc *ceimgenc = GST_CEIMGENC (object);
 
   /* Set free the codec parameters */
   if (ceimgenc->codec_params) {
@@ -211,9 +235,8 @@ gst_ceimgenc_configure_codec (GstCEImgEnc * ceimgenc)
   IMGENC1_Status enc_status;
   IMGENC1_Params *params;
   IMGENC1_DynamicParams *dyn_params;
-  gint ret, i;
 
-  klass = (GstCEImgEncClass *) G_OBJECT_GET_CLASS (ceimgenc);
+  klass = GST_CEIMGENC_CLASS (G_OBJECT_GET_CLASS (ceimgenc));
   priv = ceimgenc->priv;
   params = ceimgenc->codec_params;
   dyn_params = ceimgenc->codec_dyn_params;
@@ -265,31 +288,13 @@ gst_ceimgenc_configure_codec (GstCEImgEnc * ceimgenc)
   enc_status.data.buf = NULL;
 
   GST_DEBUG_OBJECT (ceimgenc, "Set codec dynamic parameters");
-  ret = IMGENC1_control (ceimgenc->codec_handle, XDM_SETPARAMS,
-      dyn_params, &enc_status);
-  if (ret != IMGENC1_EOK)
-    goto fail_control_params;
+  if (!gst_ceimgenc_set_dynamic_params (ceimgenc))
+    goto fail_out;
+
+  if (!gst_ceimgenc_get_buffer_info (ceimgenc))
+    goto fail_out;
 
   GST_OBJECT_UNLOCK (ceimgenc);
-
-  /* Get buffer information from image encoder */
-  ret = IMGENC1_control (ceimgenc->codec_handle, XDM_GETBUFINFO,
-      dyn_params, &enc_status);
-  if (ret != IMGENC1_EOK)
-    goto fail_control_getinfo;
-
-  /* Set input buffers sizes */
-  for (i = 0; i < enc_status.bufInfo.minNumInBufs; i++) {
-    priv->inbuf_desc.descs[i].bufSize = enc_status.bufInfo.minInBufSize[i];
-    GST_DEBUG_OBJECT (ceimgenc, "size of input buffer [%d] = %li", i,
-        priv->inbuf_desc.descs[i].bufSize);
-  }
-
-  /* Set the output buffer size */
-  priv->outbuf_size = enc_status.bufInfo.minOutBufSize[0];
-  priv->outbuf_desc.numBufs = 1;
-  priv->outbuf_desc.descs[0].bufSize = (XDAS_Int32) priv->outbuf_size;
-  GST_DEBUG_OBJECT (ceimgenc, "output buffer size = %d", priv->outbuf_size);
 
   return TRUE;
 
@@ -299,19 +304,9 @@ fail_open_codec:
     GST_OBJECT_UNLOCK (ceimgenc);
     return FALSE;
   }
-fail_control_params:
+fail_out:
   {
-    GST_ERROR_OBJECT (ceimgenc, "Failed to set dynamic parameters, "
-        "status error %x, %d", (guint) enc_status.extendedError, ret);
     GST_OBJECT_UNLOCK (ceimgenc);
-    IMGENC1_delete (ceimgenc->codec_handle);
-    ceimgenc->codec_handle = NULL;
-    return FALSE;
-  }
-fail_control_getinfo:
-  {
-    GST_ERROR_OBJECT (ceimgenc, "Failed to get buffer information, "
-        "status error %x, %d", (guint) enc_status.extendedError, ret);
     IMGENC1_delete (ceimgenc->codec_handle);
     ceimgenc->codec_handle = NULL;
     return FALSE;
@@ -326,7 +321,8 @@ static gboolean
 gst_ceimgenc_set_format (GstVideoEncoder * encoder, GstVideoCodecState * state)
 {
   GstCaps *allowed_caps;
-  GstVideoCodecState *output_format;
+  GstBuffer *codec_data = NULL;
+
   GstCEImgEnc *ceimgenc = (GstCEImgEnc *) encoder;
   GstCEImgEncClass *klass = (GstCEImgEncClass *) G_OBJECT_GET_CLASS (ceimgenc);
   GstCEImgEncPrivate *priv = ceimgenc->priv;
@@ -359,20 +355,15 @@ gst_ceimgenc_set_format (GstVideoEncoder * encoder, GstVideoCodecState * state)
   }
   GST_DEBUG_OBJECT (ceimgenc, "chose caps %" GST_PTR_FORMAT, allowed_caps);
 
-  /* If the codec really supports more than one format, set custom source caps */
+  /* If the codec supports more than one format, set custom source caps */
   if (klass->set_src_caps) {
     GST_DEBUG ("Use custom set src caps");
-    if (!klass->set_src_caps (ceimgenc, &allowed_caps))
+    if (!klass->set_src_caps (ceimgenc, &allowed_caps, &codec_data))
       goto fail_set_caps;
   }
 
-  if (gst_caps_get_size (allowed_caps) > 1) {
-    GstCaps *newcaps;
-
-    newcaps = gst_caps_copy_nth (allowed_caps, 0);
-    gst_caps_unref (allowed_caps);
-    allowed_caps = newcaps;
-  }
+  /* Truncate to the first structure and fixate any unfixed fields */
+  allowed_caps = gst_caps_fixate (allowed_caps);
 
   /* Store input state */
   if (priv->input_state)
@@ -380,14 +371,19 @@ gst_ceimgenc_set_format (GstVideoEncoder * encoder, GstVideoCodecState * state)
   priv->input_state = gst_video_codec_state_ref (state);
 
   /* Set output state */
-  output_format =
-      gst_video_encoder_set_output_state (encoder, allowed_caps, state);
+  if (priv->output_state)
+    gst_video_codec_state_unref (priv->output_state);
 
-  if (!output_format) {
+  priv->output_state =
+      gst_video_encoder_set_output_state (encoder, allowed_caps, state);
+  if (!priv->output_state) {
     goto fail_set_caps;
   }
 
-  gst_video_codec_state_unref (output_format);
+  if (codec_data) {
+    GST_DEBUG_OBJECT (ceimgenc, "setting the codec data");
+    priv->output_state->codec_data = codec_data;
+  }
 
   return TRUE;
 
@@ -421,6 +417,59 @@ gst_ceimgenc_propose_allocation (GstVideoEncoder * encoder, GstQuery * query)
 
   return GST_VIDEO_ENCODER_CLASS (parent_class)->propose_allocation (encoder,
       query);
+}
+
+/**
+ * Setup the allocation parameters for allocating output buffers
+ */
+static gboolean
+gst_ceimgenc_decide_allocation (GstVideoEncoder * encoder, GstQuery * query)
+{
+  GstCEImgEnc *ceimgenc = GST_CEIMGENC (encoder);
+  GstCEImgEncPrivate *priv = ceimgenc->priv;
+  GstAllocator *allocator = NULL;
+  GstAllocationParams params;
+  GstBufferPool *pool = NULL;
+  GstStructure *config;
+  GstCaps *caps;
+
+  GST_LOG_OBJECT (ceimgenc, "decide allocation");
+  if (!GST_VIDEO_ENCODER_CLASS (parent_class)->decide_allocation (encoder,
+          query))
+    return FALSE;
+
+  /* use our own pool */
+  pool = priv->outbuf_pool;
+  if (!pool)
+    return FALSE;
+
+  /* we got configuration from our peer or the decide_allocation method,
+   * parse them */
+  if (gst_query_get_n_allocation_params (query) > 0)
+    gst_query_parse_nth_allocation_param (query, 0, &allocator, &params);
+  else
+    gst_allocation_params_init (&params);
+
+  if (params.align < 31)
+    params.align = 31;
+
+  GST_DEBUG_OBJECT (ceimgenc, "allocation params %d, %d, %d, %d", params.flags,
+      params.align, params.padding, params.prefix);
+  priv->alloc_params = params;
+
+  if (priv->output_state)
+    caps = priv->output_state->caps;
+
+  GST_DEBUG_OBJECT (ceimgenc, "configuring output pool");
+  config = gst_buffer_pool_get_config (pool);
+  gst_buffer_pool_config_set_params (config, caps, priv->outbuf_size, 1,
+      priv->num_out_buffers);
+  gst_buffer_pool_config_set_allocator (config, priv->allocator,
+      &priv->alloc_params);
+  gst_buffer_pool_set_config (GST_BUFFER_POOL_CAST (pool), config);
+  gst_buffer_pool_set_active (GST_BUFFER_POOL_CAST (pool), TRUE);
+
+  return TRUE;
 }
 
 /**
@@ -460,13 +509,12 @@ gst_ceimgenc_handle_frame (GstVideoEncoder * encoder,
   GstVideoFrame vframe;
   GstMapInfo info_out;
   GstBuffer *outbuf = NULL;
-  gboolean is_contiguous = FALSE;
-  gint ret = 0;
-  gint i;
-  gint32 phys;
-
+  GstCEContigBufMeta *meta;
   IMGENC1_InArgs in_args;
   IMGENC1_OutArgs out_args;
+  gint ret = 0;
+  gint i;
+  gint current_pitch;
 
   /* Fill planes pointer */
   if (!gst_video_frame_map (&vframe, info, frame->input_buffer, GST_MAP_READ))
@@ -477,21 +525,63 @@ gst_ceimgenc_handle_frame (GstVideoEncoder * encoder,
         (XDAS_Int8 *) GST_VIDEO_FRAME_PLANE_DATA (&vframe, i);
   }
 
-  /* Check if input data is contiguous */
-  phys =
-      Memory_getBufferPhysicalAddress (GST_VIDEO_FRAME_COMP_DATA (&vframe, 0),
-      GST_VIDEO_FRAME_SIZE (&vframe), (Bool *) & is_contiguous);
+  current_pitch = GST_VIDEO_FRAME_PLANE_STRIDE (&vframe, 0);
 
   gst_video_frame_unmap (&vframe);
 
-  if (!is_contiguous)
-    goto fail_no_contiguous_buffer;
+  if (priv->framePitch != current_pitch) {
+    priv->framePitch = current_pitch;
+    switch (priv->video_format) {
+      case GST_VIDEO_FORMAT_UYVY:
+        ceimgenc->codec_dyn_params->captureWidth = priv->framePitch / 2;
+        break;
+      case GST_VIDEO_FORMAT_NV12:
+        ceimgenc->codec_dyn_params->captureWidth = priv->framePitch;
+        break;
+      default:
+        ceimgenc->codec_dyn_params->captureWidth = 0;
+    }
+    if (!gst_ceimgenc_set_dynamic_params (ceimgenc))
+      goto fail_set_buffer_stride;
+
+    if (!gst_ceimgenc_get_buffer_info (ceimgenc))
+      goto fail_set_buffer_stride;
+  }
+
+  /* Making sure the output buffer pool is configured */
+  if (priv->first_buffer && gst_pad_check_reconfigure (encoder->srcpad))
+    gst_video_encoder_negotiate (GST_VIDEO_ENCODER (encoder));
+
+  /* If there's no contiguous buffer metadata, it hasn't been
+   * registered as contiguous, so we attempt to register it. If 
+   * we can't, then this buffer is not contiguous and we fail. */
+  meta = GST_CE_CONTIG_BUF_META_GET (frame->input_buffer);
+  if (!meta) {
+    meta = GST_CE_CONTIG_BUF_META_ADD (frame->input_buffer);
+    if (meta) {
+      /* The metadata is now managed by the buffer pool and shouldn't
+       * be removed */
+      GST_META_FLAG_SET (meta, GST_META_FLAG_POOLED);
+      GST_META_FLAG_SET (meta, GST_META_FLAG_LOCKED);
+    } else {
+      /* $
+       * TODO
+       * Failing if input buffer is not contiguous. Should it copy the
+       * buffer instead?
+       */
+      goto fail_no_contiguous_buffer;
+    }
+  }
 
   /* Allocate output buffer */
+#if 1
+  if (gst_buffer_pool_acquire_buffer (GST_BUFFER_POOL_CAST (priv->outbuf_pool),
+          &outbuf, NULL) != GST_FLOW_OK)
+    goto fail_alloc;
+#else
   if (!gst_ceimgenc_allocate_output_frame (ceimgenc, &outbuf))
     goto fail_alloc;
-
-
+#endif
   if (!gst_buffer_map (outbuf, &info_out, GST_MAP_WRITE)) {
     goto fail_alloc;
   }
@@ -502,7 +592,7 @@ gst_ceimgenc_handle_frame (GstVideoEncoder * encoder,
   in_args.size = sizeof (IIMGENC1_InArgs);
   out_args.size = sizeof (IMGENC1_OutArgs);
 
-  /* Pre-encode process (JPEG encoder doesn't have a pre-encode process) */
+  /* Pre-encode process */
   if (klass->pre_process && !klass->pre_process (ceimgenc, frame->input_buffer))
     goto fail_pre_encode;
 
@@ -518,9 +608,12 @@ gst_ceimgenc_handle_frame (GstVideoEncoder * encoder,
       out_args.bytesGenerated, priv->outbuf_desc.descs->buf);
 
   gst_buffer_unmap (outbuf, &info_out);
-
+#if 1
+  gst_ce_slice_buffer_resize (GST_CE_SLICE_BUFFER_POOL_CAST (priv->outbuf_pool),
+      outbuf, out_args.bytesGenerated);
+#else
   gst_buffer_set_size (outbuf, out_args.bytesGenerated);
-
+#endif
   /* Post-encode process (JPEG encoder doesn't have a post-encode process) */
   if (klass->post_process && !klass->post_process (ceimgenc, outbuf))
     goto fail_post_encode;
@@ -534,6 +627,11 @@ gst_ceimgenc_handle_frame (GstVideoEncoder * encoder,
 fail_map:
   {
     GST_ERROR_OBJECT (encoder, "Failed to map input buffer");
+    return GST_FLOW_ERROR;
+  }
+fail_set_buffer_stride:
+  {
+    GST_ERROR_OBJECT (encoder, "Failed to set buffer stride");
     return GST_FLOW_ERROR;
   }
 fail_no_contiguous_buffer:
@@ -603,6 +701,12 @@ gst_ceimgenc_set_property (GObject * object,
       GST_LOG_OBJECT (ceimgenc,
           "setting quality value to %li", dyn_params->qValue);
       break;
+    case PROP_NUM_OUT_BUFFERS:
+      ceimgenc->priv->num_out_buffers = g_value_get_int (value);
+      GST_LOG_OBJECT (ceimgenc,
+          "setting number of output buffers to %d",
+          ceimgenc->priv->num_out_buffers);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
@@ -620,11 +724,6 @@ gst_ceimgenc_set_property (GObject * object,
 
   GST_OBJECT_UNLOCK (ceimgenc);
   return;
-
-fail_static_prop:
-  GST_WARNING_OBJECT (ceimgenc, "can't set static property when "
-      "the codec is already configured");
-  GST_OBJECT_UNLOCK (ceimgenc);
 }
 
 /**
@@ -655,6 +754,9 @@ gst_ceimgenc_get_property (GObject * object,
   switch (prop_id) {
     case PROP_QUALITY_VALUE:
       g_value_set_int (value, dyn_params->qValue);
+      break;
+    case PROP_NUM_OUT_BUFFERS:
+      g_value_set_int (value, ceimgenc->priv->num_out_buffers);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -687,6 +789,11 @@ gst_ceimgenc_open (GstVideoEncoder * encoder)
   if (!priv->allocator)
     goto fail_no_allocator;
 
+  GST_DEBUG_OBJECT (ceimgenc, "creating slice buffer pool");
+
+  if (!(priv->outbuf_pool = gst_ce_slice_buffer_pool_new ()))
+    goto fail_pool;
+
   return TRUE;
 
   /* Errors */
@@ -701,7 +808,11 @@ fail_no_allocator:
     GST_WARNING_OBJECT (ceimgenc, "can't find the CMEM allocator");
     return FALSE;
   }
-
+fail_pool:
+  {
+    GST_WARNING_OBJECT (ceimgenc, "can't create slice buffer pool");
+    return FALSE;
+  }
   return TRUE;
 }
 
@@ -711,7 +822,7 @@ fail_no_allocator:
 static gboolean
 gst_ceimgenc_close (GstVideoEncoder * encoder)
 {
-  GstCEImgEnc *ceimgenc = (GstCEImgEnc *) encoder;
+  GstCEImgEnc *ceimgenc = GST_CEIMGENC (encoder);
   GstCEImgEncPrivate *priv = ceimgenc->priv;
 
   if (priv->engine_handle) {
@@ -724,6 +835,11 @@ gst_ceimgenc_close (GstVideoEncoder * encoder)
   if (priv->allocator) {
     gst_object_unref (priv->allocator);
     priv->allocator = NULL;
+  }
+
+  if (priv->outbuf_pool) {
+    gst_object_unref (priv->outbuf_pool);
+    priv->outbuf_pool = NULL;
   }
 
   return TRUE;
@@ -744,7 +860,7 @@ gst_ceimgenc_stop (GstVideoEncoder * encoder)
 static gboolean
 gst_ceimgenc_reset (GstVideoEncoder * encoder)
 {
-  GstCEImgEnc *ceimgenc = (GstCEImgEnc *) encoder;
+  GstCEImgEnc *ceimgenc = GST_CEIMGENC (encoder);
   GstCEImgEncPrivate *priv = ceimgenc->priv;
   GstCEImgEncClass *klass = (GstCEImgEncClass *) G_OBJECT_GET_CLASS (ceimgenc);
 
@@ -766,6 +882,8 @@ gst_ceimgenc_reset (GstVideoEncoder * encoder)
 
   GST_OBJECT_LOCK (ceimgenc);
 
+  priv->num_out_buffers = PROP_NUM_OUT_BUFFERS;
+
   /* Set default values for codec static params */
   params->forceChromaFormat = XDM_YUV_420P;
   params->dataEndianness = XDM_BYTE;
@@ -783,6 +901,71 @@ gst_ceimgenc_reset (GstVideoEncoder * encoder)
     GST_DEBUG_OBJECT (ceimgenc, "configuring codec");
     klass->reset (ceimgenc);
   }
+
+  return TRUE;
+}
+
+/**
+ * Set current dynamic parameters 
+ */
+static gboolean
+gst_ceimgenc_set_dynamic_params (GstCEImgEnc * ceimgenc)
+{
+  IMGENC1_Status enc_status;
+  gint ret;
+
+  g_return_val_if_fail (ceimgenc->codec_handle, FALSE);
+  g_return_val_if_fail (ceimgenc->codec_dyn_params, FALSE);
+
+  enc_status.size = sizeof (IMGENC1_Status);
+  enc_status.data.buf = NULL;
+
+  ret = IMGENC1_control (ceimgenc->codec_handle, XDM_SETPARAMS,
+      ceimgenc->codec_dyn_params, &enc_status);
+  if (ret != IMGENC1_EOK) {
+    GST_WARNING_OBJECT (ceimgenc, "Failed to set dynamic parameters, "
+        "status error %x, %d", (unsigned int) enc_status.extendedError, ret);
+    return FALSE;
+  }
+
+  return TRUE;
+}
+
+/**
+ * Get buffer information from video codec 
+ */
+static gboolean
+gst_ceimgenc_get_buffer_info (GstCEImgEnc * ceimgenc)
+{
+  GstCEImgEncPrivate *priv = ceimgenc->priv;
+  IMGENC1_Status enc_status;
+  gint i, ret;
+
+  g_return_val_if_fail (ceimgenc->codec_handle, FALSE);
+  g_return_val_if_fail (ceimgenc->codec_dyn_params, FALSE);
+
+  enc_status.size = sizeof (IMGENC1_Status);
+  enc_status.data.buf = NULL;
+
+  ret = IMGENC1_control (ceimgenc->codec_handle, XDM_GETBUFINFO,
+      ceimgenc->codec_dyn_params, &enc_status);
+  if (ret != IMGENC1_EOK) {
+    GST_ERROR_OBJECT (ceimgenc, "failed to get buffer information, "
+        "status error %x, %d", (guint) enc_status.extendedError, ret);
+    return FALSE;
+  }
+
+  for (i = 0; i < enc_status.bufInfo.minNumInBufs; i++) {
+    priv->inbuf_desc.descs[i].bufSize = enc_status.bufInfo.minInBufSize[i];
+    GST_DEBUG_OBJECT (ceimgenc, "size of input buffer [%d] = %li", i,
+        priv->inbuf_desc.descs[i].bufSize);
+  }
+
+  priv->outbuf_size = enc_status.bufInfo.minOutBufSize[0];
+  priv->outbuf_desc.numBufs = 1;
+  priv->outbuf_desc.descs[0].bufSize = (XDAS_Int32) priv->outbuf_size;
+
+  GST_DEBUG_OBJECT (ceimgenc, "output buffer size = %d", priv->outbuf_size);
 
   return TRUE;
 }

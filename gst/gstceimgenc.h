@@ -29,25 +29,23 @@
 
 #include "gstceutils.h"
 
-G_BEGIN_DECLS
-
-typedef struct _GstCEImgEnc GstCEImgEnc;
+G_BEGIN_DECLS typedef struct _GstCEImgEnc GstCEImgEnc;
 typedef struct _GstCEImgEncClass GstCEImgEncClass;
 typedef struct _GstCEImgEncPrivate GstCEImgEncPrivate;
 
 struct _GstCEImgEnc
 {
   GstVideoEncoder parent;
- 
+
   /* Handle to the Codec */
   IMGENC1_Handle codec_handle;
   IMGENC1_Params *codec_params;
   IMGENC1_DynamicParams *codec_dyn_params;
- 
- /*< private >*/
+
+  /*< private > */
   GstCEImgEncPrivate *priv;
 
-  gpointer  _gst_reserved[GST_PADDING_LARGE];
+  gpointer _gst_reserved[GST_PADDING_LARGE];
 };
 
 /**
@@ -78,14 +76,15 @@ struct _GstCEImgEncClass
 
   /*< public > */
   const gchar *codec_name;
-  
+
   /* virtual methods for subclasses */
   void (*reset) (GstCEImgEnc * ceimgenc);
-  gboolean (*set_src_caps) (GstCEImgEnc *ceimgenc, 
-                            GstCaps ** src_caps);
+    gboolean (*set_src_caps) (GstCEImgEnc * ceimgenc,
+      GstCaps ** src_caps, GstBuffer ** codec_data);
 
-  gboolean (*pre_process) (GstCEImgEnc *ceimgenc, GstBuffer *input_buffer);
-  gboolean (*post_process) (GstCEImgEnc *ceimgenc, GstBuffer *output_buffer);
+    gboolean (*pre_process) (GstCEImgEnc * ceimgenc, GstBuffer * input_buffer);
+    gboolean (*post_process) (GstCEImgEnc * ceimgenc,
+      GstBuffer * output_buffer);
 
   /*< private > */
   gpointer _gst_reserved[GST_PADDING_LARGE];

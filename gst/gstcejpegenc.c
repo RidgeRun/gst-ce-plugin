@@ -197,7 +197,6 @@ fail_alloc:
 static void
 gst_ce_jpegenc_reset (GstCEImgEnc * ceimgenc)
 {
-  GstCEJPEGEnc *jpegenc = (GstCEJPEGEnc *) (ceimgenc);
   IJPEGENC_Params *jpeg_params;
   IJPEGENC_DynamicParams *jpeg_dyn_params;
 
