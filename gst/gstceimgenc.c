@@ -144,7 +144,7 @@ gst_ceimgenc_class_init (GstCEImgEncClass * klass)
       g_param_spec_int ("num-out-buffers",
           "Number of output buffers",
           "Number of buffers to be used in the output buffer pool",
-          3, G_MAXINT32, PROP_NUM_OUT_BUFFERS_DEFAULT, G_PARAM_READWRITE));
+          2, G_MAXINT32, PROP_NUM_OUT_BUFFERS_DEFAULT, G_PARAM_READWRITE));
 
   venc_class->open = GST_DEBUG_FUNCPTR (gst_ceimgenc_open);
   venc_class->close = GST_DEBUG_FUNCPTR (gst_ceimgenc_close);
