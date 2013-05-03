@@ -35,25 +35,35 @@ GST_END_TEST;
 
 GST_START_TEST (test_ce_update_reg)
 {
-  GstElement *encoder;
+  GstElement *encoderH264, *encoderJPEG;
 
   /* Ask for elements the first time */
-  encoder = gst_element_factory_make ("ce_h264enc", "enc");
-  GST_DEBUG ("Creating element ce_h264enc %p", encoder);
-  fail_unless (encoder != NULL);
+  encoderH264 = gst_element_factory_make ("ce_h264enc", "h264enc");
+  GST_DEBUG ("Creating element ce_h264enc %p", encoderH264);
+  fail_unless (encoderH264 != NULL);
 
-  gst_object_unref (encoder);
+  encoderJPEG = gst_element_factory_make ("ce_jpegenc", "jpegenc");
+  GST_DEBUG ("Creating element ce_jpegenc %p", encoderJPEG);
+  fail_unless (encoderJPEG != NULL);
+
+  gst_object_unref (encoderH264);
+  gst_object_unref (encoderJPEG);
 
   GST_DEBUG ("calls gst_update_registry");
   gst_update_registry ();
 
   /* Ask for elements the second time */
 
-  encoder = gst_element_factory_make ("ce_h264enc", "enc");
-  GST_DEBUG ("Creating element ce_h264enc %p", encoder);
-  fail_unless (encoder != NULL);
+  encoderH264 = gst_element_factory_make ("ce_h264enc", "h264enc");
+  GST_DEBUG ("Creating element ce_h264enc %p", encoderH264);
+  fail_unless (encoderH264 != NULL);
 
-  gst_object_unref (encoder);
+  encoderJPEG = gst_element_factory_make ("ce_jpegenc", "jpegenc");
+  GST_DEBUG ("Creating element ce_jpegenc %p", encoderJPEG);
+  fail_unless (encoderJPEG != NULL);
+
+  gst_object_unref (encoderH264);
+  gst_object_unref (encoderJPEG);
 }
 
 GST_END_TEST;

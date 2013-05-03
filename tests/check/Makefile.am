@@ -29,6 +29,12 @@ elements_ce_h264enc_LDADD = $(GST_PLUGINS_BASE_LIBS) \
 	$(GST_BASE_LIBS) \
 	$(LDADD)
 
+elements_ce_jpegenc_LDADD = $(GST_PLUGINS_BASE_LIBS) \
+	-lgstapp-@GST_API_VERSION@ \
+	$(top_builddir)/gst-libs/gst/cmem/libgstcmem-@GST_API_VERSION@.la \
+	$(GST_BASE_LIBS) \
+	$(LDADD)
+
 libs_cmem_LDADD = \
 	$(top_builddir)/gst-libs/gst/cmem/libgstcmem-@GST_API_VERSION@.la \
 	$(GST_BASE_LIBS) \
