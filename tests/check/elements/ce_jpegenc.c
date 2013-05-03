@@ -291,14 +291,16 @@ GST_START_TEST (test_ce_jpegenc_properties)
 }
 
 GST_END_TEST;
+
 /**
- * TODO:
+ * Also review:
  * ARM consume vs quality, for a given size
  * Time between each consecutive frame
  * Number of images encoded without errors
  */
+
 static Suite *
-jpegenc_suite (void)
+ce_jpegenc_suite (void)
 {
   Suite *s = suite_create ("ce_jpegenc");
   TCase *tc_chain = tcase_create ("general");
