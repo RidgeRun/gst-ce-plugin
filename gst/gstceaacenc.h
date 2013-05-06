@@ -40,6 +40,10 @@ typedef struct _GstCEAACEncClass GstCEAACEncClass;
 struct _GstCEAACEnc
 {
   GstCEAudEnc encoder;
+  /* Audio info */
+  gint rate;
+  gint profile;
+  gint channels;
 
 };
 

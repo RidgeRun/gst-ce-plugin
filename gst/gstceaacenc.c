@@ -72,6 +72,15 @@ enum
   PROP_FULL_BANDWIDTH,
 };
 
+enum
+{
+  GST_CE_AACENC_MAIN_PROFILE = 1,
+  GST_CE_AACENC_LC_PROFILE,
+  GST_CE_AACENC_SSR_PROFILE,
+  GST_CE_AACENC_LTP_PROFILE,
+  GST_CE_AACENC_HEAAC_PROFILE
+};
+
 static void gst_ce_aacenc_reset (GstCEAudEnc * ceaudenc);
 static gboolean gst_ce_aacenc_set_src_caps (GstCEAudEnc * ceaudenc,
     GstAudioInfo * info, GstCaps ** caps, GstBuffer ** codec_data);
@@ -186,6 +195,44 @@ fail_alloc:
   }
 }
 
+/*
+ * Create the codec data header
+ */
+static void
+gst_ce_aacenc_get_codec_data (GstCEAACEnc * aacenc, GstBuffer ** codec_data)
+{
+
+  const gint rate_idx[] =
+      { 96000, 88200, 64000, 48000, 44100, 32000, 24000, 22050, 16000, 12000,
+    11025, 8000, 7350
+  };
+  const int config_len = 2;
+  guint8 *config;
+
+  gint sr_idx;
+  GstMapInfo *info;
+  /*it goes like
+   * 5 bit: profile
+   * 4 bit: sample rate index
+   * 4 bit: number of channels
+   * 3 bit: unused */
+
+  for (sr_idx = 0; sr_idx < 13; sr_idx++) {
+    if (aacenc->rate >= rate_idx[sr_idx])
+      break;
+  }
+
+  GST_DEBUG_OBJECT (aacenc, "Profile: %d, Rate: %d, Rate idx: %d, Channels: %d",
+      aacenc->profile, aacenc->rate, sr_idx, aacenc->channels);
+  config = g_malloc (config_len);
+  config[0] = ((aacenc->profile & 0x1F) << 3) | ((sr_idx & 0xE) >> 1);
+  config[1] = ((sr_idx & 0x1) << 7) | ((aacenc->channels & 0xF) << 3);
+
+  *codec_data = gst_buffer_new_wrapped (config, config_len);
+
+  GST_DEBUG_OBJECT (aacenc, "codec_data %x%x", config[0], config[1]);
+}
+
 static gboolean
 gst_ce_aacenc_set_src_caps (GstCEAudEnc * ceaudenc, GstAudioInfo * info,
     GstCaps ** caps, GstBuffer ** codec_data)
@@ -195,6 +242,12 @@ gst_ce_aacenc_set_src_caps (GstCEAudEnc * ceaudenc, GstAudioInfo * info,
   gboolean ret = TRUE;
 
   ITTIAM_EAACPLUSENC_Params *params;
+
+  aacenc->channels = GST_AUDIO_INFO_CHANNELS (info);
+  aacenc->rate = GST_AUDIO_INFO_RATE (info);
+
+  gst_ce_aacenc_get_codec_data (aacenc, codec_data);
+  GST_DEBUG_OBJECT (aacenc, "setting AAC caps");
   params = (ITTIAM_EAACPLUSENC_Params *) ceaudenc->codec_params;
 
   GST_DEBUG_OBJECT (aacenc, "setting AAC caps");
@@ -231,6 +284,10 @@ gst_ce_aacenc_reset (GstCEAudEnc * ceaudenc)
 
   if (ceaudenc->codec_params->size != sizeof (ITTIAM_EAACPLUSENC_Params))
     return;
+
+  aacenc->profile = GST_CE_AACENC_LC_PROFILE;
+  aacenc->channels = 0;
+  aacenc->rate = 32000;
 
   ceaudenc->codec_params->bitRate = 32000;
   ceaudenc->codec_params->maxBitRate = 576000;

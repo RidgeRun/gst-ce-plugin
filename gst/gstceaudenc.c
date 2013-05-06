@@ -344,8 +344,14 @@ gst_ceaudenc_set_format (GstAudioEncoder * encoder, GstAudioInfo * info)
       goto fail_set_caps;
   }
 
+  if (codec_data) {
+    GST_DEBUG_OBJECT (allowed_caps, "Setiing codec data");
+    gst_caps_set_simple (allowed_caps,
+        "codec_data", GST_TYPE_BUFFER, codec_data, (char *) NULL);
+  }
   /* Truncate to the first structure and fixate any unfixed fields */
   allowed_caps = gst_caps_fixate (allowed_caps);
+
 
   if (!gst_audio_encoder_set_output_format (GST_AUDIO_ENCODER (ceaudenc),
           allowed_caps))
