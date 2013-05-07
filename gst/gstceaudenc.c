@@ -47,6 +47,7 @@
 
 #include "gstce.h"
 #include "gstceaudenc.h"
+#include "gstceslicepool.h"
 #include <ti/sdo/ce/osal/Memory.h>
 #include <ittiam/codecs/aaclc_enc/ieaacplusenc.h>
 
@@ -55,10 +56,12 @@ enum
   PROP_0,
   PROP_BITRATE,
   PROP_MAX_BITRATE,
+  PROP_NUM_OUT_BUFFERS
 };
 
 #define PROP_BITRATE_DEFAULT         128000
 #define PROP_MAX_BITRATE_DEFAULT     128000
+#define PROP_NUM_OUT_BUFFERS_DEFAULT      3
 
 #define GST_CEAUDENC_GET_PRIVATE(obj)  \
     (G_TYPE_INSTANCE_GET_PRIVATE ((obj), GST_TYPE_CEAUDENC, GstCEAudEncPrivate))
@@ -67,7 +70,8 @@ struct _GstCEAudEncPrivate
 {
   gboolean first_buffer;
   gint32 outbuf_size;
-
+  GstBufferPool *outbuf_pool;
+  gint num_out_buffers;
   /* Audio Information */
   gint channels;
   gint rate;
@@ -92,7 +96,7 @@ static gboolean gst_ceaudenc_close (GstAudioEncoder * encoder);
 static gboolean gst_ceaudenc_stop (GstAudioEncoder * encoder);
 static gboolean gst_ceaudenc_set_format (GstAudioEncoder * encoder,
     GstAudioInfo * state);
-static gboolean gst_ceaudenc_propose_allocation (GstAudioEncoder * encoder,
+static gboolean gst_ceaudenc_decide_allocation (GstAudioEncoder * encoder,
     GstQuery * query);
 static GstFlowReturn gst_ceaudenc_handle_frame (GstAudioEncoder * encoder,
     GstBuffer * buffer);
@@ -141,11 +145,20 @@ gst_ceaudenc_class_init (GstCEAudEncClass * klass)
           "Max bitrate for VBR encoding",
           0, G_MAXINT32, PROP_MAX_BITRATE_DEFAULT, G_PARAM_READWRITE));
 
+  g_object_class_install_property (gobject_class, PROP_NUM_OUT_BUFFERS,
+      g_param_spec_int ("num-out-buffers",
+          "Number of output buffers",
+          "Number of buffers to be used in the output buffer pool, "
+          "each buffer contains the maximum amount of samples supported by the audio codec",
+          3, G_MAXINT32, PROP_NUM_OUT_BUFFERS_DEFAULT, G_PARAM_READWRITE));
+
   venc_class->open = GST_DEBUG_FUNCPTR (gst_ceaudenc_open);
   venc_class->close = GST_DEBUG_FUNCPTR (gst_ceaudenc_close);
   venc_class->stop = GST_DEBUG_FUNCPTR (gst_ceaudenc_stop);
   venc_class->handle_frame = GST_DEBUG_FUNCPTR (gst_ceaudenc_handle_frame);
   venc_class->set_format = GST_DEBUG_FUNCPTR (gst_ceaudenc_set_format);
+  venc_class->decide_allocation =
+      GST_DEBUG_FUNCPTR (gst_ceaudenc_decide_allocation);
 
 }
 
@@ -372,6 +385,56 @@ fail_set_caps:
   return FALSE;
 }
 
+static gboolean
+gst_ceaudenc_decide_allocation (GstAudioEncoder * encoder, GstQuery * query)
+{
+  GstCEAudEnc *ceaudenc = (GstCEAudEnc *) encoder;
+  GstCEAudEncPrivate *priv = ceaudenc->priv;
+  GstAllocator *allocator = NULL;
+  GstAllocationParams params;
+  GstBufferPool *pool = NULL;
+  GstStructure *config;
+  GstCaps *caps = NULL;
+
+  GST_LOG_OBJECT (ceaudenc, "decide allocation");
+  if (!GST_AUDIO_ENCODER_CLASS (parent_class)->decide_allocation (encoder,
+          query))
+    return FALSE;
+
+  /* use our own pool */
+  pool = priv->outbuf_pool;
+  if (!pool)
+    return FALSE;
+
+  /* we got configuration from our peer or the decide_allocation method,
+   * parse them */
+  if (gst_query_get_n_allocation_params (query) > 0)
+    gst_query_parse_nth_allocation_param (query, 0, &allocator, &params);
+  else
+    gst_allocation_params_init (&params);
+
+  if (params.align < 31)
+    params.align = 31;
+
+  GST_DEBUG_OBJECT (ceaudenc, "allocation params %d, %d %d, %d", params.flags,
+      params.align, params.padding, params.prefix);
+  priv->alloc_params = params;
+
+  //~ if (priv->output_state)
+  //~ caps = priv->output_state->caps;
+
+  GST_DEBUG_OBJECT (ceaudenc, "configuring output pool");
+  config = gst_buffer_pool_get_config (pool);
+  gst_buffer_pool_config_set_params (config, caps, priv->outbuf_size, 1,
+      priv->num_out_buffers);
+  gst_buffer_pool_config_set_allocator (config, priv->allocator,
+      &priv->alloc_params);
+  gst_buffer_pool_set_config (GST_BUFFER_POOL_CAST (pool), config);
+  gst_buffer_pool_set_active (GST_BUFFER_POOL_CAST (pool), TRUE);
+
+  return TRUE;
+}
+
 /*
  * gst_ceaudenc_allocate_frame
  * 
@@ -425,8 +488,14 @@ gst_ceaudenc_handle_frame (GstAudioEncoder * encoder, GstBuffer * buffer)
   GST_DEBUG_OBJECT (ceaudenc, "input buffer %p of size %li",
       priv->inbuf_desc.descs[0].buf, priv->inbuf_desc.descs[0].bufSize);
 
-  if (!gst_ceaudenc_allocate_frame (ceaudenc, &outbuf, priv->outbuf_size))
+  /* Making sure the output buffer pool is configured */
+  if (priv->first_buffer && gst_pad_check_reconfigure (encoder->srcpad))
+    gst_audio_encoder_negotiate (GST_AUDIO_ENCODER (encoder));
+  /* Allocate output buffer */
+  if (gst_buffer_pool_acquire_buffer (GST_BUFFER_POOL_CAST (priv->outbuf_pool),
+          &outbuf, NULL) != GST_FLOW_OK)
     goto fail_alloc;
+
   gst_buffer_map (outbuf, &info_out, GST_MAP_WRITE);
   priv->outbuf_desc.descs[0].buf = (XDAS_Int8 *) info_out.data;
 
@@ -454,6 +523,9 @@ gst_ceaudenc_handle_frame (GstAudioEncoder * encoder, GstBuffer * buffer)
   GST_DEBUG_OBJECT (ceaudenc,
       "Audio encoder generated bytes %d, consumed %d samples",
       out_args.bytesGenerated, out_args.numInSamples);;
+
+  gst_ce_slice_buffer_resize (GST_CE_SLICE_BUFFER_POOL_CAST (priv->outbuf_pool),
+      outbuf, out_args.bytesGenerated);
 
   return gst_audio_encoder_finish_frame (GST_AUDIO_ENCODER (ceaudenc), outbuf,
       priv->samples);
@@ -506,6 +578,11 @@ gst_ceaudenc_set_property (GObject * object,
     case PROP_MAX_BITRATE:
       params->maxBitRate = g_value_get_int (value);
       break;
+    case PROP_NUM_OUT_BUFFERS:
+      ceaudenc->priv->num_out_buffers = g_value_get_int (value);
+      GST_LOG_OBJECT (ceaudenc,
+          "setting number of output buffers to %d",
+          ceaudenc->priv->num_out_buffers);
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
@@ -553,6 +630,9 @@ gst_ceaudenc_get_property (GObject * object,
     case PROP_MAX_BITRATE:
       g_value_set_int (value, params->maxBitRate);
       break;
+    case PROP_NUM_OUT_BUFFERS:
+      g_value_set_int (value, ceaudenc->priv->num_out_buffers);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
@@ -581,6 +661,9 @@ gst_ceaudenc_open (GstAudioEncoder * encoder)
   if (!priv->allocator)
     goto fail_no_allocator;
 
+  if (!(priv->outbuf_pool = gst_ce_slice_buffer_pool_new ()))
+    goto fail_pool;
+
   GST_DEBUG_OBJECT (ceaudenc, "creating slice buffer pool");
   return TRUE;
 
@@ -594,6 +677,11 @@ fail_engine_open:
 fail_no_allocator:
   {
     GST_WARNING_OBJECT (ceaudenc, "can't find the CMEM allocator");
+    return FALSE;
+  }
+fail_pool:
+  {
+    GST_WARNING_OBJECT (ceaudenc, "can't create slice buffer pool");
     return FALSE;
   }
   return TRUE;
@@ -615,6 +703,11 @@ gst_ceaudenc_close (GstAudioEncoder * encoder)
   if (priv->allocator) {
     gst_object_unref (priv->allocator);
     priv->allocator = NULL;
+  }
+
+  if (priv->outbuf_pool) {
+    gst_object_unref (priv->outbuf_pool);
+    priv->outbuf_pool = NULL;
   }
 
   return TRUE;
@@ -651,7 +744,7 @@ gst_ceaudenc_reset (GstAudioEncoder * encoder)
   }
 
   GST_OBJECT_LOCK (ceaudenc);
-
+  priv->num_out_buffers = PROP_NUM_OUT_BUFFERS_DEFAULT;
   /* Set default values for codec static params */
   params->sampleRate = 48000;
   params->bitRate = PROP_BITRATE_DEFAULT;
