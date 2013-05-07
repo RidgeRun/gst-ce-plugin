@@ -377,7 +377,7 @@ gst_ceaudenc_set_format (GstAudioEncoder * encoder, GstAudioInfo * info)
   gst_audio_encoder_set_frame_samples_min (encoder, priv->samples);
   gst_audio_encoder_set_frame_samples_max (encoder, priv->samples);
   gst_audio_encoder_set_frame_max (encoder, 1);
-
+  gst_audio_encoder_set_drainable (encoder, FALSE);
   return TRUE;
 
 fail_set_caps:
@@ -471,11 +471,6 @@ gst_ceaudenc_handle_frame (GstAudioEncoder * encoder, GstBuffer * buffer)
   AUDENC1_InArgs in_args;
   AUDENC1_OutArgs out_args;
   gint32 status;
-
-  if (!buffer) {
-    GST_DEBUG_OBJECT (ceaudenc, "No input buffer, end of execution");
-    return GST_FLOW_OK;
-  }
 
   /* Copy input buffer to a contiguous buffer */
   if ((!priv->inbuf) || (info_in.size != priv->inbuf_desc.descs[0].bufSize)) {
