@@ -63,9 +63,9 @@ enum
   GST_CE_JPEGENC_ANGLE_270 = 270,
 };
 
-#define GST_CE_JPEGENC_ROTATION_TYPE (gst_ceimgenc_rotation_get_type())
+#define GST_CE_JPEGENC_ROTATION_TYPE (gst_ce_jpegenc_rotation_get_type())
 static GType
-gst_ceimgenc_rotation_get_type (void)
+gst_ce_jpegenc_rotation_get_type (void)
 {
   static GType rotation_type = 0;
 
@@ -104,9 +104,9 @@ gst_ce_jpegenc_class_init (GstCEJPEGEncClass * klass)
   GstElementClass *element_class;
   GstCEImgEncClass *ceimgenc_class;
 
-  gobject_class = (GObjectClass *) klass;
-  element_class = (GstElementClass *) klass;
-  ceimgenc_class = (GstCEImgEncClass *) klass;
+  gobject_class = G_OBJECT_CLASS (klass);
+  element_class = GST_ELEMENT_CLASS (klass);
+  ceimgenc_class = GST_CEIMGENC_CLASS (klass);
 
   parent_class = g_type_class_peek_parent (klass);
 
@@ -144,7 +144,7 @@ gst_ce_jpegenc_class_init (GstCEJPEGEncClass * klass)
 static void
 gst_ce_jpegenc_init (GstCEJPEGEnc * jpegenc)
 {
-  GstCEImgEnc *ceimgenc = (GstCEImgEnc *) (jpegenc);
+  GstCEImgEnc *ceimgenc = GST_CEIMGENC (jpegenc);
   IJPEGENC_Params *jpeg_params = NULL;
   IJPEGENC_DynamicParams *jpeg_dyn_params = NULL;
 
@@ -159,14 +159,15 @@ gst_ce_jpegenc_init (GstCEJPEGEnc * jpegenc)
     goto fail_alloc;
 
   if (ceimgenc->codec_params) {
-    GST_DEBUG ("codec params not NULL, copy and free them");
+    GST_DEBUG_OBJECT (jpegenc, "codec params not NULL, copy and free them");
     jpeg_params->imgencParams = *ceimgenc->codec_params;
     g_free (ceimgenc->codec_params);
   }
   ceimgenc->codec_params = (IMGENC1_Params *) jpeg_params;
 
   if (ceimgenc->codec_dyn_params) {
-    GST_DEBUG ("codec dynamic params not NULL, copy and free them");
+    GST_DEBUG_OBJECT (jpegenc,
+        "codec dynamic params not NULL, copy and free them");
     jpeg_dyn_params->imgencDynamicParams = *ceimgenc->codec_dyn_params;
     g_free (ceimgenc->codec_dyn_params);
   }
@@ -182,7 +183,7 @@ gst_ce_jpegenc_init (GstCEJPEGEnc * jpegenc)
 
 fail_alloc:
   {
-    GST_WARNING_OBJECT (ceimgenc, "failed to allocate JPEG params");
+    GST_WARNING_OBJECT (jpegenc, "failed to allocate JPEG params");
     if (jpeg_params)
       g_free (jpeg_params);
     if (jpeg_dyn_params)
@@ -207,7 +208,7 @@ gst_ce_jpegenc_reset (GstCEImgEnc * ceimgenc)
   jpeg_params = (IJPEGENC_Params *) ceimgenc->codec_params;
   jpeg_dyn_params = (IJPEGENC_DynamicParams *) ceimgenc->codec_dyn_params;
 
-  GST_DEBUG ("setup JPEG defaults parameters");
+  GST_DEBUG_OBJECT (ceimgenc, "setup JPEG defaults parameters");
 
   jpeg_params->halfBufCB = NULL;
   jpeg_params->halfBufCBarg = NULL;
@@ -227,10 +228,9 @@ static void
 gst_ce_jpegenc_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec)
 {
-  GstCEImgEnc *ceimgenc = (GstCEImgEnc *) (object);
+  GstCEImgEnc *ceimgenc = GST_CEIMGENC (object);
   IJPEGENC_DynamicParams *dyn_params;
   IMGENC1_Status enc_status;
-  gboolean set_params = FALSE;
   guint ret;
 
   dyn_params = (IJPEGENC_DynamicParams *) ceimgenc->codec_dyn_params;
@@ -253,7 +253,7 @@ gst_ce_jpegenc_set_property (GObject * object, guint prop_id,
   }
 
   /* Set dynamic parameters if needed */
-  if (set_params && ceimgenc->codec_handle) {
+  if (ceimgenc->codec_handle) {
     enc_status.size = sizeof (IMGENC1_Status);
     enc_status.data.buf = NULL;
     ret = IMGENC1_control (ceimgenc->codec_handle, XDM_SETPARAMS,
@@ -273,7 +273,7 @@ static void
 gst_ce_jpegenc_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec)
 {
-  GstCEImgEnc *ceimgenc = (GstCEImgEnc *) (object);
+  GstCEImgEnc *ceimgenc = GST_CEIMGENC (object);
   IJPEGENC_DynamicParams *dyn_params;
 
   dyn_params = (IJPEGENC_DynamicParams *) ceimgenc->codec_dyn_params;
