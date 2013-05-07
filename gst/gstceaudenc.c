@@ -472,13 +472,21 @@ gst_ceaudenc_handle_frame (GstAudioEncoder * encoder, GstBuffer * buffer)
   AUDENC1_OutArgs out_args;
   gint32 status;
 
+  if (!buffer) {
+    GST_DEBUG_OBJECT (ceaudenc, "No input buffer, end of execution");
+    return GST_FLOW_OK;
+  }
+
   /* Copy input buffer to a contiguous buffer */
-  gst_buffer_map (buffer, &info_in, GST_MAP_READ);
   if ((!priv->inbuf) || (info_in.size != priv->inbuf_desc.descs[0].bufSize)) {
+    GST_DEBUG_OBJECT (ceaudenc, "Creating new buffer");
+    if (priv->inbuf)
+      gst_buffer_unref (priv->inbuf);
     if (!gst_ceaudenc_allocate_frame (ceaudenc, &priv->inbuf, info_in.size))
       goto fail_alloc;
     priv->inbuf_desc.descs[0].bufSize = info_in.size;
   }
+  gst_buffer_map (buffer, &info_in, GST_MAP_READ);
   gst_buffer_fill (priv->inbuf, 0, info_in.data, info_in.size);
   gst_buffer_unmap (buffer, &info_in);
 
