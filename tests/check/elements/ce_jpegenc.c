@@ -226,12 +226,12 @@ GST_START_TEST (test_ce_jpegenc_different_caps)
   jpegenc = setup_ce_jpegenc (&any_sinktemplate);
   gst_element_set_state (jpegenc, GST_STATE_PLAYING);
 
-  /* push first buffer with 2560x1700 resolution */
+  /* push first buffer with 1920x1080 resolution */
   caps = gst_caps_new_simple ("video/x-raw", "width", G_TYPE_INT,
-      2560, "height", G_TYPE_INT, 1700, "framerate",
+      1920, "height", G_TYPE_INT, 1080, "framerate",
       GST_TYPE_FRACTION, 1, 1, "format", G_TYPE_STRING, "NV12", NULL);
   fail_unless (gst_pad_set_caps (mysrcpad, caps));
-  fail_unless ((buffer = create_cmem_buffer (2560 * 1700 * 3 / 2)) != NULL);
+  fail_unless ((buffer = create_cmem_buffer (1920 * 1080 * 3 / 2)) != NULL);
   gst_caps_unref (caps);
   fail_unless (gst_pad_push (mysrcpad, buffer) == GST_FLOW_OK);
 
@@ -263,26 +263,33 @@ GST_START_TEST (test_ce_jpegenc_properties)
   GstElement *jpegenc;
   GstBuffer *buffer;
   GstCaps *caps;
-  gint res_qValue, res_rotation;
+  gint res_qValue, res_rotation, res_num_out_buffers;
+  gboolean res_disableEOI;
 
   jpegenc = setup_ce_jpegenc (&any_sinktemplate);
   gst_element_set_state (jpegenc, GST_STATE_PLAYING);
 
   caps = gst_caps_new_simple ("video/x-raw", "width", G_TYPE_INT,
-      2560, "height", G_TYPE_INT, 1700, "framerate",
+      1920, "height", G_TYPE_INT, 1080, "framerate",
       GST_TYPE_FRACTION, 1, 1, "format", G_TYPE_STRING, "NV12", NULL);
 
   g_object_set (jpegenc, "qValue", 65, NULL);
   g_object_set (jpegenc, "rotation", 270, NULL);
+  g_object_set (jpegenc, "disableEOI", 0, NULL);
+  g_object_set (jpegenc, "num-out-buffers", 3, NULL);
 
   g_object_get (jpegenc,
-      "qValue", &res_qValue, "rotation", &res_rotation, NULL);
+      "qValue", &res_qValue, "rotation", &res_rotation,
+      "disableEOI", &res_disableEOI, "num-out-buffers", &res_num_out_buffers,
+      NULL);
 
   fail_unless (res_qValue == 65);
   fail_unless (res_rotation == 270);
+  fail_unless (res_disableEOI == 0);
+  fail_unless (res_num_out_buffers == 3);
 
   fail_unless (gst_pad_set_caps (mysrcpad, caps));
-  fail_unless ((buffer = create_cmem_buffer (2560 * 1700 * 3 / 2)) != NULL);
+  fail_unless ((buffer = create_cmem_buffer (1920 * 1080 * 3 / 2)) != NULL);
   gst_caps_unref (caps);
   fail_unless (gst_pad_push (mysrcpad, buffer) == GST_FLOW_OK);
 
