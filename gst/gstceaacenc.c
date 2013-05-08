@@ -37,18 +37,15 @@
                     "88200, " \
                     "96000"
 
-/* *INDENT-OFF* */
 static GstStaticPadTemplate gst_ce_aacenc_sink_pad_template =
 GST_STATIC_PAD_TEMPLATE ("sink",
     GST_PAD_SINK,
     GST_PAD_ALWAYS,
     GST_STATIC_CAPS ("audio/x-raw, "
-    "   format = (string) " GST_AUDIO_NE (S16) ", "
-    "   layout = (string) interleaved, "
-    "   channels=(int)[ 1, 2 ], "
-    "   rate =(int){" SAMPLE_RATES "} " )
+        "   format = (string) " GST_AUDIO_NE (S16) ", "
+        "   layout = (string) interleaved, "
+        "   channels=(int)[ 1, 2 ], " "   rate =(int){" SAMPLE_RATES "} ")
     );
-/* *INDENT-ON* */
 
 static GstStaticPadTemplate gst_ce_aacenc_src_pad_template =
 GST_STATIC_PAD_TEMPLATE ("src",
@@ -84,8 +81,6 @@ enum
 static void gst_ce_aacenc_reset (GstCEAudEnc * ceaudenc);
 static gboolean gst_ce_aacenc_set_src_caps (GstCEAudEnc * ceaudenc,
     GstAudioInfo * info, GstCaps ** caps, GstBuffer ** codec_data);
-static gboolean gst_ce_aacenc_post_process (GstCEAudEnc * ceaudenc,
-    GstBuffer * buffer);
 
 static void gst_ce_aacenc_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec);
@@ -210,7 +205,6 @@ gst_ce_aacenc_get_codec_data (GstCEAACEnc * aacenc, GstBuffer ** codec_data)
   guint8 *config;
 
   gint sr_idx;
-  GstMapInfo *info;
   /*it goes like
    * 5 bit: profile
    * 4 bit: sample rate index

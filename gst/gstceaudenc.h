@@ -81,12 +81,11 @@ struct _GstCEAudEncClass
 
   /* virtual methods for subclasses */
   void (*reset) (GstCEAudEnc * ceaudenc);
-    gboolean (*set_src_caps) (GstCEAudEnc * ceaudenc, GstAudioInfo * info,
+  gboolean (*set_src_caps) (GstCEAudEnc * ceaudenc, GstAudioInfo * info,
       GstCaps ** src_caps, GstBuffer ** codec_data);
 
-    gboolean (*pre_process) (GstCEAudEnc * ceaudenc, GstBuffer * input_buffer);
-    gboolean (*post_process) (GstCEAudEnc * ceaudenc,
-      GstBuffer * output_buffer);
+  gboolean (*pre_process) (GstCEAudEnc * ceaudenc, GstBuffer * input_buffer);
+  gboolean (*post_process) (GstCEAudEnc * ceaudenc, GstBuffer * output_buffer);
 
   /*< private > */
   gpointer _gst_reserved[GST_PADDING_LARGE];
