@@ -77,7 +77,6 @@ struct _GstCEAudEncClass
 
   /*< public > */
   const gchar *codec_name;
- gint samples;
 
   /* virtual methods for subclasses */
   void (*reset) (GstCEAudEnc * ceaudenc);
@@ -103,6 +102,9 @@ struct _GstCEAudEncClass
   (G_TYPE_CHECK_CLASS_TYPE((klass),GST_TYPE_CEAUDENC))
 
 GType gst_ceaudenc_get_type (void);
-
+void gst_cevidenc_set_frame_samples (GstCEAudEnc * ceaudenc, 
+                                  gint min_samples,
+                                  gint max_samples);
+                                  
 G_END_DECLS
 #endif /* __GST_CE_AUDENC_H__ */

@@ -77,6 +77,8 @@ struct _GstCEAudEncPrivate
   gint width;
   gint depth;
   gint bpf;
+  gint min_samples;
+  gint max_samples;
   gint samples;
 
   /* Handle to the CMEM allocator */
@@ -240,11 +242,9 @@ gst_ceaudenc_configure_codec (GstCEAudEnc * ceaudenc)
   g_return_val_if_fail (params, FALSE);
   g_return_val_if_fail (dyn_params, FALSE);
   g_return_val_if_fail (klass->codec_name, FALSE);
-  g_return_val_if_fail (klass->samples, FALSE);
 
   GST_OBJECT_LOCK (ceaudenc);
 
-  priv->samples = klass->samples;
   switch (priv->channels) {
     case (1):
       params->channelMode = dyn_params->channelMode = IAUDIO_1_0;
@@ -372,10 +372,6 @@ gst_ceaudenc_set_format (GstAudioEncoder * encoder, GstAudioInfo * info)
           allowed_caps))
     goto fail_set_caps;
 
-  /* report needs to base class */
-  gst_audio_encoder_set_frame_samples_min (encoder, priv->samples);
-  gst_audio_encoder_set_frame_samples_max (encoder, priv->samples);
-  gst_audio_encoder_set_frame_max (encoder, 1);
   gst_audio_encoder_set_drainable (encoder, FALSE);
   return TRUE;
 
@@ -467,23 +463,28 @@ gst_ceaudenc_handle_frame (GstAudioEncoder * encoder, GstBuffer * buffer)
   AUDENC1_OutArgs out_args;
   gint32 status;
 
+  gst_buffer_map (buffer, &info_in, GST_MAP_READ);
   /* Copy input buffer to a contiguous buffer */
   if ((!priv->inbuf) || (info_in.size != priv->inbuf_desc.descs[0].bufSize)) {
-    GST_DEBUG_OBJECT (ceaudenc, "creating new input buffer");
+    GST_DEBUG_OBJECT (ceaudenc, "creating new input buffer of size %d",
+        info_in.size);
     if (priv->inbuf)
       gst_buffer_unref (priv->inbuf);
-    if (!gst_ceaudenc_allocate_frame (ceaudenc, &priv->inbuf, info_in.size))
+    if (!gst_ceaudenc_allocate_frame (ceaudenc, &priv->inbuf, info_in.size)) {
+      gst_buffer_unmap (buffer, &info_in);
       goto fail_alloc;
+    }
     priv->inbuf_desc.descs[0].bufSize = info_in.size;
+    priv->samples = info_in.size / ((priv->width / 8) * priv->channels);
   }
-  gst_buffer_map (buffer, &info_in, GST_MAP_READ);
   gst_buffer_fill (priv->inbuf, 0, info_in.data, info_in.size);
   gst_buffer_unmap (buffer, &info_in);
 
   gst_buffer_map (priv->inbuf, &info_in, GST_MAP_READ);
   priv->inbuf_desc.descs[0].buf = (XDAS_Int8 *) info_in.data;
-  GST_DEBUG_OBJECT (ceaudenc, "input buffer %p of size %li",
-      priv->inbuf_desc.descs[0].buf, priv->inbuf_desc.descs[0].bufSize);
+  GST_DEBUG_OBJECT (ceaudenc, "input buffer %p of size %li %d",
+      priv->inbuf_desc.descs[0].buf, priv->inbuf_desc.descs[0].bufSize,
+      priv->samples);
 
   /* Making sure the output buffer pool is configured */
   if (gst_pad_check_reconfigure (encoder->srcpad))
@@ -850,4 +851,34 @@ gst_ceaudenc_get_buffer_info (GstCEAudEnc * ceaudenc)
   GST_DEBUG_OBJECT (ceaudenc, "output buffer size = %d", priv->outbuf_size);
 
   return TRUE;
+}
+
+/**
+ * gst_cevidenc_set_frame_samples:
+ * @cevidenc: a #GstCEAudEnc
+ * @min_samples: the #GstBuffer containing the 
+ *        encoding header.
+ * @max_samples: maximum number of samples per frame that can be handed by the codec.
+ * @min_samples: minimum number of samples per frame that can be handed by the codec.
+ * 
+ * Lets #GstCEAudEnc sub-classes to set the audio codec samples per buffer 
+ * capabilities. If @max_samples is equal to @min_samples, means the codec
+ * cannot handle less samples, the leftover samples will simply be discarded.
+ *
+ */
+void
+gst_cevidenc_set_frame_samples (GstCEAudEnc * ceaudenc, gint min_samples,
+    gint max_samples)
+{
+  GstAudioEncoder *encoder = GST_AUDIO_ENCODER (ceaudenc);
+  GstCEAudEncPrivate *priv = ceaudenc->priv;
+  priv->min_samples = min_samples;
+  priv->max_samples = max_samples;
+  priv->samples = max_samples;
+  /* report needs to base class */
+  gst_audio_encoder_set_frame_samples_min (encoder, priv->min_samples);
+  gst_audio_encoder_set_frame_samples_max (encoder, priv->max_samples);
+  gst_audio_encoder_set_frame_max (encoder, 1);
+  if (min_samples == max_samples)
+    gst_audio_encoder_set_hard_min (encoder, TRUE);
 }

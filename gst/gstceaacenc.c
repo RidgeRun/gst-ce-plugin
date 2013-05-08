@@ -144,7 +144,6 @@ gst_ce_aacenc_class_init (GstCEAACEncClass * klass)
       "Melissa Montero <melissa.montero@ridgerun.com>");
 
   ceaudenc_class->codec_name = "aaclcenc";
-  ceaudenc_class->samples = 1024;
   ceaudenc_class->reset = gst_ce_aacenc_reset;
   ceaudenc_class->set_src_caps = gst_ce_aacenc_set_src_caps;
   /*$
@@ -265,6 +264,8 @@ gst_ce_aacenc_set_src_caps (GstCEAudEnc * ceaudenc, GstAudioInfo * info,
     }
   }
   params->noChannels = GST_AUDIO_INFO_CHANNELS (info);
+
+  gst_cevidenc_set_frame_samples (ceaudenc, 1024, 1024);
   return ret;
 }
 

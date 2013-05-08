@@ -109,7 +109,7 @@ do_test (gboolean adts)
   GstBuffer *inbuffer, *outbuffer;
   GstCaps *caps;
   gint i, num_buffers;
-  const gint nbuffers = 2;
+  const gint nbuffers = 10;
 
   aacenc = setup_ce_aacenc (adts);
   fail_unless (gst_element_set_state (aacenc,
@@ -117,7 +117,7 @@ do_test (gboolean adts)
       "could not set to playing");
 
   /* corresponds to audio buffer mentioned in the caps */
-  inbuffer = gst_buffer_new_and_alloc (1024 * nbuffers * 2 * 2);
+  inbuffer = gst_buffer_new_and_alloc ((1024 * nbuffers + 500) * 2 * 2);
   /* makes valgrind's memcheck happier */
   gst_buffer_memset (inbuffer, 0, 0, 1024 * nbuffers * 2 * 2);
   caps = gst_caps_from_string (AUDIO_CAPS_STRING);
@@ -125,16 +125,12 @@ do_test (gboolean adts)
   gst_caps_unref (caps);
   GST_BUFFER_TIMESTAMP (inbuffer) = 0;
   ASSERT_BUFFER_REFCOUNT (inbuffer, "inbuffer", 1);
-  GST_INFO ("Hola");
   fail_unless (gst_pad_push (mysrcpad, inbuffer) == GST_FLOW_OK);
-  GST_DEBUG ("Adios");
   /* send eos to have all flushed if needed */
   fail_unless (gst_pad_push_event (mysrcpad, gst_event_new_eos ()) == TRUE);
-  GST_DEBUG ("Flush %p", buffers);
 
   num_buffers = g_list_length (buffers);
   fail_unless_equals_int (num_buffers, nbuffers);
-  GST_DEBUG ("Num buffers %d", num_buffers);
   /* clean up buffers */
   for (i = 0; i < num_buffers; ++i) {
     gint header = 0, id;
