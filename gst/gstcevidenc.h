@@ -28,13 +28,11 @@
 
 #include "gstceutils.h"
 
-G_BEGIN_DECLS 
+G_BEGIN_DECLS typedef struct _GstCeVidEnc GstCeVidEnc;
+typedef struct _GstCeVidEncClass GstCeVidEncClass;
+typedef struct _GstCeVidEncPrivate GstCeVidEncPrivate;
 
-typedef struct _GstCEVidEnc GstCEVidEnc;
-typedef struct _GstCEVidEncClass GstCEVidEncClass;
-typedef struct _GstCEVidEncPrivate GstCEVidEncPrivate;
-
-struct _GstCEVidEnc
+struct _GstCeVidEnc
 {
   GstVideoEncoder parent;
 
@@ -42,16 +40,16 @@ struct _GstCEVidEnc
   VIDENC1_Handle codec_handle;
   VIDENC1_Params *codec_params;
   VIDENC1_DynamicParams *codec_dyn_params;
-  
-  /*< private >*/
-  GstCEVidEncPrivate *priv;
 
-  gpointer  _gst_reserved[GST_PADDING_LARGE];
+  /*< private > */
+  GstCeVidEncPrivate *priv;
+
+  gpointer _gst_reserved[GST_PADDING_LARGE];
 };
 
 
 /**
- * GstCEVidEncClass
+ * GstCeVidEncClass
  * @parent_class:   Element parent class
  * @codec_name:     The name of the codec
  * @reset:          Optional.
@@ -72,43 +70,42 @@ struct _GstCEVidEnc
  * Subclasses can override any of the available virtual methods or not, as
  * needed. At minimum @codec_name shoud be filled.
  */
-struct _GstCEVidEncClass
+struct _GstCeVidEncClass
 {
   GstVideoEncoderClass parent_class;
 
   /*< public > */
   const gchar *codec_name;
-  
-  /* virtual methods for subclasses */
-  void (*reset) (GstCEVidEnc * cevidenc);
-  gboolean (*set_src_caps) (GstCEVidEnc *cevidenc, 
-                            GstCaps ** src_caps, 
-                            GstBuffer ** codec_data);
 
-  gboolean (*pre_process) (GstCEVidEnc *cevidenc, GstBuffer *input_buffer);
-  gboolean (*post_process) (GstCEVidEnc *cevidenc, GstBuffer *output_buffer);
+  /* virtual methods for subclasses */
+  void (*reset) (GstCeVidEnc * ce_videnc);
+    gboolean (*set_src_caps) (GstCeVidEnc * ce_videnc,
+      GstCaps ** src_caps, GstBuffer ** codec_data);
+
+    gboolean (*pre_process) (GstCeVidEnc * ce_videnc, GstBuffer * input_buffer);
+    gboolean (*post_process) (GstCeVidEnc * ce_videnc,
+      GstBuffer * output_buffer);
 
   /*< private > */
   gpointer _gst_reserved[GST_PADDING_LARGE];
 };
 
 #define GST_TYPE_CEVIDENC \
-  (gst_cevidenc_get_type())
+  (gst_ce_videnc_get_type())
 #define GST_CEVIDENC(obj) \
-  (G_TYPE_CHECK_INSTANCE_CAST((obj),GST_TYPE_CEVIDENC,GstCEVidEnc))
+  (G_TYPE_CHECK_INSTANCE_CAST((obj),GST_TYPE_CEVIDENC,GstCeVidEnc))
 #define GST_CEVIDENC_CLASS(klass) \
-  (G_TYPE_CHECK_CLASS_CAST((klass),GST_TYPE_CEVIDENC,GstCEVidEncClass))
+  (G_TYPE_CHECK_CLASS_CAST((klass),GST_TYPE_CEVIDENC,GstCeVidEncClass))
 #define GST_IS_CEVIDENC(obj) \
   (G_TYPE_CHECK_INSTANCE_TYPE((obj),GST_TYPE_CEVIDENC))
 #define GST_IS_CEVIDENC_CLASS(klass) \
   (G_TYPE_CHECK_CLASS_TYPE((klass),GST_TYPE_CEVIDENC))
 
-GType gst_cevidenc_get_type (void);
+GType gst_ce_videnc_get_type (void);
 
-gboolean gst_cevidenc_get_header (GstCEVidEnc * cevidenc, 
-                                  GstBuffer ** buf,
-                                  gint *header_size);
-                                  
+gboolean gst_ce_videnc_get_header (GstCeVidEnc * ce_videnc,
+    GstBuffer ** buf, gint * header_size);
+
 
 G_END_DECLS
 #endif /* __GST_CE_VIDENC_H__ */

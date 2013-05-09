@@ -29,14 +29,14 @@
 
 GST_DEBUG_CATEGORY (ce_debug);
 
-typedef struct _CEElement
+typedef struct _CeElement
 {
   const gchar *name;
   guint rank;
     GType (*get_type) (void);
-} CEElement;
+} CeElement;
 
-static CEElement gst_ce_element_list[] = {
+static CeElement gst_ce_element_list[] = {
   {"ce_h264enc", GST_RANK_PRIMARY, gst_ce_h264enc_get_type},
   {"ce_jpegenc", GST_RANK_PRIMARY, gst_ce_jpegenc_get_type},
 };
@@ -45,7 +45,7 @@ static CEElement gst_ce_element_list[] = {
 static gboolean
 plugin_init (GstPlugin * plugin)
 {
-  CEElement *element;
+  CeElement *element;
   GType element_type;
   gint num_elements, i;
 

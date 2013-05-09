@@ -29,11 +29,11 @@
 
 #include "gstceutils.h"
 
-G_BEGIN_DECLS typedef struct _GstCEImgEnc GstCEImgEnc;
-typedef struct _GstCEImgEncClass GstCEImgEncClass;
-typedef struct _GstCEImgEncPrivate GstCEImgEncPrivate;
+G_BEGIN_DECLS typedef struct _GstCeImgEnc GstCeImgEnc;
+typedef struct _GstCeImgEncClass GstCeImgEncClass;
+typedef struct _GstCeImgEncPrivate GstCeImgEncPrivate;
 
-struct _GstCEImgEnc
+struct _GstCeImgEnc
 {
   GstVideoEncoder parent;
 
@@ -43,13 +43,13 @@ struct _GstCEImgEnc
   IMGENC1_DynamicParams *codec_dyn_params;
 
   /*< private > */
-  GstCEImgEncPrivate *priv;
+  GstCeImgEncPrivate *priv;
 
   gpointer _gst_reserved[GST_PADDING_LARGE];
 };
 
 /**
- * GstCEImgEncClass
+ * GstCeImgEncClass
  * @parent_class:   Element parent class
  * @codec_name:     The name of the codec
  * @reset:          Optional.
@@ -70,7 +70,7 @@ struct _GstCEImgEnc
  * Subclasses can override any of the available virtual methods or not, as
  * needed. At minimum @codec_name should be filled.
  */
-struct _GstCEImgEncClass
+struct _GstCeImgEncClass
 {
   GstVideoEncoderClass parent_class;
 
@@ -78,30 +78,30 @@ struct _GstCEImgEncClass
   const gchar *codec_name;
 
   /* virtual methods for subclasses */
-  void (*reset) (GstCEImgEnc * ceimgenc);
-    gboolean (*set_src_caps) (GstCEImgEnc * ceimgenc,
+  void (*reset) (GstCeImgEnc * ce_imgenc);
+    gboolean (*set_src_caps) (GstCeImgEnc * ce_imgenc,
       GstCaps ** src_caps, GstBuffer ** codec_data);
 
-    gboolean (*pre_process) (GstCEImgEnc * ceimgenc, GstBuffer * input_buffer);
-    gboolean (*post_process) (GstCEImgEnc * ceimgenc,
+    gboolean (*pre_process) (GstCeImgEnc * ce_imgenc, GstBuffer * input_buffer);
+    gboolean (*post_process) (GstCeImgEnc * ce_imgenc,
       GstBuffer * output_buffer);
 
   /*< private > */
   gpointer _gst_reserved[GST_PADDING_LARGE];
 };
 
-#define GST_TYPE_CEIMGENC \
-  (gst_ceimgenc_get_type())
-#define GST_CEIMGENC(obj) \
-  (G_TYPE_CHECK_INSTANCE_CAST((obj),GST_TYPE_CEIMGENC,GstCEImgEnc))
-#define GST_CEIMGENC_CLASS(klass) \
-  (G_TYPE_CHECK_CLASS_CAST((klass),GST_TYPE_CEIMGENC,GstCEImgEncClass))
-#define GST_IS_CEIMGENC(obj) \
-  (G_TYPE_CHECK_INSTANCE_TYPE((obj),GST_TYPE_CEIMGENC))
-#define GST_IS_CEIMGENC_CLASS(klass) \
-  (G_TYPE_CHECK_CLASS_TYPE((klass),GST_TYPE_CEIMGENC))
+#define GST_TYPE_CE_IMGENC \
+  (gst_ce_imgenc_get_type())
+#define GST_CE_IMGENC(obj) \
+  (G_TYPE_CHECK_INSTANCE_CAST((obj),GST_TYPE_CE_IMGENC,GstCeImgEnc))
+#define GST_CE_IMGENC_CLASS(klass) \
+  (G_TYPE_CHECK_CLASS_CAST((klass),GST_TYPE_CE_IMGENC,GstCeImgEncClass))
+#define GST_IS_CE_IMGENC(obj) \
+  (G_TYPE_CHECK_INSTANCE_TYPE((obj),GST_TYPE_CE_IMGENC))
+#define GST_IS_CE_IMGENC_CLASS(klass) \
+  (G_TYPE_CHECK_CLASS_TYPE((klass),GST_TYPE_CE_IMGENC))
 
-GType gst_ceimgenc_get_type (void);
+GType gst_ce_imgenc_get_type (void);
 
 G_END_DECLS
 #endif /* __GST_CE_IMGENC_H__ */

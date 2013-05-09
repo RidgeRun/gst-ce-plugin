@@ -26,30 +26,30 @@
 
 G_BEGIN_DECLS
 /* slice bufferpool */
-typedef struct _GstCESliceBufferPool GstCESliceBufferPool;
-typedef struct _GstCESliceBufferPoolClass GstCESliceBufferPoolClass;
-typedef struct _GstCESliceBufferPoolPrivate GstCESliceBufferPoolPrivate;
+typedef struct _GstCeSliceBufferPool GstCeSliceBufferPool;
+typedef struct _GstCeSliceBufferPoolClass GstCeSliceBufferPoolClass;
+typedef struct _GstCeSliceBufferPoolPrivate GstCeSliceBufferPoolPrivate;
 
 #define GST_TYPE_CE_SLICE_BUFFER_POOL      (gst_ce_slice_buffer_pool_get_type())
 #define GST_IS_CE_SLICE_BUFFER_POOL(obj)   (G_TYPE_CHECK_INSTANCE_TYPE ((obj), GST_TYPE_CE_SLICE_BUFFER_POOL))
 #define GST_CE_SLICE_BUFFER_POOL(obj)      (G_TYPE_CHECK_INSTANCE_CAST ((obj), GST_TYPE_CE_SLICE_BUFFER_POOL, GST_TYPE_CE_SLICE_BUFFER_POOL))
-#define GST_CE_SLICE_BUFFER_POOL_CAST(obj) ((GstCESliceBufferPool*)(obj))
+#define GST_CE_SLICE_BUFFER_POOL_CAST(obj) ((GstCeSliceBufferPool*)(obj))
 
-struct _GstCESliceBufferPool
+struct _GstCeSliceBufferPool
 {
   GstBufferPool bufferpool;
 
-  GstCESliceBufferPoolPrivate *priv;
+  GstCeSliceBufferPoolPrivate *priv;
 };
 
-struct _GstCESliceBufferPoolClass
+struct _GstCeSliceBufferPoolClass
 {
   GstBufferPoolClass parent_class;
 };
 
 GType gst_ce_slice_buffer_pool_get_type (void);
 GstBufferPool *gst_ce_slice_buffer_pool_new (void);
-gboolean gst_ce_slice_buffer_resize (GstCESliceBufferPool * spool,
+gboolean gst_ce_slice_buffer_resize (GstCeSliceBufferPool * spool,
     GstBuffer * buffer, gint size);
 
 G_END_DECLS

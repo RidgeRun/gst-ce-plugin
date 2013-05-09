@@ -33,7 +33,7 @@ GST_STATIC_PAD_TEMPLATE ("sink",
     GST_STATIC_CAPS ("video/x-raw, "
         "   format = (string) {NV12,UYVY},"
         "   framerate=(fraction)[ 0, 120], "
-        "   width=(int)[ 128, 4080 ], " "   height=(int)[ 96, 4096 ]")
+        "   width=(int)[ 97, 4080 ], " "   height=(int)[ 16, 4096 ]")
     );
 /* *INDENT-ON* */
 
@@ -43,7 +43,7 @@ GST_STATIC_PAD_TEMPLATE ("src",
     GST_PAD_ALWAYS,
     GST_STATIC_CAPS ("image/jpeg, "
         "   framerate=(fraction)[ 0, 120], "
-        "   width=(int)[ 128, 4080 ], " "   height=(int)[ 96, 4096 ]")
+        "   width=(int)[ 97, 4080 ], " "   height=(int)[ 16, 4096 ]")
     );
 
 enum
@@ -55,12 +55,14 @@ enum
 
 #define JPEG_DEFAULT_ROTATION 0
 #define JPEG_DEFAULT_DISABLE_EOI 0
+#define JPEG_DEFAULT_RST_INTERVAL 84
+
 enum
 {
-  GST_CE_JPEGENC_ANGLE_0 = 0,
-  GST_CE_JPEGENC_ANGLE_90 = 90,
-  GST_CE_JPEGENC_ANGLE_180 = 180,
-  GST_CE_JPEGENC_ANGLE_270 = 270,
+  GST_CE_JPEGENC_ROTATE_0 = 0,
+  GST_CE_JPEGENC_ROTATE_90 = 90,
+  GST_CE_JPEGENC_ROTATE_180 = 180,
+  GST_CE_JPEGENC_ROTATE_270 = 270,
 };
 
 #define GST_CE_JPEGENC_ROTATION_TYPE (gst_ce_jpegenc_rotation_get_type())
@@ -70,21 +72,21 @@ gst_ce_jpegenc_rotation_get_type (void)
   static GType rotation_type = 0;
 
   static const GEnumValue rotation_types[] = {
-    {GST_CE_JPEGENC_ANGLE_0, "Angle 0 degrees", "Angle0"},
-    {GST_CE_JPEGENC_ANGLE_90, "Angle 90 degrees", "Angle90"},
-    {GST_CE_JPEGENC_ANGLE_180, "Angle 180 degrees", "Angle180"},
-    {GST_CE_JPEGENC_ANGLE_270, "Angle 270 degrees", "Angle270"},
+    {GST_CE_JPEGENC_ROTATE_0, "Rotation 0 degrees", "rotate-0"},
+    {GST_CE_JPEGENC_ROTATE_90, "Rotation 90 degrees", "rotate-90"},
+    {GST_CE_JPEGENC_ROTATE_180, "Rotation 180 degrees", "rotate-180"},
+    {GST_CE_JPEGENC_ROTATE_270, "Rotation 270 degrees", "rotate-270"},
     {0, NULL, NULL}
   };
 
   if (!rotation_type) {
     rotation_type =
-        g_enum_register_static ("GstCEJPEGEncRotation", rotation_types);
+        g_enum_register_static ("GstCeJpegEncRotation", rotation_types);
   }
   return rotation_type;
 }
 
-static void gst_ce_jpegenc_reset (GstCEImgEnc * ceimgenc);
+static void gst_ce_jpegenc_reset (GstCeImgEnc * ce_imgenc);
 
 static void gst_ce_jpegenc_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec);
@@ -92,21 +94,21 @@ static void gst_ce_jpegenc_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec);
 
 #define gst_ce_jpegenc_parent_class parent_class
-G_DEFINE_TYPE (GstCEJPEGEnc, gst_ce_jpegenc, GST_TYPE_CEIMGENC);
+G_DEFINE_TYPE (GstCeJpegEnc, gst_ce_jpegenc, GST_TYPE_CE_IMGENC);
 
 /**
  * JPEG encoder class initialization function
  */
 static void
-gst_ce_jpegenc_class_init (GstCEJPEGEncClass * klass)
+gst_ce_jpegenc_class_init (GstCeJpegEncClass * klass)
 {
   GObjectClass *gobject_class;
   GstElementClass *element_class;
-  GstCEImgEncClass *ceimgenc_class;
+  GstCeImgEncClass *ce_imgenc_class;
 
   gobject_class = G_OBJECT_CLASS (klass);
   element_class = GST_ELEMENT_CLASS (klass);
-  ceimgenc_class = GST_CEIMGENC_CLASS (klass);
+  ce_imgenc_class = GST_CE_IMGENC_CLASS (klass);
 
   parent_class = g_type_class_peek_parent (klass);
 
@@ -119,9 +121,9 @@ gst_ce_jpegenc_class_init (GstCEJPEGEncClass * klass)
           "Set the rotation angle", GST_CE_JPEGENC_ROTATION_TYPE,
           JPEG_DEFAULT_ROTATION, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
   g_object_class_install_property (gobject_class, PROP_DISABLE_EOI,
-      g_param_spec_boolean ("disableEOI", "disable EOI",
-          "Disable End of Image, for video pipelines is recommended set this to true",
-          0, G_PARAM_READWRITE));
+      g_param_spec_boolean ("disable-eoi", "Disable End of Image",
+          "Disable End of Image, for some video pipelines is recommended set this to true",
+          FALSE, G_PARAM_READWRITE));
 
   /* pad templates */
   gst_element_class_add_pad_template (element_class,
@@ -130,21 +132,21 @@ gst_ce_jpegenc_class_init (GstCEJPEGEncClass * klass)
       gst_static_pad_template_get (&gst_ce_jpegenc_src_pad_template));
 
   gst_element_class_set_static_metadata (element_class,
-      "CE JPEG image encoder", "Codec/Encoder/Image",
+      "CE JPEG image/video encoder", "Codec/Encoder/Image",
       "Encode image in JPEG format",
       "Carlos Gomez <carlos.gomez@ridgerun.com>");
 
-  ceimgenc_class->codec_name = "jpegenc";
-  ceimgenc_class->reset = gst_ce_jpegenc_reset;
+  ce_imgenc_class->codec_name = "jpegenc";
+  ce_imgenc_class->reset = gst_ce_jpegenc_reset;
 }
 
 /**
  * JPEG encoder initialization function
  */
 static void
-gst_ce_jpegenc_init (GstCEJPEGEnc * jpegenc)
+gst_ce_jpegenc_init (GstCeJpegEnc * jpegenc)
 {
-  GstCEImgEnc *ceimgenc = GST_CEIMGENC (jpegenc);
+  GstCeImgEnc *ce_imgenc = GST_CE_IMGENC (jpegenc);
   IJPEGENC_Params *jpeg_params = NULL;
   IJPEGENC_DynamicParams *jpeg_dyn_params = NULL;
 
@@ -158,26 +160,28 @@ gst_ce_jpegenc_init (GstCEJPEGEnc * jpegenc)
   if (!jpeg_dyn_params)
     goto fail_alloc;
 
-  if (ceimgenc->codec_params) {
+  /* Extend the codec parameters with the JPEG parameters */
+  if (ce_imgenc->codec_params) {
     GST_DEBUG_OBJECT (jpegenc, "codec params not NULL, copy and free them");
-    jpeg_params->imgencParams = *ceimgenc->codec_params;
-    g_free (ceimgenc->codec_params);
+    jpeg_params->imgencParams = *ce_imgenc->codec_params;
+    g_free (ce_imgenc->codec_params);
   }
-  ceimgenc->codec_params = (IMGENC1_Params *) jpeg_params;
+  ce_imgenc->codec_params = (IMGENC1_Params *) jpeg_params;
 
-  if (ceimgenc->codec_dyn_params) {
+  /* Extend the codec dynamic parameters with the JPEG dynamic parameters */
+  if (ce_imgenc->codec_dyn_params) {
     GST_DEBUG_OBJECT (jpegenc,
         "codec dynamic params not NULL, copy and free them");
-    jpeg_dyn_params->imgencDynamicParams = *ceimgenc->codec_dyn_params;
-    g_free (ceimgenc->codec_dyn_params);
+    jpeg_dyn_params->imgencDynamicParams = *ce_imgenc->codec_dyn_params;
+    g_free (ce_imgenc->codec_dyn_params);
   }
-  ceimgenc->codec_dyn_params = (IMGENC1_DynamicParams *) jpeg_dyn_params;
+  ce_imgenc->codec_dyn_params = (IMGENC1_DynamicParams *) jpeg_dyn_params;
 
-  /* Add the extends parameters to the original parameters */
-  ceimgenc->codec_params->size = sizeof (IJPEGENC_Params);
-  ceimgenc->codec_dyn_params->size = sizeof (IJPEGENC_DynamicParams);
+  /* Resize the original parameters to include the extended parameters */
+  ce_imgenc->codec_params->size = sizeof (IJPEGENC_Params);
+  ce_imgenc->codec_dyn_params->size = sizeof (IJPEGENC_DynamicParams);
 
-  gst_ce_jpegenc_reset (ceimgenc);
+  gst_ce_jpegenc_reset (ce_imgenc);
 
   return;
 
@@ -196,26 +200,30 @@ fail_alloc:
  * Reset JPEG encoder
  */
 static void
-gst_ce_jpegenc_reset (GstCEImgEnc * ceimgenc)
+gst_ce_jpegenc_reset (GstCeImgEnc * ce_imgenc)
 {
   IJPEGENC_Params *jpeg_params;
   IJPEGENC_DynamicParams *jpeg_dyn_params;
 
-  if ((ceimgenc->codec_params->size != sizeof (IJPEGENC_Params)) ||
-      (ceimgenc->codec_dyn_params->size != sizeof (IJPEGENC_DynamicParams)))
-    return;
+  if ((sizeof (IJPEGENC_Params) != ce_imgenc->codec_params->size) ||
+      (sizeof (IJPEGENC_DynamicParams) != ce_imgenc->codec_dyn_params->size))
+    GST_WARNING_OBJECT (ce_imgenc, "there isn't JPEG extended parameters");
+  return;
 
-  jpeg_params = (IJPEGENC_Params *) ceimgenc->codec_params;
-  jpeg_dyn_params = (IJPEGENC_DynamicParams *) ceimgenc->codec_dyn_params;
+  jpeg_params = (IJPEGENC_Params *) ce_imgenc->codec_params;
+  jpeg_dyn_params = (IJPEGENC_DynamicParams *) ce_imgenc->codec_dyn_params;
 
-  GST_DEBUG_OBJECT (ceimgenc, "setup JPEG defaults parameters");
+  GST_DEBUG_OBJECT (ce_imgenc, "setup JPEG defaults parameters");
+
+  /* In order to understand the default values 
+     please read the JPEG Sequential Encoder on DM365 User’s Guide */
 
   jpeg_params->halfBufCB = NULL;
   jpeg_params->halfBufCBarg = NULL;
 
   jpeg_dyn_params->disableEOI = JPEG_DEFAULT_DISABLE_EOI;
   jpeg_dyn_params->rotation = JPEG_DEFAULT_ROTATION;
-  jpeg_dyn_params->rstInterval = 84;
+  jpeg_dyn_params->rstInterval = JPEG_DEFAULT_RST_INTERVAL;
   jpeg_dyn_params->customQ = NULL;
 
   return;
@@ -228,15 +236,15 @@ static void
 gst_ce_jpegenc_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec)
 {
-  GstCEImgEnc *ceimgenc = GST_CEIMGENC (object);
+  GstCeImgEnc *ce_imgenc = GST_CE_IMGENC (object);
   IJPEGENC_DynamicParams *dyn_params;
   IMGENC1_Status enc_status;
-  guint ret;
+  guint ret = IMGENC1_EFAIL;
 
-  dyn_params = (IJPEGENC_DynamicParams *) ceimgenc->codec_dyn_params;
+  dyn_params = (IJPEGENC_DynamicParams *) ce_imgenc->codec_dyn_params;
 
   if (!dyn_params) {
-    GST_WARNING_OBJECT (ceimgenc, "couldn't set property");
+    GST_WARNING_OBJECT (ce_imgenc, "couldn't set property");
     return;
   }
 
@@ -253,13 +261,13 @@ gst_ce_jpegenc_set_property (GObject * object, guint prop_id,
   }
 
   /* Set dynamic parameters if needed */
-  if (ceimgenc->codec_handle) {
+  if (ce_imgenc->codec_handle) {
     enc_status.size = sizeof (IMGENC1_Status);
     enc_status.data.buf = NULL;
-    ret = IMGENC1_control (ceimgenc->codec_handle, XDM_SETPARAMS,
+    ret = IMGENC1_control (ce_imgenc->codec_handle, XDM_SETPARAMS,
         (IMGENC1_DynamicParams *) dyn_params, &enc_status);
-    if (ret != IMGENC1_EOK)
-      GST_WARNING_OBJECT (ceimgenc, "failed to set dynamic parameters, "
+    if (IMGENC1_EOK != ret)
+      GST_WARNING_OBJECT (ce_imgenc, "failed to set dynamic parameters, "
           "status error %x, %d", (guint) enc_status.extendedError, ret);
   }
 
@@ -273,13 +281,13 @@ static void
 gst_ce_jpegenc_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec)
 {
-  GstCEImgEnc *ceimgenc = GST_CEIMGENC (object);
+  GstCeImgEnc *ce_imgenc = GST_CE_IMGENC (object);
   IJPEGENC_DynamicParams *dyn_params;
 
-  dyn_params = (IJPEGENC_DynamicParams *) ceimgenc->codec_dyn_params;
+  dyn_params = (IJPEGENC_DynamicParams *) ce_imgenc->codec_dyn_params;
 
   if (!dyn_params) {
-    GST_WARNING_OBJECT (ceimgenc, "couldn't set property");
+    GST_WARNING_OBJECT (ce_imgenc, "couldn't get property");
     return;
   }
 

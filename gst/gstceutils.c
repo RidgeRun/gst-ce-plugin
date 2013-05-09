@@ -34,7 +34,7 @@ gst_ce_contig_buf_meta_api_get_type (void)
   static const gchar *tags[] = { "memory", NULL };
 
   if (g_once_init_enter (&type)) {
-    GType _type = gst_meta_api_type_register ("GstCEMetaAPI", tags);
+    GType _type = gst_meta_api_type_register ("GstCeMetaAPI", tags);
     g_once_init_leave (&type, _type);
   }
   return type;
@@ -53,9 +53,9 @@ gst_ce_contig_buf_meta_init (GstMeta * meta, gpointer params,
   gint32 phys, virt;
   GstMapInfo info;
   gboolean is_contiguous = FALSE;
-  GstCEContigBufMeta *cemeta;
+  GstCeContigBufMeta *cemeta;
 
-  cemeta = (GstCEContigBufMeta *) meta;
+  cemeta = (GstCeContigBufMeta *) meta;
 
   if (!gst_buffer_map (buffer, &info, GST_MAP_READ))
     goto out;
@@ -90,9 +90,9 @@ out:
 void
 gst_ce_contig_buf_meta_free (GstMeta * meta, GstBuffer * buffer)
 {
-  GstCEContigBufMeta *cemeta;
+  GstCeContigBufMeta *cemeta;
 
-  cemeta = (GstCEContigBufMeta *) meta;
+  cemeta = (GstCeContigBufMeta *) meta;
 
   Memory_unregisterContigBuf (cemeta->addr, cemeta->size);
   GST_DEBUG ("Free CE meta %d", cemeta->addr);
@@ -106,8 +106,8 @@ gst_ce_contig_buf_meta_get_info (void)
   if (g_once_init_enter (&meta_info)) {
     const GstMetaInfo *meta =
         gst_meta_register (gst_ce_contig_buf_meta_api_get_type (),
-        "GstCEContigBufMeta",
-        sizeof (GstCEContigBufMeta),
+        "GstCeContigBufMeta",
+        sizeof (GstCeContigBufMeta),
         (GstMetaInitFunction) gst_ce_contig_buf_meta_init,
         (GstMetaFreeFunction) gst_ce_contig_buf_meta_free,
         (GstMetaTransformFunction) NULL);

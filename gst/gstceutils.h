@@ -24,12 +24,10 @@
 #include <gst/gst.h>
 #include "gstce.h"
 
-G_BEGIN_DECLS 
-
-typedef struct _GstCEContigBufMeta GstCEContigBufMeta;
+G_BEGIN_DECLS typedef struct _GstCeContigBufMeta GstCeContigBufMeta;
 
 /**
- * GstCEMeta:
+ * GstCeMeta:
  * @meta: parent #GstMeta
  * @addr: virtual address of the buffer
  * @size: size of the region
@@ -38,7 +36,7 @@ typedef struct _GstCEContigBufMeta GstCEContigBufMeta;
  * Extra buffer metadata indicating a contiguous buffer registered
  * with Codec Engine.
  */
-struct _GstCEContigBufMeta
+struct _GstCeContigBufMeta
 {
   GstMeta meta;
 
@@ -49,8 +47,8 @@ struct _GstCEContigBufMeta
 GType gst_ce_contig_buf_meta_api_get_type (void);
 const GstMetaInfo *gst_ce_contig_buf_meta_get_info (void);
 #define GST_CE_CONTIG_BUF_META_API_TYPE (gst_ce_meta_api_get_type())
-#define GST_CE_CONTIG_BUF_META_GET(buf) ((GstCEContigBufMeta *)gst_buffer_get_meta(buf, gst_ce_contig_buf_meta_api_get_type()))
-#define GST_CE_CONTIG_BUF_META_ADD(buf) ((GstCEContigBufMeta *)gst_buffer_add_meta(buf, gst_ce_contig_buf_meta_get_info(), NULL))
+#define GST_CE_CONTIG_BUF_META_GET(buf) ((GstCeContigBufMeta *)gst_buffer_get_meta(buf, gst_ce_contig_buf_meta_api_get_type()))
+#define GST_CE_CONTIG_BUF_META_ADD(buf) ((GstCeContigBufMeta *)gst_buffer_add_meta(buf, gst_ce_contig_buf_meta_get_info(), NULL))
 
 G_END_DECLS
 #endif /*__GST_CE_UTILS_H__*/

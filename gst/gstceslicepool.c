@@ -33,7 +33,7 @@ typedef struct _memSlice
 } memSlice;
 
 /* bufferpool */
-struct _GstCESliceBufferPoolPrivate
+struct _GstCeSliceBufferPoolPrivate
 {
   GRecMutex rec_lock;
 
@@ -64,22 +64,22 @@ static void ce_slice_buffer_pool_release_buffer (GstBufferPool * pool,
 static GstFlowReturn ce_slice_buffer_pool_acquire_buffer (GstBufferPool * pool,
     GstBuffer ** buffer, GstBufferPoolAcquireParams * params);
 
-GList *get_slice (GstCESliceBufferPool * spool, gint * size);
+GList *get_slice (GstCeSliceBufferPool * spool, gint * size);
 
 #define GST_CE_SLICE_BUFFER_POOL_GET_PRIVATE(obj)  \
-   (G_TYPE_INSTANCE_GET_PRIVATE ((obj), GST_TYPE_CE_SLICE_BUFFER_POOL, GstCESliceBufferPoolPrivate))
+   (G_TYPE_INSTANCE_GET_PRIVATE ((obj), GST_TYPE_CE_SLICE_BUFFER_POOL, GstCeSliceBufferPoolPrivate))
 
 #define gst_ce_slice_buffer_pool_parent_class parent_class
-G_DEFINE_TYPE (GstCESliceBufferPool, gst_ce_slice_buffer_pool,
+G_DEFINE_TYPE (GstCeSliceBufferPool, gst_ce_slice_buffer_pool,
     GST_TYPE_BUFFER_POOL);
 
 static void
-gst_ce_slice_buffer_pool_class_init (GstCESliceBufferPoolClass * klass)
+gst_ce_slice_buffer_pool_class_init (GstCeSliceBufferPoolClass * klass)
 {
   GObjectClass *gobject_class = (GObjectClass *) klass;
   GstBufferPoolClass *gstbufferpool_class = (GstBufferPoolClass *) klass;
 
-  g_type_class_add_private (klass, sizeof (GstCESliceBufferPoolPrivate));
+  g_type_class_add_private (klass, sizeof (GstCeSliceBufferPoolPrivate));
 
   gobject_class->finalize = gst_ce_slice_buffer_pool_finalize;
   gstbufferpool_class->set_config = ce_slice_buffer_pool_set_config;
@@ -91,9 +91,9 @@ gst_ce_slice_buffer_pool_class_init (GstCESliceBufferPoolClass * klass)
 }
 
 static void
-gst_ce_slice_buffer_pool_init (GstCESliceBufferPool * pool)
+gst_ce_slice_buffer_pool_init (GstCeSliceBufferPool * pool)
 {
-  GstCESliceBufferPoolPrivate *priv;
+  GstCeSliceBufferPoolPrivate *priv;
   pool->priv = priv = GST_CE_SLICE_BUFFER_POOL_GET_PRIVATE (pool);
 
   g_rec_mutex_init (&priv->rec_lock);
@@ -106,8 +106,8 @@ gst_ce_slice_buffer_pool_init (GstCESliceBufferPool * pool)
 static void
 gst_ce_slice_buffer_pool_finalize (GObject * object)
 {
-  GstCESliceBufferPool *pool = GST_CE_SLICE_BUFFER_POOL_CAST (object);
-  GstCESliceBufferPoolPrivate *priv = pool->priv;
+  GstCeSliceBufferPool *pool = GST_CE_SLICE_BUFFER_POOL_CAST (object);
+  GstCeSliceBufferPoolPrivate *priv = pool->priv;
 
   GST_LOG_OBJECT (pool, "finalize video buffer pool %p", pool);
 
@@ -121,8 +121,8 @@ gst_ce_slice_buffer_pool_finalize (GObject * object)
 static gboolean
 ce_slice_buffer_pool_set_config (GstBufferPool * pool, GstStructure * config)
 {
-  GstCESliceBufferPool *spool = GST_CE_SLICE_BUFFER_POOL_CAST (pool);
-  GstCESliceBufferPoolPrivate *priv = spool->priv;
+  GstCeSliceBufferPool *spool = GST_CE_SLICE_BUFFER_POOL_CAST (pool);
+  GstCeSliceBufferPoolPrivate *priv = spool->priv;
   GstCaps *caps;
   guint size, min_buffers, max_buffers;
   GstAllocator *allocator;
@@ -163,7 +163,7 @@ wrong_config:
   }
 no_cmem_allocator:
   {
-    GST_WARNING_OBJECT (pool, "GstCESliceBufferPool need a CMEM allocator");
+    GST_WARNING_OBJECT (pool, "GstCeSliceBufferPool need a CMEM allocator");
     return FALSE;
   }
 }
@@ -186,8 +186,8 @@ mark_meta_pooled (GstBuffer * buffer, GstMeta ** meta, gpointer user_data)
 static gboolean
 ce_slice_buffer_pool_start (GstBufferPool * pool)
 {
-  GstCESliceBufferPool *spool = GST_CE_SLICE_BUFFER_POOL_CAST (pool);
-  GstCESliceBufferPoolPrivate *priv = spool->priv;
+  GstCeSliceBufferPool *spool = GST_CE_SLICE_BUFFER_POOL_CAST (pool);
+  GstCeSliceBufferPoolPrivate *priv = spool->priv;
   memSlice *slice;
   GstMapInfo info;
 
@@ -237,8 +237,8 @@ fail_map:
 static gboolean
 ce_slice_buffer_pool_stop (GstBufferPool * pool)
 {
-  GstCESliceBufferPool *spool = GST_CE_SLICE_BUFFER_POOL_CAST (pool);
-  GstCESliceBufferPoolPrivate *priv = spool->priv;
+  GstCeSliceBufferPool *spool = GST_CE_SLICE_BUFFER_POOL_CAST (pool);
+  GstCeSliceBufferPoolPrivate *priv = spool->priv;
 
   GST_SLICE_POOL_LOCK (spool);
 
@@ -274,9 +274,9 @@ ce_slice_buffer_pool_stop (GstBufferPool * pool)
 }
 
 GList *
-get_slice (GstCESliceBufferPool * spool, gint * size)
+get_slice (GstCeSliceBufferPool * spool, gint * size)
 {
-  GstCESliceBufferPoolPrivate *priv = spool->priv;
+  GstCeSliceBufferPoolPrivate *priv = spool->priv;
   GList *e, *a;
   memSlice *slice, *max_slice_available;
   int max_size = 0;
@@ -336,8 +336,8 @@ static GstFlowReturn
 ce_slice_buffer_pool_buffer_alloc (GstBufferPool * pool, GstBuffer ** buffer,
     GstBufferPoolAcquireParams * params)
 {
-  GstCESliceBufferPool *spool = GST_CE_SLICE_BUFFER_POOL_CAST (pool);
-  GstCESliceBufferPoolPrivate *priv = spool->priv;
+  GstCeSliceBufferPool *spool = GST_CE_SLICE_BUFFER_POOL_CAST (pool);
+  GstCeSliceBufferPoolPrivate *priv = spool->priv;
   GstMemory *mem;
   GList *element;
   memSlice *slice;
@@ -373,8 +373,8 @@ no_memory:
 static void
 ce_slice_buffer_pool_release_buffer (GstBufferPool * pool, GstBuffer * buffer)
 {
-  GstCESliceBufferPool *spool = GST_CE_SLICE_BUFFER_POOL_CAST (pool);
-  GstCESliceBufferPoolPrivate *priv = spool->priv;
+  GstCeSliceBufferPool *spool = GST_CE_SLICE_BUFFER_POOL_CAST (pool);
+  GstCeSliceBufferPoolPrivate *priv = spool->priv;
   GstMapInfo info;
   memSlice *slice, *nslice;
   gint spos, epos, buffer_size;
@@ -511,7 +511,7 @@ static GstFlowReturn
 ce_slice_buffer_pool_acquire_buffer (GstBufferPool * pool, GstBuffer ** buffer,
     GstBufferPoolAcquireParams * params)
 {
-  GstCESliceBufferPool *spool = GST_CE_SLICE_BUFFER_POOL_CAST (pool);
+  GstCeSliceBufferPool *spool = GST_CE_SLICE_BUFFER_POOL_CAST (pool);
   GstFlowReturn result;
 
   if (G_UNLIKELY (GST_BUFFER_POOL_IS_FLUSHING (pool)))
@@ -548,13 +548,13 @@ flushing:
 /**
  * gst_ce_slice_buffer_pool_new:
  *
- * Creates a new #GstCESliceBufferPool instance. This bufferpool reserves
+ * Creates a new #GstCeSliceBufferPool instance. This bufferpool reserves
  * a single memory block with size corresponding to the maximum buffers 
  * requested. For each buffer acquired with the bufferpool a slice of the 
  * reserved memory is used. The buffer can be resized after usage
  * (like encodification) returning the unused memory.
  *
- * Returns: (transfer full): a new #GstCESliceBufferPool instance
+ * Returns: (transfer full): a new #GstCeSliceBufferPool instance
  */
 GstBufferPool *
 gst_ce_slice_buffer_pool_new (void)
@@ -569,7 +569,7 @@ gst_ce_slice_buffer_pool_new (void)
 
 /**
  * gst_ce_slice_buffer_resize:
- * @pool: a #GstCESliceBufferPool
+ * @pool: a #GstCeSliceBufferPool
  * @buffer: buffer to resize.
  * @size: new buffer size.
  * 
@@ -581,10 +581,10 @@ gst_ce_slice_buffer_pool_new (void)
  */
 
 gboolean
-gst_ce_slice_buffer_resize (GstCESliceBufferPool * spool, GstBuffer * buffer,
+gst_ce_slice_buffer_resize (GstCeSliceBufferPool * spool, GstBuffer * buffer,
     gint size)
 {
-  GstCESliceBufferPoolPrivate *priv;
+  GstCeSliceBufferPoolPrivate *priv;
   GstMapInfo info;
   memSlice *slice;
   GList *element;
