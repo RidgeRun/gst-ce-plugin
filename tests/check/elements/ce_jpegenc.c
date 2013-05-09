@@ -38,8 +38,8 @@ static GstPad *mysrcpad, *mysinkpad;
                            "framerate = (fraction) 30/1"
 
 #define JPEG_CAPS_RESTRICTIVE  "image/jpeg, " \
-                           "width = (int) [128, 4080], " \
-                           "height = (int) [96,4096], " \
+                           "width = (int) [97, 4080], " \
+                           "height = (int) [16,4096], " \
                            "framerate = (fraction) 30/1"
 
 #define JPEG_CAPS_STRING "image/jpeg"
@@ -195,11 +195,11 @@ GST_START_TEST (test_ce_jpegenc_getcaps)
 
   /* check the width */
   value = gst_structure_get_value (structure, "width");
-  fail_unless (gst_value_get_int_range_min (value) == 128);
+  fail_unless (gst_value_get_int_range_min (value) == 97);
   fail_unless (gst_value_get_int_range_max (value) == 4080);
 
   value = gst_structure_get_value (structure, "height");
-  fail_unless (gst_value_get_int_range_min (value) == 96);
+  fail_unless (gst_value_get_int_range_min (value) == 16);
   fail_unless (gst_value_get_int_range_max (value) == 4096);
 
   fail_unless (gst_structure_get_fraction (structure, "framerate", &fps_n,
@@ -273,14 +273,14 @@ GST_START_TEST (test_ce_jpegenc_properties)
       1920, "height", G_TYPE_INT, 1080, "framerate",
       GST_TYPE_FRACTION, 1, 1, "format", G_TYPE_STRING, "NV12", NULL);
 
-  g_object_set (jpegenc, "qValue", 65, NULL);
+  g_object_set (jpegenc, "quality-value", 65, NULL);
   g_object_set (jpegenc, "rotation", 270, NULL);
-  g_object_set (jpegenc, "disableEOI", 0, NULL);
+  g_object_set (jpegenc, "disable-eoi", 0, NULL);
   g_object_set (jpegenc, "num-out-buffers", 3, NULL);
 
   g_object_get (jpegenc,
-      "qValue", &res_qValue, "rotation", &res_rotation,
-      "disableEOI", &res_disableEOI, "num-out-buffers", &res_num_out_buffers,
+      "quality-value", &res_qValue, "rotation", &res_rotation,
+      "disable-eoi", &res_disableEOI, "num-out-buffers", &res_num_out_buffers,
       NULL);
 
   fail_unless (res_qValue == 65);
