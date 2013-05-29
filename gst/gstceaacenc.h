@@ -27,19 +27,19 @@ G_BEGIN_DECLS
 #define GST_TYPE_CE_AACENC \
   (gst_ce_aacenc_get_type())
 #define GST_CE_AACENC(obj) \
-  (G_TYPE_CHECK_INSTANCE_CAST((obj),GST_TYPE_CE_AACENC,GstCEAACEnc))
+  (G_TYPE_CHECK_INSTANCE_CAST((obj),GST_TYPE_CE_AACENC,GstCeAacEnc))
 #define GST_CE_AACENC_CLASS(klass) \
-  (G_TYPE_CHECK_CLASS_CAST((klass),GST_TYPE_CE_AACENC,GstCEAACEncClass))
+  (G_TYPE_CHECK_CLASS_CAST((klass),GST_TYPE_CE_AACENC,GstCeAacEncClass))
 #define GST_IS_CE_AACENC(obj) \
   (G_TYPE_CHECK_INSTANCE_TYPE((obj),GST_TYPE_CE_AACENC))
 #define GST_IS_CE_AACENC_CLASS(klass) \
   (G_TYPE_CHECK_CLASS_TYPE((klass),GST_TYPE_CE_AACENC))
-typedef struct _GstCEAACEnc GstCEAACEnc;
-typedef struct _GstCEAACEncClass GstCEAACEncClass;
+typedef struct _GstCeAacEnc GstCeAacEnc;
+typedef struct _GstCeAacEncClass GstCeAacEncClass;
 
-struct _GstCEAACEnc
+struct _GstCeAacEnc
 {
-  GstCEAudEnc encoder;
+  GstCeAudEnc encoder;
   /* Audio info */
   gint rate;
   gint profile;
@@ -47,9 +47,9 @@ struct _GstCEAACEnc
 
 };
 
-struct _GstCEAACEncClass
+struct _GstCeAacEncClass
 {
-  GstCEAudEncClass parent_class;
+  GstCeAudEncClass parent_class;
 };
 
 GType gst_ce_aacenc_get_type (void);

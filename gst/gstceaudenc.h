@@ -29,11 +29,11 @@
 
 #include "gstceutils.h"
 
-G_BEGIN_DECLS typedef struct _GstCEAudEnc GstCEAudEnc;
-typedef struct _GstCEAudEncClass GstCEAudEncClass;
-typedef struct _GstCEAudEncPrivate GstCEAudEncPrivate;
+G_BEGIN_DECLS typedef struct _GstCeAudEnc GstCeAudEnc;
+typedef struct _GstCeAudEncClass GstCeAudEncClass;
+typedef struct _GstCeAudEncPrivate GstCeAudEncPrivate;
 
-struct _GstCEAudEnc
+struct _GstCeAudEnc
 {
   GstAudioEncoder parent;
 
@@ -43,14 +43,14 @@ struct _GstCEAudEnc
   AUDENC1_DynamicParams *codec_dyn_params;
 
   /*< private > */
-  GstCEAudEncPrivate *priv;
+  GstCeAudEncPrivate *priv;
 
   gpointer _gst_reserved[GST_PADDING_LARGE];
 };
 
 
 /**
- * GstCEAudEncClass
+ * GstCeAudEncClass
  * @parent_class:   Element parent class
  * @codec_name:     The name of the codec
  * @reset:          Optional.
@@ -71,7 +71,7 @@ struct _GstCEAudEnc
  * Subclasses can override any of the available virtual methods or not, as
  * needed. At minimum @codec_name shoud be filled.
  */
-struct _GstCEAudEncClass
+struct _GstCeAudEncClass
 {
   GstAudioEncoderClass parent_class;
 
@@ -79,30 +79,30 @@ struct _GstCEAudEncClass
   const gchar *codec_name;
 
   /* virtual methods for subclasses */
-  void (*reset) (GstCEAudEnc * ceaudenc);
-  gboolean (*set_src_caps) (GstCEAudEnc * ceaudenc, GstAudioInfo * info,
+  void (*reset) (GstCeAudEnc * ceaudenc);
+  gboolean (*set_src_caps) (GstCeAudEnc * ceaudenc, GstAudioInfo * info,
       GstCaps ** src_caps, GstBuffer ** codec_data);
 
-  gboolean (*pre_process) (GstCEAudEnc * ceaudenc, GstBuffer * input_buffer);
-  gboolean (*post_process) (GstCEAudEnc * ceaudenc, GstBuffer * output_buffer);
+  gboolean (*pre_process) (GstCeAudEnc * ceaudenc, GstBuffer * input_buffer);
+  gboolean (*post_process) (GstCeAudEnc * ceaudenc, GstBuffer * output_buffer);
 
   /*< private > */
   gpointer _gst_reserved[GST_PADDING_LARGE];
 };
 
 #define GST_TYPE_CEAUDENC \
-  (gst_ceaudenc_get_type())
+  (gst_ce_audenc_get_type())
 #define GST_CEAUDENC(obj) \
-  (G_TYPE_CHECK_INSTANCE_CAST((obj),GST_TYPE_CEAUDENC,GstCEAudEnc))
+  (G_TYPE_CHECK_INSTANCE_CAST((obj),GST_TYPE_CEAUDENC,GstCeAudEnc))
 #define GST_CEAUDENC_CLASS(klass) \
-  (G_TYPE_CHECK_CLASS_CAST((klass),GST_TYPE_CEAUDENC,GstCEAudEncClass))
+  (G_TYPE_CHECK_CLASS_CAST((klass),GST_TYPE_CEAUDENC,GstCeAudEncClass))
 #define GST_IS_CEAUDENC(obj) \
   (G_TYPE_CHECK_INSTANCE_TYPE((obj),GST_TYPE_CEAUDENC))
 #define GST_IS_CEAUDENC_CLASS(klass) \
   (G_TYPE_CHECK_CLASS_TYPE((klass),GST_TYPE_CEAUDENC))
 
-GType gst_ceaudenc_get_type (void);
-void gst_cevidenc_set_frame_samples (GstCEAudEnc * ceaudenc, 
+GType gst_ce_audenc_get_type (void);
+void gst_ce_audenc_set_frame_samples (GstCeAudEnc * ceaudenc, 
                                   gint min_samples,
                                   gint max_samples);
                                   

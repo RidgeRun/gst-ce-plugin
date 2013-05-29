@@ -64,9 +64,9 @@ enum
 #define PROP_NUM_OUT_BUFFERS_DEFAULT      3
 
 #define GST_CEAUDENC_GET_PRIVATE(obj)  \
-    (G_TYPE_INSTANCE_GET_PRIVATE ((obj), GST_TYPE_CEAUDENC, GstCEAudEncPrivate))
+    (G_TYPE_INSTANCE_GET_PRIVATE ((obj), GST_TYPE_CEAUDENC, GstCeAudEncPrivate))
 
-struct _GstCEAudEncPrivate
+struct _GstCeAudEncPrivate
 {
   gint32 outbuf_size;
   GstBufferPool *outbuf_pool;
@@ -92,32 +92,32 @@ struct _GstCEAudEncPrivate
 };
 
 /* A number of function prototypes are given so we can refer to them later. */
-static gboolean gst_ceaudenc_open (GstAudioEncoder * encoder);
-static gboolean gst_ceaudenc_close (GstAudioEncoder * encoder);
-static gboolean gst_ceaudenc_stop (GstAudioEncoder * encoder);
-static gboolean gst_ceaudenc_set_format (GstAudioEncoder * encoder,
+static gboolean gst_ce_audenc_open (GstAudioEncoder * encoder);
+static gboolean gst_ce_audenc_close (GstAudioEncoder * encoder);
+static gboolean gst_ce_audenc_stop (GstAudioEncoder * encoder);
+static gboolean gst_ce_audenc_set_format (GstAudioEncoder * encoder,
     GstAudioInfo * state);
-static gboolean gst_ceaudenc_decide_allocation (GstAudioEncoder * encoder,
+static gboolean gst_ce_audenc_decide_allocation (GstAudioEncoder * encoder,
     GstQuery * query);
-static GstFlowReturn gst_ceaudenc_handle_frame (GstAudioEncoder * encoder,
+static GstFlowReturn gst_ce_audenc_handle_frame (GstAudioEncoder * encoder,
     GstBuffer * buffer);
 
-static void gst_ceaudenc_set_property (GObject * object,
+static void gst_ce_audenc_set_property (GObject * object,
     guint prop_id, const GValue * value, GParamSpec * pspec);
-static void gst_ceaudenc_get_property (GObject * object,
+static void gst_ce_audenc_get_property (GObject * object,
     guint prop_id, GValue * value, GParamSpec * pspec);
-static void gst_ceaudenc_finalize (GObject * object);
+static void gst_ce_audenc_finalize (GObject * object);
 
-static gboolean gst_ceaudenc_reset (GstAudioEncoder * encoder);
-static gboolean gst_ceaudenc_set_dynamic_params (GstCEAudEnc * ceaudenc);
-static gboolean gst_ceaudenc_get_buffer_info (GstCEAudEnc * ceaudenc);
-static gboolean gst_ceaudenc_allocate_frame (GstCEAudEnc * ceaudenc,
+static gboolean gst_ce_audenc_reset (GstAudioEncoder * encoder);
+static gboolean gst_ce_audenc_set_dynamic_params (GstCeAudEnc * ceaudenc);
+static gboolean gst_ce_audenc_get_buffer_info (GstCeAudEnc * ceaudenc);
+static gboolean gst_ce_audenc_allocate_frame (GstCeAudEnc * ceaudenc,
     GstBuffer ** buf, guint size);
-#define gst_ceaudenc_parent_class parent_class
-G_DEFINE_TYPE (GstCEAudEnc, gst_ceaudenc, GST_TYPE_AUDIO_ENCODER);
+#define gst_ce_audenc_parent_class parent_class
+G_DEFINE_TYPE (GstCeAudEnc, gst_ce_audenc, GST_TYPE_AUDIO_ENCODER);
 
 static void
-gst_ceaudenc_class_init (GstCEAudEncClass * klass)
+gst_ce_audenc_class_init (GstCeAudEncClass * klass)
 {
   GObjectClass *gobject_class;
   GstAudioEncoderClass *aenc_class;
@@ -125,15 +125,15 @@ gst_ceaudenc_class_init (GstCEAudEncClass * klass)
   gobject_class = G_OBJECT_CLASS (klass);
   aenc_class = GST_AUDIO_ENCODER_CLASS (klass);
 
-  g_type_class_add_private (klass, sizeof (GstCEAudEncPrivate));
+  g_type_class_add_private (klass, sizeof (GstCeAudEncPrivate));
 
   /* 
    * Not using GST_DEBUG_FUNCPTR with GObject
    * virtual functions because no one will use them
    */
-  gobject_class->set_property = gst_ceaudenc_set_property;
-  gobject_class->get_property = gst_ceaudenc_get_property;
-  gobject_class->finalize = gst_ceaudenc_finalize;
+  gobject_class->set_property = gst_ce_audenc_set_property;
+  gobject_class->get_property = gst_ce_audenc_get_property;
+  gobject_class->finalize = gst_ce_audenc_finalize;
 
   g_object_class_install_property (gobject_class, PROP_BITRATE,
       g_param_spec_int ("bitrate",
@@ -153,20 +153,20 @@ gst_ceaudenc_class_init (GstCEAudEncClass * klass)
           "each buffer contains the maximum amount of samples supported by the audio codec",
           3, G_MAXINT32, PROP_NUM_OUT_BUFFERS_DEFAULT, G_PARAM_READWRITE));
 
-  aenc_class->open = GST_DEBUG_FUNCPTR (gst_ceaudenc_open);
-  aenc_class->close = GST_DEBUG_FUNCPTR (gst_ceaudenc_close);
-  aenc_class->stop = GST_DEBUG_FUNCPTR (gst_ceaudenc_stop);
-  aenc_class->handle_frame = GST_DEBUG_FUNCPTR (gst_ceaudenc_handle_frame);
-  aenc_class->set_format = GST_DEBUG_FUNCPTR (gst_ceaudenc_set_format);
+  aenc_class->open = GST_DEBUG_FUNCPTR (gst_ce_audenc_open);
+  aenc_class->close = GST_DEBUG_FUNCPTR (gst_ce_audenc_close);
+  aenc_class->stop = GST_DEBUG_FUNCPTR (gst_ce_audenc_stop);
+  aenc_class->handle_frame = GST_DEBUG_FUNCPTR (gst_ce_audenc_handle_frame);
+  aenc_class->set_format = GST_DEBUG_FUNCPTR (gst_ce_audenc_set_format);
   aenc_class->decide_allocation =
-      GST_DEBUG_FUNCPTR (gst_ceaudenc_decide_allocation);
+      GST_DEBUG_FUNCPTR (gst_ce_audenc_decide_allocation);
 
 }
 
 static void
-gst_ceaudenc_init (GstCEAudEnc * ceaudenc)
+gst_ce_audenc_init (GstCeAudEnc * ceaudenc)
 {
-  GstCEAudEncPrivate *priv;
+  GstCeAudEncPrivate *priv;
 
   GST_DEBUG_OBJECT (ceaudenc, "initialize encoder");
 
@@ -199,13 +199,13 @@ gst_ceaudenc_init (GstCEAudEnc * ceaudenc)
   priv->engine_handle = NULL;
   priv->allocator = NULL;
 
-  gst_ceaudenc_reset ((GstAudioEncoder *) ceaudenc);
+  gst_ce_audenc_reset ((GstAudioEncoder *) ceaudenc);
 }
 
 static void
-gst_ceaudenc_finalize (GObject * object)
+gst_ce_audenc_finalize (GObject * object)
 {
-  GstCEAudEnc *ceaudenc = GST_CEAUDENC (object);
+  GstCeAudEnc *ceaudenc = GST_CEAUDENC (object);
 
   /* Free the allocated resources */
   if (ceaudenc->codec_params) {
@@ -222,14 +222,14 @@ gst_ceaudenc_finalize (GObject * object)
 }
 
 /**
- * gst_ceaudenc_configure_codec:
+ * gst_ce_audenc_configure_codec:
  * Based on the negotiated format, create and initialize the 
  * codec instance*/
 static gboolean
-gst_ceaudenc_configure_codec (GstCEAudEnc * ceaudenc)
+gst_ce_audenc_configure_codec (GstCeAudEnc * ceaudenc)
 {
-  GstCEAudEncClass *klass;
-  GstCEAudEncPrivate *priv;
+  GstCeAudEncClass *klass;
+  GstCeAudEncPrivate *priv;
   AUDENC1_Status enc_status;
   AUDENC1_Params *params;
   AUDENC1_DynamicParams *dyn_params;
@@ -275,10 +275,10 @@ gst_ceaudenc_configure_codec (GstCEAudEnc * ceaudenc)
   enc_status.data.buf = NULL;
 
   GST_DEBUG_OBJECT (ceaudenc, "set codec dynamic parameters");
-  if (!gst_ceaudenc_set_dynamic_params (ceaudenc))
+  if (!gst_ce_audenc_set_dynamic_params (ceaudenc))
     goto fail_out;
 
-  if (!gst_ceaudenc_get_buffer_info (ceaudenc))
+  if (!gst_ce_audenc_get_buffer_info (ceaudenc))
     goto fail_out;
 
   /* Free previous input buffer */
@@ -286,7 +286,7 @@ gst_ceaudenc_configure_codec (GstCEAudEnc * ceaudenc)
     gst_buffer_unref (priv->inbuf);
 
   /* Allocate contiguous input buffer */
-  if (!gst_ceaudenc_allocate_frame (ceaudenc, &priv->inbuf,
+  if (!gst_ce_audenc_allocate_frame (ceaudenc, &priv->inbuf,
           priv->inbuf_desc.descs[0].bufSize))
     goto fail_out;
 
@@ -317,14 +317,14 @@ fail_out:
 }
 
 static gboolean
-gst_ceaudenc_set_format (GstAudioEncoder * encoder, GstAudioInfo * info)
+gst_ce_audenc_set_format (GstAudioEncoder * encoder, GstAudioInfo * info)
 {
   GstCaps *allowed_caps;
   GstBuffer *codec_data = NULL;
 
-  GstCEAudEnc *ceaudenc = GST_CEAUDENC (encoder);
-  GstCEAudEncClass *klass = GST_CEAUDENC_CLASS (G_OBJECT_GET_CLASS (ceaudenc));
-  GstCEAudEncPrivate *priv = ceaudenc->priv;
+  GstCeAudEnc *ceaudenc = GST_CEAUDENC (encoder);
+  GstCeAudEncClass *klass = GST_CEAUDENC_CLASS (G_OBJECT_GET_CLASS (ceaudenc));
+  GstCeAudEncPrivate *priv = ceaudenc->priv;
 
   GST_DEBUG_OBJECT (ceaudenc, "extracting common audio information");
   priv->rate = GST_AUDIO_INFO_RATE (info);
@@ -357,7 +357,7 @@ gst_ceaudenc_set_format (GstAudioEncoder * encoder, GstAudioInfo * info)
 
   /* Configure codec after subclass set caps to allow the subclass
    * to change some static properties according to the caps */
-  if (!gst_ceaudenc_configure_codec (ceaudenc))
+  if (!gst_ce_audenc_configure_codec (ceaudenc))
     goto fail_set_caps;
 
   if (codec_data) {
@@ -381,10 +381,10 @@ fail_set_caps:
 }
 
 static gboolean
-gst_ceaudenc_decide_allocation (GstAudioEncoder * encoder, GstQuery * query)
+gst_ce_audenc_decide_allocation (GstAudioEncoder * encoder, GstQuery * query)
 {
-  GstCEAudEnc *ceaudenc = GST_CEAUDENC (encoder);
-  GstCEAudEncPrivate *priv = ceaudenc->priv;
+  GstCeAudEnc *ceaudenc = GST_CEAUDENC (encoder);
+  GstCeAudEncPrivate *priv = ceaudenc->priv;
   GstAllocator *allocator = NULL;
   GstAllocationParams params;
   GstBufferPool *pool = NULL;
@@ -427,15 +427,15 @@ gst_ceaudenc_decide_allocation (GstAudioEncoder * encoder, GstQuery * query)
 }
 
 /**
- * gst_ceaudenc_allocate_frame:
+ * gst_ce_audenc_allocate_frame:
  * 
  * Allocates a CMEM buffer
  */
 static gboolean
-gst_ceaudenc_allocate_frame (GstCEAudEnc * ceaudenc, GstBuffer ** buf,
+gst_ce_audenc_allocate_frame (GstCeAudEnc * ceaudenc, GstBuffer ** buf,
     guint size)
 {
-  GstCEAudEncPrivate *priv = ceaudenc->priv;
+  GstCeAudEncPrivate *priv = ceaudenc->priv;
 
   /* Get allocator parameters */
   gst_audio_encoder_get_allocator ((GstAudioEncoder *) ceaudenc, NULL,
@@ -452,11 +452,11 @@ gst_ceaudenc_allocate_frame (GstCEAudEnc * ceaudenc, GstBuffer ** buf,
 }
 
 static GstFlowReturn
-gst_ceaudenc_handle_frame (GstAudioEncoder * encoder, GstBuffer * buffer)
+gst_ce_audenc_handle_frame (GstAudioEncoder * encoder, GstBuffer * buffer)
 {
-  GstCEAudEnc *ceaudenc = GST_CEAUDENC (encoder);
-  GstCEAudEncClass *klass = GST_CEAUDENC_CLASS (G_OBJECT_GET_CLASS (ceaudenc));
-  GstCEAudEncPrivate *priv = ceaudenc->priv;
+  GstCeAudEnc *ceaudenc = GST_CEAUDENC (encoder);
+  GstCeAudEncClass *klass = GST_CEAUDENC_CLASS (G_OBJECT_GET_CLASS (ceaudenc));
+  GstCeAudEncPrivate *priv = ceaudenc->priv;
   GstBuffer *outbuf = NULL;
   GstMapInfo info_in, info_out;
   AUDENC1_InArgs in_args;
@@ -470,7 +470,7 @@ gst_ceaudenc_handle_frame (GstAudioEncoder * encoder, GstBuffer * buffer)
         info_in.size);
     if (priv->inbuf)
       gst_buffer_unref (priv->inbuf);
-    if (!gst_ceaudenc_allocate_frame (ceaudenc, &priv->inbuf, info_in.size)) {
+    if (!gst_ce_audenc_allocate_frame (ceaudenc, &priv->inbuf, info_in.size)) {
       gst_buffer_unmap (buffer, &info_in);
       goto fail_alloc;
     }
@@ -557,11 +557,11 @@ fail_encode:
 }
 
 static void
-gst_ceaudenc_set_property (GObject * object,
+gst_ce_audenc_set_property (GObject * object,
     guint prop_id, const GValue * value, GParamSpec * pspec)
 {
-  GstCEAudEnc *ceaudenc;
-  GstCEAudEncClass *klass;
+  GstCeAudEnc *ceaudenc;
+  GstCeAudEncClass *klass;
   AUDENC1_Params *params;
   AUDENC1_DynamicParams *dyn_params;
   gboolean set_params = FALSE;
@@ -602,7 +602,7 @@ gst_ceaudenc_set_property (GObject * object,
   }
 
   if (set_params && ceaudenc->codec_handle)
-    gst_ceaudenc_set_dynamic_params (ceaudenc);
+    gst_ce_audenc_set_dynamic_params (ceaudenc);
 
   GST_OBJECT_UNLOCK (ceaudenc);
   return;
@@ -615,17 +615,17 @@ fail_static_prop:
 
 /* The set function is simply the inverse of the get fuction. */
 static void
-gst_ceaudenc_get_property (GObject * object,
+gst_ce_audenc_get_property (GObject * object,
     guint prop_id, GValue * value, GParamSpec * pspec)
 {
-  GstCEAudEnc *ceaudenc;
-  GstCEAudEncClass *klass;
+  GstCeAudEnc *ceaudenc;
+  GstCeAudEncClass *klass;
   AUDENC1_Params *params;
   AUDENC1_DynamicParams *dyn_params;
 
   /* It's not null if we got it, but it might not be ours */
   ceaudenc = GST_CEAUDENC (object);
-  klass = (GstCEAudEncClass *) G_OBJECT_GET_CLASS (ceaudenc);
+  klass = (GstCeAudEncClass *) G_OBJECT_GET_CLASS (ceaudenc);
 
   if ((!ceaudenc->codec_params) || (!ceaudenc->codec_dyn_params)) {
     GST_WARNING_OBJECT (ceaudenc, "couldn't set property");
@@ -654,10 +654,10 @@ gst_ceaudenc_get_property (GObject * object,
 }
 
 static gboolean
-gst_ceaudenc_open (GstAudioEncoder * encoder)
+gst_ce_audenc_open (GstAudioEncoder * encoder)
 {
-  GstCEAudEnc *ceaudenc = GST_CEAUDENC (encoder);
-  GstCEAudEncPrivate *priv = ceaudenc->priv;
+  GstCeAudEnc *ceaudenc = GST_CEAUDENC (encoder);
+  GstCeAudEncPrivate *priv = ceaudenc->priv;
 
   GST_DEBUG_OBJECT (ceaudenc, "opening %s Engine", CODEC_ENGINE);
   /* reset, load, and start DSP Engine */
@@ -701,10 +701,10 @@ fail_pool:
 }
 
 static gboolean
-gst_ceaudenc_close (GstAudioEncoder * encoder)
+gst_ce_audenc_close (GstAudioEncoder * encoder)
 {
-  GstCEAudEnc *ceaudenc = GST_CEAUDENC (encoder);
-  GstCEAudEncPrivate *priv = ceaudenc->priv;
+  GstCeAudEnc *ceaudenc = GST_CEAUDENC (encoder);
+  GstCeAudEncPrivate *priv = ceaudenc->priv;
 
   if (priv->engine_handle) {
     GST_DEBUG_OBJECT (ceaudenc, "closing codec engine %p\n",
@@ -727,23 +727,23 @@ gst_ceaudenc_close (GstAudioEncoder * encoder)
 }
 
 static gboolean
-gst_ceaudenc_stop (GstAudioEncoder * encoder)
+gst_ce_audenc_stop (GstAudioEncoder * encoder)
 {
-  GstCEAudEnc *ceaudenc = GST_CEAUDENC (encoder);
-  GstCEAudEncPrivate *priv = ceaudenc->priv;
+  GstCeAudEnc *ceaudenc = GST_CEAUDENC (encoder);
+  GstCeAudEncPrivate *priv = ceaudenc->priv;
 
   if (priv->inbuf)
     gst_buffer_unref (priv->inbuf);
 
-  return gst_ceaudenc_reset (encoder);
+  return gst_ce_audenc_reset (encoder);
 }
 
 static gboolean
-gst_ceaudenc_reset (GstAudioEncoder * encoder)
+gst_ce_audenc_reset (GstAudioEncoder * encoder)
 {
-  GstCEAudEnc *ceaudenc = GST_CEAUDENC (encoder);
-  GstCEAudEncPrivate *priv = ceaudenc->priv;
-  GstCEAudEncClass *klass = GST_CEAUDENC_CLASS (G_OBJECT_GET_CLASS (ceaudenc));
+  GstCeAudEnc *ceaudenc = GST_CEAUDENC (encoder);
+  GstCeAudEncPrivate *priv = ceaudenc->priv;
+  GstCeAudEncClass *klass = GST_CEAUDENC_CLASS (G_OBJECT_GET_CLASS (ceaudenc));
 
   AUDENC1_Params *params = ceaudenc->codec_params;
   AUDENC1_DynamicParams *dyn_params = ceaudenc->codec_dyn_params;
@@ -793,7 +793,7 @@ gst_ceaudenc_reset (GstAudioEncoder * encoder)
 
 /* Set current dynamic parameters */
 static gboolean
-gst_ceaudenc_set_dynamic_params (GstCEAudEnc * ceaudenc)
+gst_ce_audenc_set_dynamic_params (GstCeAudEnc * ceaudenc)
 {
   AUDENC1_Status enc_status;
   gint ret;
@@ -817,9 +817,9 @@ gst_ceaudenc_set_dynamic_params (GstCEAudEnc * ceaudenc)
 
 /* Get buffer information from audio codec */
 static gboolean
-gst_ceaudenc_get_buffer_info (GstCEAudEnc * ceaudenc)
+gst_ce_audenc_get_buffer_info (GstCeAudEnc * ceaudenc)
 {
-  GstCEAudEncPrivate *priv = ceaudenc->priv;
+  GstCeAudEncPrivate *priv = ceaudenc->priv;
   AUDENC1_Status enc_status;
   gint i, ret;
 
@@ -854,24 +854,24 @@ gst_ceaudenc_get_buffer_info (GstCEAudEnc * ceaudenc)
 }
 
 /**
- * gst_cevidenc_set_frame_samples:
- * @cevidenc: a #GstCEAudEnc
+ * gst_ce_audenc_set_frame_samples:
+ * @cevidenc: a #GstCeAudEnc
  * @min_samples: the #GstBuffer containing the 
  *        encoding header.
  * @max_samples: maximum number of samples per frame that can be handed by the codec.
  * @min_samples: minimum number of samples per frame that can be handed by the codec.
  * 
- * Lets #GstCEAudEnc sub-classes to set the audio codec samples per buffer 
+ * Lets #GstCeAudEnc sub-classes to set the audio codec samples per buffer 
  * capabilities. If @max_samples is equal to @min_samples, means the codec
  * cannot handle less samples, the leftover samples will simply be discarded.
  *
  */
 void
-gst_cevidenc_set_frame_samples (GstCEAudEnc * ceaudenc, gint min_samples,
+gst_ce_audenc_set_frame_samples (GstCeAudEnc * ceaudenc, gint min_samples,
     gint max_samples)
 {
   GstAudioEncoder *encoder = GST_AUDIO_ENCODER (ceaudenc);
-  GstCEAudEncPrivate *priv = ceaudenc->priv;
+  GstCeAudEncPrivate *priv = ceaudenc->priv;
   priv->min_samples = min_samples;
   priv->max_samples = max_samples;
   priv->samples = max_samples;

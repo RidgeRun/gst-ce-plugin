@@ -78,8 +78,8 @@ enum
   GST_CE_AACENC_HEAAC_PROFILE
 };
 
-static void gst_ce_aacenc_reset (GstCEAudEnc * ceaudenc);
-static gboolean gst_ce_aacenc_set_src_caps (GstCEAudEnc * ceaudenc,
+static void gst_ce_aacenc_reset (GstCeAudEnc * ceaudenc);
+static gboolean gst_ce_aacenc_set_src_caps (GstCeAudEnc * ceaudenc,
     GstAudioInfo * info, GstCaps ** caps, GstBuffer ** codec_data);
 
 static void gst_ce_aacenc_get_property (GObject * object, guint prop_id,
@@ -88,14 +88,14 @@ static void gst_ce_aacenc_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec);
 
 #define gst_ce_aacenc_parent_class parent_class
-G_DEFINE_TYPE (GstCEAACEnc, gst_ce_aacenc, GST_TYPE_CEAUDENC);
+G_DEFINE_TYPE (GstCeAacEnc, gst_ce_aacenc, GST_TYPE_CEAUDENC);
 
 static void
-gst_ce_aacenc_class_init (GstCEAACEncClass * klass)
+gst_ce_aacenc_class_init (GstCeAacEncClass * klass)
 {
   GObjectClass *gobject_class;
   GstElementClass *element_class;
-  GstCEAudEncClass *ceaudenc_class;
+  GstCeAudEncClass *ceaudenc_class;
 
   gobject_class = G_OBJECT_CLASS (klass);
   element_class = GST_ELEMENT_CLASS (klass);
@@ -155,9 +155,9 @@ gst_ce_aacenc_class_init (GstCEAACEncClass * klass)
 }
 
 static void
-gst_ce_aacenc_init (GstCEAACEnc * aacenc)
+gst_ce_aacenc_init (GstCeAacEnc * aacenc)
 {
-  GstCEAudEnc *ceaudenc = GST_CEAUDENC (aacenc);
+  GstCeAudEnc *ceaudenc = GST_CEAUDENC (aacenc);
   ITTIAM_EAACPLUSENC_Params *aac_params = NULL;
 
   GST_DEBUG_OBJECT (aacenc, "setup AAC parameters");
@@ -193,7 +193,7 @@ fail_alloc:
  * Create the codec data header
  */
 static void
-gst_ce_aacenc_get_codec_data (GstCEAACEnc * aacenc, GstBuffer ** codec_data)
+gst_ce_aacenc_get_codec_data (GstCeAacEnc * aacenc, GstBuffer ** codec_data)
 {
 
   const gint rate_idx[] =
@@ -227,10 +227,10 @@ gst_ce_aacenc_get_codec_data (GstCEAACEnc * aacenc, GstBuffer ** codec_data)
 }
 
 static gboolean
-gst_ce_aacenc_set_src_caps (GstCEAudEnc * ceaudenc, GstAudioInfo * info,
+gst_ce_aacenc_set_src_caps (GstCeAudEnc * ceaudenc, GstAudioInfo * info,
     GstCaps ** caps, GstBuffer ** codec_data)
 {
-  GstCEAACEnc *aacenc = GST_CE_AACENC (ceaudenc);
+  GstCeAacEnc *aacenc = GST_CE_AACENC (ceaudenc);
   const gchar *stream_format = NULL;
   gboolean ret = TRUE;
 
@@ -265,14 +265,14 @@ gst_ce_aacenc_set_src_caps (GstCEAudEnc * ceaudenc, GstAudioInfo * info,
   }
   params->noChannels = GST_AUDIO_INFO_CHANNELS (info);
 
-  gst_cevidenc_set_frame_samples (ceaudenc, 1024, 1024);
+  gst_ce_audenc_set_frame_samples (ceaudenc, 1024, 1024);
   return ret;
 }
 
 static void
-gst_ce_aacenc_reset (GstCEAudEnc * ceaudenc)
+gst_ce_aacenc_reset (GstCeAudEnc * ceaudenc)
 {
-  GstCEAACEnc *aacenc = GST_CE_AACENC (ceaudenc);
+  GstCeAacEnc *aacenc = GST_CE_AACENC (ceaudenc);
   ITTIAM_EAACPLUSENC_Params *aac_params;
 
   GST_DEBUG_OBJECT (aacenc, "H.264 reset");
@@ -319,7 +319,7 @@ static void
 gst_ce_aacenc_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec)
 {
-  GstCEAudEnc *ceaudenc = GST_CEAUDENC (object);
+  GstCeAudEnc *ceaudenc = GST_CEAUDENC (object);
   ITTIAM_EAACPLUSENC_Params *params;
 
   params = (ITTIAM_EAACPLUSENC_Params *) ceaudenc->codec_params;
@@ -356,7 +356,7 @@ static void
 gst_ce_aacenc_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec)
 {
-  GstCEAudEnc *ceaudenc = GST_CEAUDENC (object);
+  GstCeAudEnc *ceaudenc = GST_CEAUDENC (object);
   ITTIAM_EAACPLUSENC_Params *params;
 
   params = (ITTIAM_EAACPLUSENC_Params *) ceaudenc->codec_params;
