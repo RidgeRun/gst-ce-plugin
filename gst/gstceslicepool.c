@@ -277,8 +277,8 @@ GList *
 get_slice (GstCeSliceBufferPool * spool, gint * size)
 {
   GstCeSliceBufferPoolPrivate *priv = spool->priv;
-  GList *e, *a;
-  memSlice *slice, *max_slice_available;
+  GList *e, *a = NULL;
+  memSlice *slice, *max_slice_available = NULL;
   int max_size = 0;
 
   /* Find free memory */
@@ -312,13 +312,16 @@ get_slice (GstCeSliceBufferPool * spool, gint * size)
   }
 
   if (slice->start != priv->memory_block_size) {
-    GST_DEBUG_OBJECT (spool,
-        "free memory not found, using our best available free block of size %d...",
-        max_slice_available->size);
+    if (max_slice_available) {
+      GST_WARNING_OBJECT (spool,
+          "free memory not found, using our best available free block of size %d... from %d to %d",
+          max_slice_available->size, max_slice_available->start,
+          max_slice_available->start + max_slice_available->size);
 
-    max_slice_available->start += max_slice_available->size;
-    *size = max_slice_available->size;
-    max_slice_available->size = 0;
+      max_slice_available->start += max_slice_available->size;
+      *size = max_slice_available->size;
+      max_slice_available->size = 0;
+    }
   } else {
     a = NULL;
   }
@@ -354,7 +357,7 @@ ce_slice_buffer_pool_buffer_alloc (GstBufferPool * pool, GstBuffer ** buffer,
   offset = slice->start - size;
   mem =
       gst_cmem_new_wrapped (GST_MEMORY_FLAG_NO_SHARE, priv->data + offset,
-      priv->buffer_size, 0, priv->buffer_size, NULL, NULL);
+      size, 0, size, NULL, NULL);
   if (!mem)
     goto no_memory;
   *buffer = gst_buffer_new ();
