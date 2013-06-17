@@ -115,3 +115,23 @@ gst_ce_contig_buf_meta_get_info (void)
   }
   return meta_info;
 }
+
+gboolean
+gst_ce_is_buffer_contiguous (GstBuffer * buffer)
+{
+  gint32 phys, virt;
+  GstMapInfo info;
+  gboolean is_contiguous = FALSE;
+
+  if (!gst_buffer_map (buffer, &info, GST_MAP_READ))
+    goto out;
+
+  virt = (guint32) info.data;
+  phys = Memory_getBufferPhysicalAddress (info.data, info.size,
+      (Bool *) & is_contiguous);
+
+  gst_buffer_unmap (buffer, &info);
+
+out:
+  return is_contiguous;
+}

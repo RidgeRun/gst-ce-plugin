@@ -44,6 +44,7 @@ struct _GstCeContigBufMeta
   guint32 size;
 };
 
+gboolean gst_ce_is_buffer_contiguous (GstBuffer * buffer);
 GType gst_ce_contig_buf_meta_api_get_type (void);
 const GstMetaInfo *gst_ce_contig_buf_meta_get_info (void);
 #define GST_CE_CONTIG_BUF_META_API_TYPE (gst_ce_meta_api_get_type())

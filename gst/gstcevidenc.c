@@ -621,6 +621,14 @@ gst_ce_videnc_handle_frame (GstVideoEncoder * encoder,
   gint i;
   gint current_pitch;
 
+  /* $
+   * TODO
+   * Failing if input buffer is not contiguous. Should it copy the
+   * buffer instead?
+   */
+  if (!gst_ce_is_buffer_contiguous (frame->input_buffer))
+    goto fail_no_contiguous_buffer;
+
   /* Fill planes pointer */
   if (!gst_video_frame_map (&vframe, info, frame->input_buffer, GST_MAP_READ))
     goto fail_map;
@@ -656,27 +664,6 @@ gst_ce_videnc_handle_frame (GstVideoEncoder * encoder,
   /* Making sure the output buffer pool is configured */
   if (priv->first_buffer && gst_pad_check_reconfigure (encoder->srcpad))
     gst_video_encoder_negotiate (GST_VIDEO_ENCODER (encoder));
-
-  /* If there's no contiguous buffer metadata, it hasn't been
-   * registered as contiguous, so we attempt to register it. If 
-   * we can't, then this buffer is not contiguous and we fail. */
-  meta = GST_CE_CONTIG_BUF_META_GET (frame->input_buffer);
-  if (!meta) {
-    meta = GST_CE_CONTIG_BUF_META_ADD (frame->input_buffer);
-    if (meta) {
-      /* The metadata is now managed by the buffer pool and shouldn't
-       * be removed */
-      GST_META_FLAG_SET (meta, GST_META_FLAG_POOLED);
-      GST_META_FLAG_SET (meta, GST_META_FLAG_LOCKED);
-    } else {
-      /* $
-       * TODO
-       * Failing if input buffer is not contiguous. Should it copy the
-       * buffer instead?
-       */
-      goto fail_no_contiguous_buffer;
-    }
-  }
 
   /* Allocate output buffer */
   if (gst_buffer_pool_acquire_buffer (GST_BUFFER_POOL_CAST (priv->outbuf_pool),
