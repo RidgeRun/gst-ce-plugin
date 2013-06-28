@@ -452,8 +452,9 @@ gst_ce_videnc_set_format (GstVideoEncoder * encoder, GstVideoCodecState * state)
   priv->video_format = GST_VIDEO_INFO_FORMAT (&state->info);
 
   GST_DEBUG_OBJECT (ce_videnc, "input buffer format: width=%li, height=%li,"
-      " pitch=%li, bpp=%d", priv->inbuf_desc.frameWidth,
-      priv->inbuf_desc.frameHeight, priv->inbuf_desc.framePitch, priv->bpp);
+      " pitch=%li, bpp=%d, fps %f", priv->inbuf_desc.frameWidth,
+      priv->inbuf_desc.frameHeight, priv->inbuf_desc.framePitch, priv->bpp,
+      priv->fps_num / priv->fps_den);
 
   if (!gst_ce_videnc_configure_codec (ce_videnc))
     goto fail_set_caps;
@@ -1134,7 +1135,7 @@ gst_ce_videnc_get_header (GstCeVidEnc * ce_videnc, GstBuffer ** buffer,
   VIDENC1_OutArgs out_args;
   GstBuffer *header_buf;
   GstMapInfo info;
-  gint ret;
+  gint ret, i;
 
   g_return_val_if_fail (GST_IS_CEVIDENC (ce_videnc), FALSE);
   g_return_val_if_fail (ce_videnc->codec_handle, FALSE);
@@ -1148,7 +1149,7 @@ gst_ce_videnc_get_header (GstCeVidEnc * ce_videnc, GstBuffer ** buffer,
   if (!gst_ce_videnc_set_dynamic_params (ce_videnc))
     goto fail_out;
 
-  /*Allocate an output buffer for the header */
+  /* Allocate an output buffer for the header */
   header_buf = gst_buffer_new_allocate (priv->allocator, 200,
       &priv->alloc_params);
   if (!gst_buffer_map (header_buf, &info, GST_MAP_WRITE))
@@ -1162,6 +1163,13 @@ gst_ce_videnc_get_header (GstCeVidEnc * ce_videnc, GstBuffer ** buffer,
   in_args.topFieldFirstFlag = 1;
 
   out_args.size = sizeof (VIDENC1_OutArgs);
+
+  /* Some codecs complain when we don't set the input buffers,
+   * so we configure them to point to the ouput buffer. 
+   * (the input data is not used to generate the header) */
+  for (i = 0; i < priv->inbuf_desc.numBufs; i++) {
+    priv->inbuf_desc.bufDesc[i].buf = info.data;
+  }
 
   /* Generate the header */
   ret =
