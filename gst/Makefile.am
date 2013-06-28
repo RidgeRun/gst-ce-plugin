@@ -2,8 +2,9 @@ plugin_LTLIBRARIES = libgstce.la
 
 # sources used to compile this plugin
 libgstce_la_SOURCES = gstce.c \
- gstcevidenc.c gstceh264enc.c gstceutils.c gstceslicepool.c \
- gstceimgenc.c gstcejpegenc.c 
+ gstceutils.c gstceslicepool.c \
+ gstceimgenc.c gstcejpegenc.c \
+ gstcevidenc.c gstceh264enc.c  gstcempeg4enc.c
 
 # compiler and linker flags used to compile this plugin
 libgstce_la_CFLAGS = $(GST_CE_CFLAGS) $(CODECS_CFLAGS) \
@@ -17,6 +18,8 @@ libgstce_la_LIBTOOLFLAGS = --tag=disable-static
 
 # headers we need but don't want installed
 noinst_HEADERS = gstce.h \
- gstcevidenc.h gstceh264enc.h gstceslicepool.h \
- gstceimgenc.h gstcejpegenc.h
+ gstceutils.h gstceslicepool.h \
+ gstceimgenc.h gstcejpegenc.h \
+ gstcevidenc.h gstceh264enc.h gstcempeg4enc.h
+
 
