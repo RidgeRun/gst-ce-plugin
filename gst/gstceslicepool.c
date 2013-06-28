@@ -592,7 +592,7 @@ gst_ce_slice_buffer_resize (GstCeSliceBufferPool * spool, GstBuffer * buffer,
   memSlice *slice;
   GList *element;
   gint spos, epos, buffer_size;
-  gint unused;
+  gint unused, align_size;
   gsize align;
 
   g_return_val_if_fail (GST_IS_CE_SLICE_BUFFER_POOL (spool), FALSE);
@@ -602,7 +602,7 @@ gst_ce_slice_buffer_resize (GstCeSliceBufferPool * spool, GstBuffer * buffer,
   priv = spool->priv;
   align = priv->params.align;
 
-  size = (size & ~align) + (align + 1);
+  align_size = (size & ~align) + (align + 1);
 
   GST_SLICE_POOL_LOCK (spool);
 
@@ -619,7 +619,7 @@ gst_ce_slice_buffer_resize (GstCeSliceBufferPool * spool, GstBuffer * buffer,
   while (element) {
     slice = (memSlice *) element->data;
     if (slice->start == epos) {
-      unused = buffer_size - size;
+      unused = buffer_size - align_size;
       GST_DEBUG_OBJECT (spool, "adjusting slice start from %d to %d",
           slice->start, slice->start - unused);
       slice->start -= unused;
@@ -635,7 +635,7 @@ gst_ce_slice_buffer_resize (GstCeSliceBufferPool * spool, GstBuffer * buffer,
 
   if (element) {
     GST_DEBUG_OBJECT (spool, "resizing buffer %p", buffer);
-    info.memory->maxsize = size;
+    info.memory->maxsize = align_size;
     gst_buffer_unmap (buffer, &info);
     gst_buffer_set_size (buffer, size);
   } else {
