@@ -30,12 +30,12 @@ GST_STATIC_PAD_TEMPLATE ("sink",
     GST_PAD_SINK,
     GST_PAD_ALWAYS,
     GST_STATIC_CAPS ("video/x-raw, "
-        "   format = (string) {NV12,UYVY},"
+        "   format = (string) {NV12},"
         "   framerate=(fraction)[ 0, 120], "
-        "   width=(int)[ 160, 1920 ], " 
-        "   height=(int)[ 64, 1920 ]")
+        "   width=(int)[ 64, 1920 ], " 
+        "   height=(int)[ 64, 1088 ]")
     );
-/* *INDENT-ON* */
+
 static GstStaticPadTemplate gst_ce_mpeg4enc_src_pad_template =
 GST_STATIC_PAD_TEMPLATE ("src",
     GST_PAD_SRC,
@@ -44,9 +44,11 @@ GST_STATIC_PAD_TEMPLATE ("src",
         "   mpegversion=(int) 4, "
         "   systemstream=(boolean)false, "
         "   framerate=(fraction)[ 0, 120], "
-        "   width=(int)[ 160, 1920 ], " "   height=(int)[ 64, 1920 ]")
+        "   width=(int)[ 64, 1920 ], " 
+        "   height=(int)[ 64, 1088 ]")
     );
 
+/* *INDENT-ON* */
 enum
 {
   PROP_0,
