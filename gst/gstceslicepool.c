@@ -21,6 +21,9 @@
 #include "gstcmemallocator.h"
 #include "gstceslicepool.h"
 
+GST_DEBUG_CATEGORY_STATIC (gst_ce_slice_buffer_pool_debug);
+#define GST_CAT_DEFAULT gst_ce_slice_buffer_pool_debug
+
 #define GST_SLICE_POOL_LOCK(pool)   (g_rec_mutex_lock(&pool->priv->rec_lock))
 #define GST_SLICE_POOL_UNLOCK(pool) (g_rec_mutex_unlock(&pool->priv->rec_lock))
 
@@ -88,6 +91,9 @@ gst_ce_slice_buffer_pool_class_init (GstCeSliceBufferPoolClass * klass)
   gstbufferpool_class->alloc_buffer = ce_slice_buffer_pool_buffer_alloc;
   gstbufferpool_class->release_buffer = ce_slice_buffer_pool_release_buffer;
   gstbufferpool_class->acquire_buffer = ce_slice_buffer_pool_acquire_buffer;
+
+  GST_DEBUG_CATEGORY_INIT (gst_ce_slice_buffer_pool_debug, "ceslicebufferpool",
+      0, "CE slice buffer pool debug");
 }
 
 static void

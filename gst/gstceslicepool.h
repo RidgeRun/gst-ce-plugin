@@ -22,7 +22,6 @@
 #define __GST_CE_SLICE_POOL_H__
 
 #include <gst/gst.h>
-#include "gstce.h"
 
 G_BEGIN_DECLS
 /* slice bufferpool */
