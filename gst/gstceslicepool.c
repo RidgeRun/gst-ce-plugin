@@ -394,9 +394,11 @@ ce_slice_buffer_pool_release_buffer (GstBufferPool * pool, GstBuffer * buffer)
     goto out;
   }
 
-  if (gst_buffer_n_memory (buffer) > 1) {
-    GST_DEBUG_OBJECT (spool,
-        "buffer was modified or doesn't belong to this buffer pool");
+  guint nmem = gst_buffer_n_memory (buffer);
+  if (nmem != 1) {
+    GST_ERROR_OBJECT (spool,
+        "buffer %p was modified, its memory can't be merged to the GstCeSliceBufferPool's memory block causing fragmentation",
+        buffer);
     goto out;
   }
 
