@@ -21,9 +21,16 @@ check_PROGRAMS = \
 	generic/states			\
 	elements/ce_h264enc		\
 	elements/ce_jpegenc		\
+	elements/ce_mpeg4enc		\
 	libs/cmem
 
 elements_ce_h264enc_LDADD = $(GST_PLUGINS_BASE_LIBS) \
+	-lgstapp-@GST_API_VERSION@ \
+	$(top_builddir)/gst-libs/gst/cmem/libgstcmem-@GST_API_VERSION@.la \
+	$(GST_BASE_LIBS) \
+	$(LDADD)
+
+elements_ce_mpeg4enc_LDADD = $(GST_PLUGINS_BASE_LIBS) \
 	-lgstapp-@GST_API_VERSION@ \
 	$(top_builddir)/gst-libs/gst/cmem/libgstcmem-@GST_API_VERSION@.la \
 	$(GST_BASE_LIBS) \
