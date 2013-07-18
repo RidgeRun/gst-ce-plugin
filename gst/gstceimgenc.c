@@ -575,8 +575,12 @@ gst_ce_imgenc_handle_frame (GstVideoEncoder * encoder,
 
   /* Allocate output buffer */
   if (gst_buffer_pool_acquire_buffer (GST_BUFFER_POOL_CAST (priv->outbuf_pool),
-          &outbuf, NULL) != GST_FLOW_OK)
+          &outbuf, NULL) != GST_FLOW_OK) {
+    frame->output_buffer = NULL;
+    gst_video_encoder_finish_frame (encoder, frame);
     goto fail_alloc;
+  }
+
   if (!gst_buffer_map (outbuf, &info_out, GST_MAP_WRITE))
     goto fail_alloc;
 
@@ -632,8 +636,8 @@ fail_no_contiguous_buffer:
   }
 fail_alloc:
   {
-    GST_ERROR_OBJECT (ce_imgenc, "failed to get output buffer");
-    return GST_FLOW_ERROR;
+    GST_INFO_OBJECT (ce_imgenc, "Failed to get output buffer, frame dropped");
+    return GST_FLOW_OK;
   }
 fail_pre_encode:
   {
