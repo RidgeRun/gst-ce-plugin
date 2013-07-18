@@ -57,11 +57,13 @@ enum
 {
   PROP_0,
   PROP_QUALITY_VALUE,
-  PROP_NUM_OUT_BUFFERS
+  PROP_NUM_OUT_BUFFERS,
+  PROP_MIN_SIZE_PERCENTAGE
 };
 
-#define PROP_QUALITY_VALUE_DEFAULT 75
-#define PROP_NUM_OUT_BUFFERS_DEFAULT 3
+#define PROP_QUALITY_VALUE_DEFAULT            75
+#define PROP_NUM_OUT_BUFFERS_DEFAULT          3
+#define PROP_MIN_SIZE_PERCENTAGE_DEFAULT      100
 
 #define GST_CE_IMGENC_GET_PRIVATE(obj)  \
     (G_TYPE_INSTANCE_GET_PRIVATE ((obj), GST_TYPE_CE_IMGENC, GstCeImgEncPrivate))
@@ -76,6 +78,7 @@ struct _GstCeImgEncPrivate
   gint32 frame_pitch;
 
   gint32 outbuf_size;
+  guint outbuf_size_percentage;
   gint num_out_buffers;
   GstBufferPool *outbuf_pool;
 
@@ -146,6 +149,16 @@ gst_ce_imgenc_class_init (GstCeImgEncClass * klass)
           "Number of output buffers",
           "Number of buffers to be used in the output buffer pool",
           2, G_MAXINT32, PROP_NUM_OUT_BUFFERS_DEFAULT, G_PARAM_READWRITE));
+  g_object_class_install_property (gobject_class, PROP_MIN_SIZE_PERCENTAGE,
+      g_param_spec_int ("min-size-percentage",
+          "Minimum output buffer size percentaje",
+          "Define the minimum size acceptable for an output buffer,"
+          "as a percentage of the input buffer size recomended by the encoder."
+          "The encoder will use the defined smaller buffer when there "
+          "is not enough free memory. Only set this property to less than 100 if you can "
+          "ensure the encoder will compress the data enough to fit in the smaller buffer "
+          "and you don't want to drop buffers",
+          10, 100, PROP_MIN_SIZE_PERCENTAGE_DEFAULT, G_PARAM_READWRITE));
 
   venc_class->open = GST_DEBUG_FUNCPTR (gst_ce_imgenc_open);
   venc_class->close = GST_DEBUG_FUNCPTR (gst_ce_imgenc_close);
@@ -479,6 +492,9 @@ gst_ce_imgenc_decide_allocation (GstVideoEncoder * encoder, GstQuery * query)
   gst_buffer_pool_set_config (GST_BUFFER_POOL_CAST (pool), config);
   gst_buffer_pool_set_active (GST_BUFFER_POOL_CAST (pool), TRUE);
 
+  gst_ce_slice_buffer_pool_set_min_size (GST_CE_SLICE_BUFFER_POOL_CAST (pool),
+      priv->outbuf_size_percentage, TRUE);
+
   return TRUE;
 }
 
@@ -701,6 +717,11 @@ gst_ce_imgenc_set_property (GObject * object,
           "setting number of output buffers to %d",
           ce_imgenc->priv->num_out_buffers);
       break;
+    case PROP_MIN_SIZE_PERCENTAGE:
+      ce_imgenc->priv->outbuf_size_percentage = g_value_get_int (value);
+      GST_LOG_OBJECT (ce_imgenc,
+          "setting min output buffer size percentage to %d",
+          ce_imgenc->priv->outbuf_size_percentage);
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
@@ -751,6 +772,9 @@ gst_ce_imgenc_get_property (GObject * object,
       break;
     case PROP_NUM_OUT_BUFFERS:
       g_value_set_int (value, ce_imgenc->priv->num_out_buffers);
+      break;
+    case PROP_MIN_SIZE_PERCENTAGE:
+      g_value_set_int (value, ce_imgenc->priv->outbuf_size_percentage);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -877,8 +901,8 @@ gst_ce_imgenc_reset (GstVideoEncoder * encoder)
 
   GST_OBJECT_LOCK (ce_imgenc);
 
-  priv->num_out_buffers = PROP_NUM_OUT_BUFFERS;
-
+  priv->num_out_buffers = PROP_NUM_OUT_BUFFERS_DEFAULT;
+  priv->outbuf_size_percentage = PROP_MIN_SIZE_PERCENTAGE_DEFAULT;
   /* Set default values for codec static params */
   params->forceChromaFormat = XDM_YUV_420P;
   params->dataEndianness = XDM_BYTE;
