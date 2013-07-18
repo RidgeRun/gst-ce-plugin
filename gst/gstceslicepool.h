@@ -50,6 +50,7 @@ GType gst_ce_slice_buffer_pool_get_type (void);
 GstBufferPool *gst_ce_slice_buffer_pool_new (void);
 gboolean gst_ce_slice_buffer_resize (GstCeSliceBufferPool * spool,
     GstBuffer * buffer, gint size);
-
+gboolean gst_ce_slice_buffer_pool_set_min_size (GstCeSliceBufferPool * spool,
+    guint size, gboolean is_percentange);
 G_END_DECLS
 #endif /*__GST_CE_SLICE_POOL_H__*/

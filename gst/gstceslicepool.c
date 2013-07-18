@@ -46,6 +46,7 @@ struct _GstCeSliceBufferPoolPrivate
   gint cur_buffers;
   gint max_buffers;
   gint buffer_size;
+  gint min_buffer_size;
   gint memory_block_size;
 
   GstMemory *memory;
@@ -148,6 +149,7 @@ ce_slice_buffer_pool_set_config (GstBufferPool * pool, GstStructure * config)
   GST_DEBUG_OBJECT (pool, "config %" GST_PTR_FORMAT, config);
 
   priv->buffer_size = size;
+  priv->min_buffer_size = size;
   priv->max_buffers = max_buffers;
   priv->memory_block_size = max_buffers * size;
 
@@ -285,7 +287,7 @@ get_slice (GstCeSliceBufferPool * spool, gint * size)
   GstCeSliceBufferPoolPrivate *priv = spool->priv;
   GList *e, *a = NULL;
   memSlice *slice, *max_slice_available = NULL;
-  int max_size = 0;
+  int max_size = priv->min_buffer_size - 1;
 
   /* Find free memory */
   GST_DEBUG_OBJECT (spool, "finding free memory");
@@ -388,6 +390,7 @@ ce_slice_buffer_pool_release_buffer (GstBufferPool * pool, GstBuffer * buffer)
   memSlice *slice, *nslice;
   gint spos, epos, buffer_size;
   GList *e;
+  guint nmem;
 
   /* keep it around in our queue */
   GST_DEBUG_OBJECT (spool, "released buffer %p", buffer);
@@ -400,7 +403,7 @@ ce_slice_buffer_pool_release_buffer (GstBufferPool * pool, GstBuffer * buffer)
     goto out;
   }
 
-  guint nmem = gst_buffer_n_memory (buffer);
+  nmem = gst_buffer_n_memory (buffer);
   if (nmem != 1) {
     GST_ERROR_OBJECT (spool,
         "buffer %p was modified, its memory can't be merged to the GstCeSliceBufferPool's memory block causing fragmentation",
@@ -590,7 +593,6 @@ gst_ce_slice_buffer_pool_new (void)
  *
  * Returns: FALSE if couldn't resize the buffer
  */
-
 gboolean
 gst_ce_slice_buffer_resize (GstCeSliceBufferPool * spool, GstBuffer * buffer,
     gint size)
@@ -660,4 +662,46 @@ fail:
     GST_SLICE_POOL_UNLOCK (spool);
     return FALSE;
   }
+}
+
+/**
+ * gst_ce_slice_buffer_resize:
+ * @pool: a #GstCeSliceBufferPool
+ * @size: minimum buffer size value or percentage of the buffer size.
+ * @is_percentange: indicates if @size is a percentage
+ * 
+ * Defines the minimum size acceptable for a buffer retrived from 
+ * the GstCeSliceBufferPool. The minimum size can be indicated with @size
+ * as an absolute value setting @is_percentange in FALSE. Or the minimum 
+ * size can be indicated with @size as a percentage(0-100) of the configured
+ * buffer size and setting @is_percentange in TRUE. If the size percentange is 
+ * set to 100 means a smaller buffer is not acceptable (this is the 
+ * default value)
+ *  
+ * Returns: FALSE if the given value in @size is invalid. 
+ */
+gboolean
+gst_ce_slice_buffer_pool_set_min_size (GstCeSliceBufferPool * spool,
+    guint size, gboolean is_percentange)
+{
+  GstCeSliceBufferPoolPrivate *priv;
+  gboolean ret = TRUE;
+
+  GST_SLICE_POOL_LOCK (spool);
+
+  g_return_val_if_fail (GST_IS_CE_SLICE_BUFFER_POOL (spool), FALSE);
+  g_return_val_if_fail (!priv->buffer_size, FALSE);
+
+  priv = spool->priv;
+
+  if (is_percentange)
+    priv->min_buffer_size = (priv->buffer_size * size) / 100;
+  else if (size < priv->buffer_size)
+    priv->min_buffer_size = size;
+  else
+    ret = FALSE;
+
+  GST_SLICE_POOL_UNLOCK (spool);
+
+  return ret;
 }
