@@ -3,14 +3,16 @@ SUBDIRS = 			\
 	gst 		 	\
 	tests 			\
 	docs			\
-	common
+	common			\
+	pkgconfig
 
 DIST_SUBDIRS = 			\
 	docs			\
 	gst-libs		\
 	gst			\
 	tests 			\
-	common
+	common			\
+	pkgconfig
 
 EXTRA_DIST = autogen.sh
 

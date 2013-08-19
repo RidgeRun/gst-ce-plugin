@@ -191,6 +191,9 @@ docs/Makefile
 tests/Makefile
 tests/check/Makefile
 tests/files/Makefile
+pkgconfig/Makefile
+pkgconfig/gstreamer-cmem.pc
+pkgconfig/gstreamer-cmem-uninstalled.pc
 )
 AC_OUTPUT
 
