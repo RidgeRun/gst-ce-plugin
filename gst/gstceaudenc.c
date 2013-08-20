@@ -387,15 +387,15 @@ gst_ce_audenc_decide_allocation (GstAudioEncoder * encoder, GstQuery * query)
   GstBufferPool *pool = NULL;
   GstStructure *config;
 
+  g_return_val_if_fail (priv->outbuf_pool, FALSE);
+
   GST_LOG_OBJECT (ceaudenc, "decide allocation");
   if (!GST_AUDIO_ENCODER_CLASS (parent_class)->decide_allocation (encoder,
           query))
     return FALSE;
-
+  
   /* use our own pool */
   pool = priv->outbuf_pool;
-  if (!pool)
-    return FALSE;
 
   /* we got configuration from our peer or the decide_allocation method,
    * parse them */
@@ -404,6 +404,10 @@ gst_ce_audenc_decide_allocation (GstAudioEncoder * encoder, GstQuery * query)
   else
     gst_allocation_params_init (&params);
 
+  /*
+   * GstAllocationParams have an alignment that is a bitmask
+   * so that align + 1 equals the amount of bytes to align to.
+   */
   if (params.align < 31)
     params.align = 31;
 
@@ -558,20 +562,16 @@ gst_ce_audenc_set_property (GObject * object,
     guint prop_id, const GValue * value, GParamSpec * pspec)
 {
   GstCeAudEnc *ceaudenc;
-  GstCeAudEncClass *klass;
   AUDENC1_Params *params;
   AUDENC1_DynamicParams *dyn_params;
   gboolean set_params = FALSE;
 
   /* Get a pointer of the right type. */
   ceaudenc = GST_CEAUDENC (object);
-  klass = GST_CEAUDENC_CLASS (G_OBJECT_GET_CLASS (ceaudenc));
+  
+  g_return_if_fail(ceaudenc->codec_params);
+  g_return_if_fail(ceaudenc->codec_dyn_params);
 
-  if ((!ceaudenc->codec_params) || (!ceaudenc->codec_dyn_params)) {
-    GST_WARNING_OBJECT (ceaudenc,
-        "couldn't set property, no codec parameters defined");
-    return;
-  }
   params = (AUDENC1_Params *) ceaudenc->codec_params;
   dyn_params = (AUDENC1_DynamicParams *) ceaudenc->codec_dyn_params;
 
@@ -608,6 +608,7 @@ fail_static_prop:
   GST_WARNING_OBJECT (ceaudenc, "can't set static property when "
       "the codec is already configured");
   GST_OBJECT_UNLOCK (ceaudenc);
+  return;
 }
 
 /* The set function is simply the inverse of the get fuction. */
@@ -616,13 +617,11 @@ gst_ce_audenc_get_property (GObject * object,
     guint prop_id, GValue * value, GParamSpec * pspec)
 {
   GstCeAudEnc *ceaudenc;
-  GstCeAudEncClass *klass;
   AUDENC1_Params *params;
   AUDENC1_DynamicParams *dyn_params;
 
   /* It's not null if we got it, but it might not be ours */
   ceaudenc = GST_CEAUDENC (object);
-  klass = (GstCeAudEncClass *) G_OBJECT_GET_CLASS (ceaudenc);
 
   if ((!ceaudenc->codec_params) || (!ceaudenc->codec_dyn_params)) {
     GST_WARNING_OBJECT (ceaudenc, "couldn't set property");
@@ -667,11 +666,11 @@ gst_ce_audenc_open (GstAudioEncoder * encoder)
 
   GST_DEBUG_OBJECT (ceaudenc, "getting CMEM allocator");
   priv->allocator = gst_allocator_find ("ContiguousMemory");
-
   if (!priv->allocator)
     goto fail_no_allocator;
 
-  if (!(priv->outbuf_pool = gst_ce_slice_buffer_pool_new ()))
+  priv->outbuf_pool = gst_ce_slice_buffer_pool_new();
+  if (!priv->outbuf_pool)
     goto fail_pool;
 
   GST_DEBUG_OBJECT (ceaudenc, "creating slice buffer pool");
@@ -686,11 +685,17 @@ fail_engine_open:
   }
 fail_no_allocator:
   {
+    Engine_close (priv->engine_handle);
+    priv->engine_handle = NULL;
     GST_WARNING_OBJECT (ceaudenc, "can't find the CMEM allocator");
     return FALSE;
   }
 fail_pool:
   {
+    gst_object_unref (priv->outbuf_pool);
+    priv->outbuf_pool = NULL;    
+    Engine_close (priv->engine_handle);
+    priv->engine_handle = NULL;
     GST_WARNING_OBJECT (ceaudenc, "can't create slice buffer pool");
     return FALSE;
   }
