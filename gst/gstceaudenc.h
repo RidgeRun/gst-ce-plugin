@@ -29,7 +29,9 @@
 
 #include "gstceutils.h"
 
-G_BEGIN_DECLS typedef struct _GstCeAudEnc GstCeAudEnc;
+G_BEGIN_DECLS
+
+typedef struct _GstCeAudEnc GstCeAudEnc;
 typedef struct _GstCeAudEncClass GstCeAudEncClass;
 typedef struct _GstCeAudEncPrivate GstCeAudEncPrivate;
 

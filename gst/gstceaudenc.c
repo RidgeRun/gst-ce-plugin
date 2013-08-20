@@ -20,11 +20,11 @@
 
 /**
  * SECTION:gstceaudenc
- * @short_description: Base class for Codec Engine video encoders
+ * @short_description: Base class for Codec Engine audio encoders
  * @see_also:
  *
- * This base class is for video encoders turning raw video into
- * encoded video data using TI codecs with the AUDENC1 video encoding
+ * This base class is for audio encoders turning raw audio into
+ * encoded audio data using TI codecs with the AUDENC1 audio encoding
  * interface.
  * 
  * Subclass is responsible for providing pad template caps for
@@ -43,7 +43,6 @@
 #include <errno.h>
 
 #include <gst/gst.h>
-#include <gst/video/gstvideometa.h>
 
 #include "gstce.h"
 #include "gstceaudenc.h"
@@ -85,6 +84,7 @@ struct _GstCeAudEncPrivate
   GstAllocator *allocator;
   GstAllocationParams alloc_params;
   GstBuffer *inbuf;
+  
   /* Codec Data */
   Engine_Handle engine_handle;
   XDM1_BufDesc inbuf_desc;
@@ -224,13 +224,12 @@ gst_ce_audenc_finalize (GObject * object)
 /**
  * gst_ce_audenc_configure_codec:
  * Based on the negotiated format, create and initialize the 
- * codec instance*/
+ * codec instance */
 static gboolean
 gst_ce_audenc_configure_codec (GstCeAudEnc * ceaudenc)
 {
   GstCeAudEncClass *klass;
   GstCeAudEncPrivate *priv;
-  AUDENC1_Status enc_status;
   AUDENC1_Params *params;
   AUDENC1_DynamicParams *dyn_params;
 
@@ -246,11 +245,10 @@ gst_ce_audenc_configure_codec (GstCeAudEnc * ceaudenc)
   GST_OBJECT_LOCK (ceaudenc);
 
   switch (priv->channels) {
-    case (1):
+    case 1:
       params->channelMode = dyn_params->channelMode = IAUDIO_1_0;
-
       break;
-    case (2):
+    case 2:
       params->channelMode = dyn_params->channelMode = IAUDIO_2_0;
       break;
     default:
@@ -270,9 +268,6 @@ gst_ce_audenc_configure_codec (GstCeAudEnc * ceaudenc)
       (Char *) klass->codec_name, params);
   if (!ceaudenc->codec_handle)
     goto fail_open_codec;
-
-  enc_status.size = sizeof (AUDENC1_Status);
-  enc_status.data.buf = NULL;
 
   GST_DEBUG_OBJECT (ceaudenc, "set codec dynamic parameters");
   if (!gst_ce_audenc_set_dynamic_params (ceaudenc))
@@ -365,6 +360,7 @@ gst_ce_audenc_set_format (GstAudioEncoder * encoder, GstAudioInfo * info)
     gst_caps_set_simple (allowed_caps,
         "codec_data", GST_TYPE_BUFFER, codec_data, (char *) NULL);
   }
+  
   /* Truncate to the first structure and fixate any unfixed fields */
   allowed_caps = gst_caps_fixate (allowed_caps);
 
@@ -372,6 +368,7 @@ gst_ce_audenc_set_format (GstAudioEncoder * encoder, GstAudioInfo * info)
           allowed_caps))
     goto fail_set_caps;
 
+  /* Won't support NULL buffers */
   gst_audio_encoder_set_drainable (encoder, FALSE);
   return TRUE;
 
@@ -444,7 +441,7 @@ gst_ce_audenc_allocate_frame (GstCeAudEnc * ceaudenc, GstBuffer ** buf,
   *buf = gst_buffer_new_allocate (priv->allocator, size, &priv->alloc_params);
 
   if (!*buf) {
-    GST_DEBUG_OBJECT (ceaudenc, "can't alloc buffer");
+    GST_DEBUG_OBJECT (ceaudenc, "can't allocate buffer");
     return FALSE;
   }
 
@@ -846,7 +843,7 @@ gst_ce_audenc_get_buffer_info (GstCeAudEnc * ceaudenc)
 
   priv->outbuf_size = enc_status.bufInfo.minOutBufSize[0];
   priv->outbuf_desc.numBufs = 1;
-  priv->outbuf_desc.descs[0].bufSize = priv->outbuf_size;
+  priv->outbuf_desc.descs[0].bufSize = enc_status.bufInfo.minOutBufSize[0];
 
   GST_DEBUG_OBJECT (ceaudenc, "output buffer size = %d", priv->outbuf_size);
 
