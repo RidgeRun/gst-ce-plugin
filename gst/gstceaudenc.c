@@ -58,9 +58,12 @@ enum
   PROP_NUM_OUT_BUFFERS
 };
 
-#define PROP_BITRATE_DEFAULT         128000
-#define PROP_MAX_BITRATE_DEFAULT     128000
-#define PROP_NUM_OUT_BUFFERS_DEFAULT      3
+#define PROP_BITRATE_DEFAULT          128000
+#define PROP_MAX_BITRATE_DEFAULT      128000
+#define PROP_NUM_OUT_BUFFERS_DEFAULT       3
+
+#define SAMPLE_RATE_DEFAULT            48000
+#define INPUT_BITS_PER_SAMPLE_DEFAULT     16
 
 #define GST_CEAUDENC_GET_PRIVATE(obj)  \
     (G_TYPE_INSTANCE_GET_PRIVATE ((obj), GST_TYPE_CEAUDENC, GstCeAudEncPrivate))
@@ -473,7 +476,7 @@ gst_ce_audenc_handle_frame (GstAudioEncoder * encoder, GstBuffer * buffer)
       gst_buffer_unref (priv->inbuf);
     if (!gst_ce_audenc_allocate_frame (ceaudenc, &priv->inbuf, info_in.size)) {
       gst_buffer_unmap (buffer, &info_in);
-      goto fail_alloc;
+      goto fail_inbuf_alloc;
     }
     priv->inbuf_desc.descs[0].bufSize = info_in.size;
     priv->samples = info_in.size / ((priv->width / 8) * priv->channels);
@@ -493,7 +496,7 @@ gst_ce_audenc_handle_frame (GstAudioEncoder * encoder, GstBuffer * buffer)
   /* Allocate an output buffer */
   if (gst_buffer_pool_acquire_buffer (GST_BUFFER_POOL_CAST (priv->outbuf_pool),
           &outbuf, NULL) != GST_FLOW_OK)
-    goto fail_alloc;
+    goto fail_outbuf_alloc;
 
   gst_buffer_map (outbuf, &info_out, GST_MAP_WRITE);
   priv->outbuf_desc.descs[0].buf = (XDAS_Int8 *) info_out.data;
@@ -540,9 +543,15 @@ gst_ce_audenc_handle_frame (GstAudioEncoder * encoder, GstBuffer * buffer)
   return gst_audio_encoder_finish_frame (GST_AUDIO_ENCODER (ceaudenc), outbuf,
       priv->samples);
 
-fail_alloc:
+fail_inbuf_alloc:
   {
-    GST_ERROR_OBJECT (ceaudenc, "failed to get buffer");
+    GST_ERROR_OBJECT (ceaudenc, "failed to allocate input buffer");
+    return GST_FLOW_ERROR;
+  }
+fail_outbuf_alloc:
+  {
+    gst_buffer_unmap (priv->inbuf, &info_in);
+    GST_ERROR_OBJECT (ceaudenc, "failed to allocate output buffer");
     return GST_FLOW_ERROR;
   }
 fail_encode:
@@ -761,13 +770,13 @@ gst_ce_audenc_reset (GstAudioEncoder * encoder)
   GST_OBJECT_LOCK (ceaudenc);
   priv->num_out_buffers = PROP_NUM_OUT_BUFFERS_DEFAULT;
   /* Set default values for codec static params */
-  params->sampleRate = 48000;
+  params->sampleRate = SAMPLE_RATE_DEFAULT;
   params->bitRate = PROP_BITRATE_DEFAULT;
   params->channelMode = IAUDIO_2_0;
   params->dataEndianness = XDM_LE_16;
   params->encMode = IAUDIO_CBR;
   params->inputFormat = IAUDIO_INTERLEAVED;
-  params->inputBitsPerSample = 16;
+  params->inputBitsPerSample = INPUT_BITS_PER_SAMPLE_DEFAULT;
   params->maxBitRate = PROP_MAX_BITRATE_DEFAULT;
   params->dualMonoMode = IAUDIO_DUALMONO_LR;
   params->crcFlag = XDAS_FALSE;
@@ -776,11 +785,11 @@ gst_ce_audenc_reset (GstAudioEncoder * encoder)
 
   /* Set default values for codec dynamic params */
   dyn_params->bitRate = PROP_BITRATE_DEFAULT;
-  dyn_params->sampleRate = 48000;
+  dyn_params->sampleRate = SAMPLE_RATE_DEFAULT;
   dyn_params->channelMode = IAUDIO_2_0;
   dyn_params->lfeFlag = XDAS_FALSE;
   dyn_params->dualMonoMode = IAUDIO_DUALMONO_LR;
-  dyn_params->inputBitsPerSample = 16;
+  dyn_params->inputBitsPerSample = INPUT_BITS_PER_SAMPLE_DEFAULT;
 
   GST_OBJECT_UNLOCK (ceaudenc);
 
