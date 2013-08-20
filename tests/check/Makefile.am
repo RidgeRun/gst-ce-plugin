@@ -21,6 +21,7 @@ check_PROGRAMS = \
 	generic/states			\
 	elements/ce_h264enc		\
 	elements/ce_jpegenc		\
+	elements/ce_aacenc		\
 	libs/cmem
 
 elements_ce_h264enc_LDADD = $(GST_PLUGINS_BASE_LIBS) \
