@@ -883,13 +883,17 @@ gst_ce_audenc_set_frame_samples (GstCeAudEnc * ceaudenc, gint min_samples,
 {
   GstAudioEncoder *encoder = GST_AUDIO_ENCODER (ceaudenc);
   GstCeAudEncPrivate *priv = ceaudenc->priv;
+  
   priv->min_samples = min_samples;
   priv->max_samples = max_samples;
   priv->samples = max_samples;
+  
   /* report needs to base class */
   gst_audio_encoder_set_frame_samples_min (encoder, priv->min_samples);
   gst_audio_encoder_set_frame_samples_max (encoder, priv->max_samples);
-  gst_audio_encoder_set_frame_max (encoder, 1);
-  if (min_samples == max_samples)
+  
+  if (min_samples == max_samples) {
+    gst_audio_encoder_set_frame_max (encoder, 1);
     gst_audio_encoder_set_hard_min (encoder, TRUE);
+  }
 }
