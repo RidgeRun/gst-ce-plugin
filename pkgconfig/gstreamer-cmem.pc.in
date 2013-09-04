@@ -11,5 +11,5 @@ Name: GStreamer CMEM allocation tools
 Description: CMEM allocation tools to be used for GStreamer elements
 Requires: gstreamer-@GST_API_VERSION@
 Version: @VERSION@
-Libs: -L${libdir} -lgstcmemallocator-@GST_API_VERSION@
+Libs: -L${libdir} -lgstcmem-@GST_API_VERSION@
 Cflags: -I${includedir}
