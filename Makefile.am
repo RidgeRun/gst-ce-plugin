@@ -1,6 +1,7 @@
 SUBDIRS = 			\
 	gst-libs 		\
 	gst 		 	\
+	ext			\
 	tests 			\
 	docs			\
 	common			\
@@ -10,6 +11,7 @@ DIST_SUBDIRS = 			\
 	docs			\
 	gst-libs		\
 	gst			\
+	ext			\
 	tests 			\
 	common			\
 	pkgconfig

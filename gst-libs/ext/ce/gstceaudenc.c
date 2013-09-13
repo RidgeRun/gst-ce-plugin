@@ -46,7 +46,7 @@
 
 #include "gstce.h"
 #include "gstceaudenc.h"
-#include "gstceslicepool.h"
+#include <gstceslicepool.h>
 #include <ti/sdo/ce/osal/Memory.h>
 #include <ittiam/codecs/aaclc_enc/ieaacplusenc.h>
 

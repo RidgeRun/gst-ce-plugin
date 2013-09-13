@@ -15,7 +15,7 @@ dnl check if this is a release version
 AS_NANO(GST_GIT="no", GST_GIT="yes")
 
 dnl can autoconf find the source ?
-AC_CONFIG_SRCDIR([gst/gstce.c])
+AC_CONFIG_SRCDIR([ext/gstce.c])
 
 dnl define the output header for config
 AC_CONFIG_HEADERS([config.h])
@@ -157,11 +157,14 @@ GST_PLUGIN_LDFLAGS="-module -avoid-version -export-symbols-regex '^[_]*gst_plugi
 AC_SUBST(GST_PLUGIN_LDFLAGS)
 
 dnl libgstce.la: include dirs
-GST_CE_CFLAGS="-I \$(top_srcdir)/gst-libs/gst/cmem/ \
-               -I \$(top_builddir)/gst-libs/gst/cmem"
+GST_CE_CFLAGS="-I \$(top_srcdir)/gst-libs/ext/cmem/ \
+               -I \$(top_builddir)/gst-libs/ext/cmem/ \
+               -I \$(top_srcdir)/gst-libs/ext/ce/ \
+               -I \$(top_builddir)/gst-libs/ext/ce "
 
 dnl libgstce.la: libs to statically link to
-GST_CE_LIBS="\$(top_builddir)/gst-libs/gst/cmem/libgstcmem-\$(GST_API_VERSION).la"
+GST_CE_LIBS="\$(top_builddir)/gst-libs/ext/cmem/libgstcmem-\$(GST_API_VERSION).la \ 
+             \$(top_builddir)/gst-libs/ext/ce/libgstcebase-\$(GST_API_VERSION).la "
 
 AC_SUBST(GST_CE_CFLAGS)
 AC_SUBST(GST_CE_LIBS)
@@ -184,9 +187,12 @@ Makefile
 common/Makefile
 common/m4/Makefile
 gst/Makefile
+ext/Makefile
 gst-libs/Makefile
 gst-libs/gst/Makefile
-gst-libs/gst/cmem/Makefile
+gst-libs/ext/Makefile
+gst-libs/ext/cmem/Makefile
+gst-libs/ext/ce/Makefile
 docs/Makefile
 tests/Makefile
 tests/check/Makefile

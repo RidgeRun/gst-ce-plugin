@@ -47,7 +47,7 @@
 
 #include "gstce.h"
 #include "gstcevidenc.h"
-#include "gstceslicepool.h"
+#include <gstceslicepool.h>
 #include <ti/sdo/ce/osal/Memory.h>
 
 enum

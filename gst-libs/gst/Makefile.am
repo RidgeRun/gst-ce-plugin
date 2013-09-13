@@ -1,2 +1,0 @@
-SUBDIRS = cmem
-DIST_SUBDIRS = cmem
