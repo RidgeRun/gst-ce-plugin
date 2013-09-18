@@ -25,6 +25,9 @@
 
 #include "gstcejpegenc.h"
 
+GST_DEBUG_CATEGORY_STATIC (gst_ce_jpegenc_debug);
+#define GST_CAT_DEFAULT gst_ce_jpegenc_debug
+
 /* *INDENT-OFF* */
 static GstStaticPadTemplate gst_ce_jpegenc_sink_pad_template =
 GST_STATIC_PAD_TEMPLATE ("sink",
@@ -109,6 +112,9 @@ gst_ce_jpegenc_class_init (GstCeJpegEncClass * klass)
   gobject_class = G_OBJECT_CLASS (klass);
   element_class = GST_ELEMENT_CLASS (klass);
   ce_imgenc_class = GST_CE_IMGENC_CLASS (klass);
+
+  GST_DEBUG_CATEGORY_INIT (gst_ce_jpegenc_debug, "ce_jpegenc", 0,
+      "CE JPEG encoding element");
 
   parent_class = g_type_class_peek_parent (klass);
 

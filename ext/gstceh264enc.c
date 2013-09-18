@@ -24,6 +24,9 @@
 
 #include "gstceh264enc.h"
 
+GST_DEBUG_CATEGORY_STATIC (gst_ce_h264enc_debug);
+#define GST_CAT_DEFAULT gst_ce_h264enc_debug
+
 /* *INDENT-OFF* */
 static GstStaticPadTemplate gst_ce_h264enc_sink_pad_template =
 GST_STATIC_PAD_TEMPLATE ("sink",
@@ -386,6 +389,9 @@ gst_ce_h264enc_class_init (GstCeH264EncClass * klass)
   element_class = GST_ELEMENT_CLASS (klass);
   ce_videnc_class = GST_CEVIDENC_CLASS (klass);
 
+  GST_DEBUG_CATEGORY_INIT (gst_ce_h264enc_debug, "ce_h264enc", 0,
+      "CE H.264 encoding element");
+
   parent_class = g_type_class_peek_parent (klass);
 
   gobject_class->set_property = gst_ce_h264enc_set_property;
@@ -523,12 +529,6 @@ gst_ce_h264enc_class_init (GstCeH264EncClass * klass)
   ce_videnc_class->reset = gst_ce_h264enc_reset;
   ce_videnc_class->set_src_caps = gst_ce_h264enc_set_src_caps;
   ce_videnc_class->post_process = gst_ce_h264enc_post_process;
-  /*$
-   * TODO
-   * Do we want to set h264 specific debug?
-   */
-  //~ GST_DEBUG_CATEGORY_INIT (h264enc_debug, "ce_h264enc", 0,
-  //~ "H.264 encoding element");
 }
 
 static void
