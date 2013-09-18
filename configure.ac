@@ -60,6 +60,9 @@ AG_GST_ARG_WITH_PACKAGE_NAME
 AG_GST_ARG_WITH_PACKAGE_ORIGIN
 AG_GST_ARG_VALGRIND
 
+AG_GST_PKG_CONFIG_PATH
+AG_GST_ARG_ENABLE_EXTERNAL
+
 dnl *** checks for platform ***
 
 dnl * hardware/architecture *
@@ -79,6 +82,10 @@ AM_PROG_CC_C_O
 
 AC_PATH_PROG(VALGRIND_PATH, valgrind, no)
 AM_CONDITIONAL(HAVE_VALGRIND, test ! "x$VALGRIND_PATH" = "xno")
+
+dnl check for documentation tools
+GTK_DOC_CHECK([1.12])
+AG_GST_PLUGIN_DOCS([1.12])
 
 dnl checks for gstreamer
 dnl uninstalled is selected preferentially -- see pkg-config(1)
@@ -110,7 +117,33 @@ AG_GST_SET_ERROR_CFLAGS($FATAL_WARNINGS, [
 dnl define correct level for debugging messages
 AG_GST_SET_LEVEL_DEFAULT($GST_GIT)
 
+dnl *** ext plug-ins ***
+dnl keep this list sorted alphabetically !
 
+if test "x$BUILD_EXTERNAL" = "xyes"; then
+
+echo
+AC_MSG_NOTICE([Checking libraries for plugins in ext/])
+echo
+
+dnl *** DM36x codecs ***
+translit(dnm, m, l) AM_CONDITIONAL(USE_CODECS, true)
+AG_GST_CHECK_FEATURE(CODECS, [DM36x CODECS], ce, [
+  PKG_CHECK_MODULES(CODECS, libdm36x-codecs >= 0.1.0.1, [
+    HAVE_CODECS="yes"
+    AC_SUBST(CODECS_CFLAGS)
+    AC_SUBST(CODECS_LIBS)
+  ], [
+    AC_MSG_WARN([DM36x codec library (libdm36x-codecs) not found ])
+  ])
+])
+else
+
+dnl not building plugins with external dependencies,
+dnl but we still need to set the conditionals
+AM_CONDITIONAL(USE_CODECS, false)
+
+fi dnl of EXT plugins
 
 dnl Overview:
 dnl GST_OPTION_CFLAGS:  common flags for profiling, debugging, errors, ...
@@ -169,17 +202,7 @@ GST_CE_LIBS="\$(top_builddir)/gst-libs/ext/cmem/libgstcmem-\$(GST_API_VERSION).l
 AC_SUBST(GST_CE_CFLAGS)
 AC_SUBST(GST_CE_LIBS)
 
-AC_MSG_NOTICE([Configuring for DM36x SoC])
-PKG_CHECK_MODULES(CODECS, libdm36x-codecs >= 1.0, HAVE_CODECS=yes, 
-    HAVE_CODECS=no)
 
-if test "x$HAVE_CODECS" = "xno" ; then
-  AC_MSG_ERROR([no DM36x codec libraries found (libdm36x-codecs)])
-fi
-
-AC_SUBST(CODECS_CFLAGS)
-AC_SUBST(CODECS_LIBS)
-  
 dnl *** output files ***
 
 AC_CONFIG_FILES(

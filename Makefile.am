@@ -1,7 +1,17 @@
+if BUILD_EXTERNAL
+if USE_CODECS
+SUBDIRS_EXT = ext
+else
+SUBDIRS_EXT =
+endif
+else
+SUBDIRS_EXT =
+endif
+
 SUBDIRS = 			\
 	gst-libs 		\
 	gst 		 	\
-	ext			\
+	$(SUBDIRS_EXT)		\
 	tests 			\
 	docs			\
 	common			\

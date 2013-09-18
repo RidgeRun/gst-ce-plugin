@@ -1,1 +1,10 @@
-SUBDIRS = gst ext
+if BUILD_EXTERNAL
+SUBDIRS_EXT = ext
+else
+SUBDIRS_EXT =
+endif
+
+
+SUBDIRS =		\
+	gst		\
+	$(SUBDIRS_EXT)
