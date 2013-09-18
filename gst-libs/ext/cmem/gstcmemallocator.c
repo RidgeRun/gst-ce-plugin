@@ -25,8 +25,9 @@
 
 GST_DEBUG_CATEGORY_EXTERN (GST_CAT_PERFORMANCE);
 GST_DEBUG_CATEGORY_EXTERN (GST_CAT_MEMORY);
-GST_DEBUG_CATEGORY_STATIC (cmem);
-#define GST_CAT_DEFAULT cmem
+
+GST_DEBUG_CATEGORY_STATIC (gst_cmem_debug);
+#define GST_CAT_DEFAULT gst_cmem_debug
 
 static GstAllocator *_cmem_allocator;
 
@@ -278,7 +279,7 @@ _cmem_free (GstAllocator * allocator, GstMemory * mem)
 {
   GstMemoryContig *cmem = (GstMemoryContig *) mem;
 
-  GST_DEBUG ("cmem free memory %p", cmem);
+  GST_CAT_DEBUG (gst_cmem_debug, "cmem free memory %p", cmem);
 
   if (cmem->notify)
     cmem->notify (cmem->user_data);
@@ -329,7 +330,7 @@ gst_cmem_allocator_init (GstCMemAllocator * allocator)
 void
 gst_cmem_init (void)
 {
-  GST_DEBUG_CATEGORY_INIT (cmem, "cmem", 0, "CMEM allocation debugging");
+  GST_DEBUG_CATEGORY_INIT (gst_cmem_debug, "cmem", 0, "CMEM allocator");
   _cmem_allocator = g_object_new (gst_cmem_allocator_get_type (), NULL);
   if (!_cmem_allocator)
     GST_ERROR ("failed to create gst_cmem_allocator object");

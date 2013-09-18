@@ -47,11 +47,13 @@
 #include <gst/gst.h>
 #include <gst/video/gstvideometa.h>
 
-#include "gstce.h"
 #include "gstceimgenc.h"
 #include "gstceslicepool.h"
 
 #include <ti/sdo/ce/osal/Memory.h>
+
+GST_DEBUG_CATEGORY_STATIC (gst_ce_imgenc_debug);
+#define GST_CAT_DEFAULT gst_ce_imgenc_debug
 
 enum
 {
@@ -132,6 +134,9 @@ gst_ce_imgenc_class_init (GstCeImgEncClass * klass)
 
   gobject_class = G_OBJECT_CLASS (klass);
   venc_class = GST_VIDEO_ENCODER_CLASS (klass);
+
+  GST_DEBUG_CATEGORY_INIT (gst_ce_imgenc_debug, "ce_imgenc", 0,
+      "CE imgenc element");
 
   g_type_class_add_private (klass, sizeof (GstCeImgEncPrivate));
 

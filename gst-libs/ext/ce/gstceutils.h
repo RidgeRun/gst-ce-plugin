@@ -22,9 +22,13 @@
 #define __GST_CE_UTILS_H__
 
 #include <gst/gst.h>
-#include "gstce.h"
 
-G_BEGIN_DECLS typedef struct _GstCeContigBufMeta GstCeContigBufMeta;
+G_BEGIN_DECLS 
+
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof(*(x)));
+#define CODEC_ENGINE "codecServer"
+
+typedef struct _GstCeContigBufMeta GstCeContigBufMeta;
 
 /**
  * GstCeMeta:

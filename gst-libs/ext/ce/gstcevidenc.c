@@ -45,10 +45,12 @@
 #include <gst/gst.h>
 #include <gst/video/gstvideometa.h>
 
-#include "gstce.h"
 #include "gstcevidenc.h"
 #include <gstceslicepool.h>
 #include <ti/sdo/ce/osal/Memory.h>
+
+GST_DEBUG_CATEGORY_STATIC (gst_ce_videnc_debug);
+#define GST_CAT_DEFAULT gst_ce_videnc_debug
 
 enum
 {
@@ -203,6 +205,9 @@ gst_ce_videnc_class_init (GstCeVidEncClass * klass)
 
   gobject_class = G_OBJECT_CLASS (klass);
   venc_class = GST_VIDEO_ENCODER_CLASS (klass);
+
+  GST_DEBUG_CATEGORY_INIT (gst_ce_videnc_debug, "ce_videnc", 0,
+      "CE videnc element");
 
   g_type_class_add_private (klass, sizeof (GstCeVidEncPrivate));
 

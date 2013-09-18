@@ -25,6 +25,9 @@
 
 #include "gstceaacenc.h"
 
+GST_DEBUG_CATEGORY_STATIC (gst_ce_aacenc_debug);
+#define GST_CAT_DEFAULT gst_ce_aacenc_debug
+
 #define SAMPLE_RATES " 8000, " \
                     "11025, " \
                     "12000, " \
@@ -101,6 +104,9 @@ gst_ce_aacenc_class_init (GstCeAacEncClass * klass)
   element_class = GST_ELEMENT_CLASS (klass);
   ceaudenc_class = GST_CEAUDENC_CLASS (klass);
 
+  GST_DEBUG_CATEGORY_INIT (gst_ce_aacenc_debug, "ce_aacenc", 0,
+      "CE AAC-LC encoding element");
+
   parent_class = g_type_class_peek_parent (klass);
 
   gobject_class->set_property = gst_ce_aacenc_set_property;
@@ -146,12 +152,7 @@ gst_ce_aacenc_class_init (GstCeAacEncClass * klass)
   ceaudenc_class->codec_name = "aaclcenc";
   ceaudenc_class->reset = gst_ce_aacenc_reset;
   ceaudenc_class->set_src_caps = gst_ce_aacenc_set_src_caps;
-  /*$
-   * TODO
-   * Do we want to set aac specific debug?
-   */
-  //~ GST_DEBUG_CATEGORY_INIT (aacenc_debug, "ce_aacenc", 0,
-  //~ "AAC-LC encoding element");
+
 }
 
 static void

@@ -44,11 +44,13 @@
 
 #include <gst/gst.h>
 
-#include "gstce.h"
 #include "gstceaudenc.h"
 #include <gstceslicepool.h>
 #include <ti/sdo/ce/osal/Memory.h>
 #include <ittiam/codecs/aaclc_enc/ieaacplusenc.h>
+
+GST_DEBUG_CATEGORY_STATIC (gst_ce_audenc_debug);
+#define GST_CAT_DEFAULT gst_ce_audenc_debug
 
 enum
 {
@@ -127,6 +129,9 @@ gst_ce_audenc_class_init (GstCeAudEncClass * klass)
 
   gobject_class = G_OBJECT_CLASS (klass);
   aenc_class = GST_AUDIO_ENCODER_CLASS (klass);
+
+  GST_DEBUG_CATEGORY_INIT (gst_ce_audenc_debug, "ce_audenc", 0,
+      "CE audenc element");
 
   g_type_class_add_private (klass, sizeof (GstCeAudEncPrivate));
 
