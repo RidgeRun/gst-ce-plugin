@@ -1,0 +1,5 @@
+#include <gst/gst.h>
+
+#include <ext/ce/gstceaudenc.h>
+gst_ce_audenc_get_type
+

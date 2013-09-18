@@ -217,6 +217,7 @@ gst-libs/ext/Makefile
 gst-libs/ext/cmem/Makefile
 gst-libs/ext/ce/Makefile
 docs/Makefile
+docs/libs/Makefile
 tests/Makefile
 tests/check/Makefile
 tests/files/Makefile
