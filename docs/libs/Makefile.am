@@ -36,7 +36,7 @@ HFILE_GLOB=$(top_srcdir)/gst-libs/ext/*/*.h
 CFILE_GLOB=$(top_srcdir)/gst-libs/ext/*/*.c
 
 # Header files to ignore when scanning.
-IGNORE_HFILES =
+IGNORE_HFILES = gstceutils.h
 
 # Images to copy into HTML directory.
 HTML_IMAGES =
@@ -62,4 +62,4 @@ GTKDOC_LD=$(LIBTOOL) --tag=CC --mode=link $(CC)
 # If you need to override some of the declarations, place them in this file
 DOC_OVERRIDES = $(DOC_MODULE)-overrides.txt
 
-include $(top_srcdir)/common/gtk-doc.mak
+include $(top_srcdir)/include/gst-gtk-doc.mak

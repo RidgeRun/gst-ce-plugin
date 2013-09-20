@@ -1,0 +1,140 @@
+<ARG>
+<NAME>GstCeAudEnc::bitrate</NAME>
+<TYPE>gint</TYPE>
+<RANGE>>= 0</RANGE>
+<FLAGS>rw</FLAGS>
+<NICK>Bit rate</NICK>
+<BLURB>Average bit rate in bps.</BLURB>
+<DEFAULT>128000</DEFAULT>
+</ARG>
+
+<ARG>
+<NAME>GstCeAudEnc::max-bitrate</NAME>
+<TYPE>gint</TYPE>
+<RANGE>>= 0</RANGE>
+<FLAGS>rw</FLAGS>
+<NICK>Max bitrate for VBR encoding</NICK>
+<BLURB>Max bitrate for VBR encoding.</BLURB>
+<DEFAULT>128000</DEFAULT>
+</ARG>
+
+<ARG>
+<NAME>GstCeAudEnc::num-out-buffers</NAME>
+<TYPE>gint</TYPE>
+<RANGE>>= 3</RANGE>
+<FLAGS>rw</FLAGS>
+<NICK>Number of output buffers</NICK>
+<BLURB>Number of buffers to be used in the output buffer pool, each buffer contains the maximum amount of samples supported by the audio codec.</BLURB>
+<DEFAULT>3</DEFAULT>
+</ARG>
+
+<ARG>
+<NAME>GstCeImgEnc::min-size-percentage</NAME>
+<TYPE>gint</TYPE>
+<RANGE>[10,100]</RANGE>
+<FLAGS>rw</FLAGS>
+<NICK>Minimum output buffer size percentaje</NICK>
+<BLURB>Define the minimum size acceptable for an output buffer,as a percentage of the input buffer size recomended by the encoder.The encoder will use the defined smaller buffer when there is not enough free memory. Only set this property to less than 100 if you can ensure the encoder will compress the data enough to fit in the smaller buffer and you don't want to drop buffers.</BLURB>
+<DEFAULT>100</DEFAULT>
+</ARG>
+
+<ARG>
+<NAME>GstCeImgEnc::num-out-buffers</NAME>
+<TYPE>gint</TYPE>
+<RANGE>>= 2</RANGE>
+<FLAGS>rw</FLAGS>
+<NICK>Number of output buffers</NICK>
+<BLURB>Number of buffers to be used in the output buffer pool.</BLURB>
+<DEFAULT>3</DEFAULT>
+</ARG>
+
+<ARG>
+<NAME>GstCeImgEnc::quality-value</NAME>
+<TYPE>gint</TYPE>
+<RANGE>[2,97]</RANGE>
+<FLAGS>rw</FLAGS>
+<NICK>Quality value</NICK>
+<BLURB>Quality factor for encoder.</BLURB>
+<DEFAULT>75</DEFAULT>
+</ARG>
+
+<ARG>
+<NAME>GstCeVidEnc::encoding-preset</NAME>
+<TYPE>GstCeVidEncPreset</TYPE>
+<RANGE></RANGE>
+<FLAGS>rw</FLAGS>
+<NICK>Encoding preset</NICK>
+<BLURB>Encoding preset.</BLURB>
+<DEFAULT>High speed, for storage</DEFAULT>
+</ARG>
+
+<ARG>
+<NAME>GstCeVidEnc::force-frame</NAME>
+<TYPE>GstCeVidEncForce</TYPE>
+<RANGE></RANGE>
+<FLAGS>rw</FLAGS>
+<NICK>Force frame</NICK>
+<BLURB>Force next frame to be encoded as a specific type.</BLURB>
+<DEFAULT>No forcing of any specific frame type for the frame</DEFAULT>
+</ARG>
+
+<ARG>
+<NAME>GstCeVidEnc::intraframe-interval</NAME>
+<TYPE>gint</TYPE>
+<RANGE>>= 0</RANGE>
+<FLAGS>rw</FLAGS>
+<NICK>Intra frame interval</NICK>
+<BLURB>Interval between two consecutive intra frames.</BLURB>
+<DEFAULT>30</DEFAULT>
+</ARG>
+
+<ARG>
+<NAME>GstCeVidEnc::max-bitrate</NAME>
+<TYPE>gint</TYPE>
+<RANGE>[1000,50000000]</RANGE>
+<FLAGS>rw</FLAGS>
+<NICK>Maximum bit rate</NICK>
+<BLURB>Maximum bit rate to be supported in bits per second.</BLURB>
+<DEFAULT>6000000</DEFAULT>
+</ARG>
+
+<ARG>
+<NAME>GstCeVidEnc::min-size-percentage</NAME>
+<TYPE>gint</TYPE>
+<RANGE>[10,100]</RANGE>
+<FLAGS>rw</FLAGS>
+<NICK>Minimum output buffer size percentaje</NICK>
+<BLURB>Define the minimum size acceptable for an output buffer,as a percentage of the input buffer size recomended by the encoder.The encoder will use the defined smaller buffer when there is not enough free memory. Only set this property to less than 100 if you can ensure the encoder will compress the data enough to fit in the smaller buffer and you don't want to drop buffers.</BLURB>
+<DEFAULT>100</DEFAULT>
+</ARG>
+
+<ARG>
+<NAME>GstCeVidEnc::num-out-buffers</NAME>
+<TYPE>gint</TYPE>
+<RANGE>>= 3</RANGE>
+<FLAGS>rw</FLAGS>
+<NICK>Number of output buffers</NICK>
+<BLURB>Number of buffers to be used in the output buffer pool.</BLURB>
+<DEFAULT>3</DEFAULT>
+</ARG>
+
+<ARG>
+<NAME>GstCeVidEnc::rate-control</NAME>
+<TYPE>GstCeVidEncRate</TYPE>
+<RANGE></RANGE>
+<FLAGS>rw</FLAGS>
+<NICK>Encoding rate control</NICK>
+<BLURB>Encoding rate control.</BLURB>
+<DEFAULT>Constant Bit Rate, for video conferencing</DEFAULT>
+</ARG>
+
+<ARG>
+<NAME>GstCeVidEnc::target-bitrate</NAME>
+<TYPE>gint</TYPE>
+<RANGE>[1000,20000000]</RANGE>
+<FLAGS>rw</FLAGS>
+<NICK>Target bit rate</NICK>
+<BLURB>Target bit rate in bits per second, should be <= than the maxbitrate.</BLURB>
+<DEFAULT>6000000</DEFAULT>
+</ARG>
+

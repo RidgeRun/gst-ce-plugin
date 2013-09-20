@@ -1,0 +1,7 @@
+GstBin GstChildProxy
+GstPipeline GstChildProxy
+GstAudioEncoder GstPreset
+GstCeAudEnc GstPreset
+GstVideoEncoder GstPreset
+GstCeImgEnc GstPreset
+GstCeVidEnc GstPreset

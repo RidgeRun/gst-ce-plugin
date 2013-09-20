@@ -3,3 +3,8 @@
 #include <ext/ce/gstceaudenc.h>
 gst_ce_audenc_get_type
 
+#include <ext/ce/gstceimgenc.h>
+gst_ce_imgenc_get_type
+
+#include <ext/ce/gstcevidenc.h>
+gst_ce_videnc_get_type
