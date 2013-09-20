@@ -17,6 +17,23 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses>.
  *
  */
+/**
+ * SECTION:element-ce_aacenc
+ *
+ * The ce_aacenc encodes raw audio into AAC-LC (Advanced Audio Coding - Low Complexity version)
+ * using the CE API.
+ *
+ * The codecs handles audio signals sampled in the range of 8kHz and
+ * 96kHz and operates on a frame of 1024 samples.
+ * 
+ * <refsect2>
+ * <title>Example launch line</title>
+ * |[
+ * gst-launch-1.0 audiotestsrc wave=sine num-buffers=100 ! ce_aacenc ! matroskamux ! filesink location=sine.mkv
+ * ]| Encode a sine beep as aac and write to matroska container.
+ * </refsect2>
+ * Last reviewed on 2013-09-20 
+ */
 
 #include <xdc/std.h>
 #include <string.h>

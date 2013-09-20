@@ -18,6 +18,23 @@
  *
  */
 
+/**
+ * SECTION:element-ce_h264enc
+ *
+ * The ce_h264enc encodes raw video into H264 compressed data,
+ * also otherwise known as MPEG-4 AVC (Advanced Video Codec).
+ *
+ *
+ * <refsect2>
+ * <title>Example pipeline</title>
+ * |[
+ * gst-launch-1.0 -v videotestsrc num-buffers=1000 ! ce_h264enc ! \
+ *   avimux ! filesink location=videotestsrc.avi
+ * ]| This example pipeline will encode a test video source to H264 muxed in an
+ * AVI container.
+ * </refsect2>
+ */
+
 #include <xdc/std.h>
 #include <string.h>
 #include <ti/sdo/codecs/h264enc/ih264venc.h>

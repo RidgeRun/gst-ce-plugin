@@ -18,7 +18,20 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses>.
  *
  */
-
+/**
+ * SECTION:element-ce_jpegenc
+ *
+ * The ce_jpegenc encodes raw video/images into JPEG image
+ * compressed data.
+ *
+ * <refsect2>
+ * <title>Example launch line</title>
+ * |[
+ * gst-launch-1.0 videotestsrc num-buffers=50 ! video/x-raw, framerate='(fraction)'5/1 ! ce_jpegenc disable-eoi=true ! avimux ! filesink location=mjpeg.avi
+ * ]| a pipeline to mux 5 JPEG frames per second into a 10 sec. long motion jpeg
+ * avi.
+ * </refsect2>
+ */
 #include <xdc/std.h>
 #include <string.h>
 #include <ti/sdo/codecs/jpegenc/ijpegenc.h>
