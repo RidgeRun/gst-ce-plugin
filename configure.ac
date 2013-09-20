@@ -218,6 +218,8 @@ gst-libs/ext/cmem/Makefile
 gst-libs/ext/ce/Makefile
 docs/Makefile
 docs/libs/Makefile
+docs/plugins/Makefile
+docs/version.entities
 tests/Makefile
 tests/check/Makefile
 tests/files/Makefile
