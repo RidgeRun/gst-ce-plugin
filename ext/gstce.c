@@ -74,6 +74,6 @@ plugin_init (GstPlugin * plugin)
 
 GST_PLUGIN_DEFINE (GST_VERSION_MAJOR,
     GST_VERSION_MINOR,
-    ceplugin,
+    ce,
     "GStreamer Plugin for codecs based on CodecEngine API for Texas Instruments SoC",
     plugin_init, VERSION, "LGPL", "gst-ce-plugin", "RidgeRun")
