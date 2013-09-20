@@ -1,0 +1,260 @@
+<ARG>
+<NAME>GstCeJpegEnc::disable-eoi</NAME>
+<TYPE>gboolean</TYPE>
+<RANGE></RANGE>
+<FLAGS>rw</FLAGS>
+<NICK>Disable End of Image</NICK>
+<BLURB>Disable End of Image, for some video pipelines is recommended set this to true.</BLURB>
+<DEFAULT>FALSE</DEFAULT>
+</ARG>
+
+<ARG>
+<NAME>GstCeJpegEnc::rotation</NAME>
+<TYPE>GstCeJpegEncRotation</TYPE>
+<RANGE></RANGE>
+<FLAGS>rw</FLAGS>
+<NICK>Rotation</NICK>
+<BLURB>Set the rotation angle.</BLURB>
+<DEFAULT>Rotation 0 degrees</DEFAULT>
+</ARG>
+
+<ARG>
+<NAME>GstCeH264Enc::airrate</NAME>
+<TYPE>gint</TYPE>
+<RANGE>>= 0</RANGE>
+<FLAGS>rw</FLAGS>
+<NICK>Adaptive intra refresh</NICK>
+<BLURB>Adaptive intra refresh. This indicates the maximum number of MBs(per frame) that can be refreshed using AIR.</BLURB>
+<DEFAULT>0</DEFAULT>
+</ARG>
+
+<ARG>
+<NAME>GstCeH264Enc::bytestream</NAME>
+<TYPE>gboolean</TYPE>
+<RANGE></RANGE>
+<FLAGS>rw</FLAGS>
+<NICK>Byte-stream</NICK>
+<BLURB>Generate h264 NAL unit stream instead of 'packetized' stream (no codec_data is generated).</BLURB>
+<DEFAULT>FALSE</DEFAULT>
+</ARG>
+
+<ARG>
+<NAME>GstCeH264Enc::ddrbuf</NAME>
+<TYPE>gboolean</TYPE>
+<RANGE></RANGE>
+<FLAGS>rw</FLAGS>
+<NICK>Use DDR buffers</NICK>
+<BLURB>Use DDR buffers instead of IMCOP buffers.</BLURB>
+<DEFAULT>FALSE</DEFAULT>
+</ARG>
+
+<ARG>
+<NAME>GstCeH264Enc::enabletcm</NAME>
+<TYPE>gboolean</TYPE>
+<RANGE></RANGE>
+<FLAGS>rw</FLAGS>
+<NICK>Enable ARM TCM memory usage</NICK>
+<BLURB>When encquality is 0, this flag controls if TCM memory should be used (otherwise is ignored and default to yes).</BLURB>
+<DEFAULT>FALSE</DEFAULT>
+</ARG>
+
+<ARG>
+<NAME>GstCeH264Enc::encquality</NAME>
+<TYPE>GstCeVidEncQuality</TYPE>
+<RANGE></RANGE>
+<FLAGS>rw</FLAGS>
+<NICK>Encoder quality</NICK>
+<BLURB>Encoder quality setting.</BLURB>
+<DEFAULT>High speed mode</DEFAULT>
+</ARG>
+
+<ARG>
+<NAME>GstCeH264Enc::entropy</NAME>
+<TYPE>GstCeH264EncEntropy</TYPE>
+<RANGE></RANGE>
+<FLAGS>rw</FLAGS>
+<NICK>Entropy</NICK>
+<BLURB>Flag for Entropy Coding Mode.</BLURB>
+<DEFAULT>CABAC</DEFAULT>
+</ARG>
+
+<ARG>
+<NAME>GstCeH264Enc::headers</NAME>
+<TYPE>gboolean</TYPE>
+<RANGE></RANGE>
+<FLAGS>rw</FLAGS>
+<NICK>Include on the stream the SPS/PPS headers</NICK>
+<BLURB>Include on the stream the SPS/PPS headers.</BLURB>
+<DEFAULT>FALSE</DEFAULT>
+</ARG>
+
+<ARG>
+<NAME>GstCeH264Enc::idrinterval</NAME>
+<TYPE>gint</TYPE>
+<RANGE>>= 0</RANGE>
+<FLAGS>rw</FLAGS>
+<NICK>Interval between two consecutive IDR frames</NICK>
+<BLURB>Interval between two consecutive IDR frames.</BLURB>
+<DEFAULT>0</DEFAULT>
+</ARG>
+
+<ARG>
+<NAME>GstCeH264Enc::level</NAME>
+<TYPE>GstCeH264EncLevel</TYPE>
+<RANGE></RANGE>
+<FLAGS>rw</FLAGS>
+<NICK>Level</NICK>
+<BLURB>Level identification for the encoder.</BLURB>
+<DEFAULT>Level 4.0</DEFAULT>
+</ARG>
+
+<ARG>
+<NAME>GstCeH264Enc::ntemplayers</NAME>
+<TYPE>GstCeH264EncLayers</TYPE>
+<RANGE></RANGE>
+<FLAGS>rw</FLAGS>
+<NICK>Number of temporal Layers for SVC</NICK>
+<BLURB>Number of temporal Layers for SVC.</BLURB>
+<DEFAULT>One layer (Stream with frame rate: F)</DEFAULT>
+</ARG>
+
+<ARG>
+<NAME>GstCeH264Enc::profile</NAME>
+<TYPE>GstCeH264EncProfile</TYPE>
+<RANGE></RANGE>
+<FLAGS>rw</FLAGS>
+<NICK>Profile</NICK>
+<BLURB>Profile identification for the encoder.</BLURB>
+<DEFAULT>High profile</DEFAULT>
+</ARG>
+
+<ARG>
+<NAME>GstCeH264Enc::qpinter</NAME>
+<TYPE>gint</TYPE>
+<RANGE>[1,41]</RANGE>
+<FLAGS>rw</FLAGS>
+<NICK>qpinter</NICK>
+<BLURB>Quantization Parameter (QP) for P frame (only valid when rate control is disabled or is fixed QP).</BLURB>
+<DEFAULT>28</DEFAULT>
+</ARG>
+
+<ARG>
+<NAME>GstCeH264Enc::qpintra</NAME>
+<TYPE>gint</TYPE>
+<RANGE>[1,51]</RANGE>
+<FLAGS>rw</FLAGS>
+<NICK>qpintra</NICK>
+<BLURB>Quantization Parameter (QP) for I frames (only valid when rate control is disabled or is fixed QP).</BLURB>
+<DEFAULT>28</DEFAULT>
+</ARG>
+
+<ARG>
+<NAME>GstCeH264Enc::rcalgo</NAME>
+<TYPE>GstCeH264EncRCAlgo</TYPE>
+<RANGE></RANGE>
+<FLAGS>rw</FLAGS>
+<NICK>Rate control Algorithm</NICK>
+<BLURB>Rate Control Algorithm (requires ratecontrol set to 5).</BLURB>
+<DEFAULT>VBR</DEFAULT>
+</ARG>
+
+<ARG>
+<NAME>GstCeH264Enc::seqscaling</NAME>
+<TYPE>GstCeH264EncSeqScaling</TYPE>
+<RANGE></RANGE>
+<FLAGS>rw</FLAGS>
+<NICK>Sequence Scaling</NICK>
+<BLURB>Use of sequence scaling matrix.</BLURB>
+<DEFAULT>Auto</DEFAULT>
+</ARG>
+
+<ARG>
+<NAME>GstCeH264Enc::single-nalu</NAME>
+<TYPE>gboolean</TYPE>
+<RANGE></RANGE>
+<FLAGS>rw</FLAGS>
+<NICK>Buffers contains a single NALU</NICK>
+<BLURB>Buffers contains a single NALU.</BLURB>
+<DEFAULT>FALSE</DEFAULT>
+</ARG>
+
+<ARG>
+<NAME>GstCeH264Enc::svcsyntaxen</NAME>
+<TYPE>GstCeH264EncSeqSvcSyntax</TYPE>
+<RANGE></RANGE>
+<FLAGS>rw</FLAGS>
+<NICK>SVC Syntax Enable</NICK>
+<BLURB>Control for SVC syntax and DPB management.</BLURB>
+<DEFAULT>SVC disabled sliding window enabled</DEFAULT>
+</ARG>
+
+<ARG>
+<NAME>GstCeH264Enc::t8x8inter</NAME>
+<TYPE>gboolean</TYPE>
+<RANGE></RANGE>
+<FLAGS>rw</FLAGS>
+<NICK>Enable 8x8 Transform for P Frame</NICK>
+<BLURB>Enable 8x8 Transform for P Frame (only for High Profile).</BLURB>
+<DEFAULT>FALSE</DEFAULT>
+</ARG>
+
+<ARG>
+<NAME>GstCeH264Enc::t8x8intra</NAME>
+<TYPE>gboolean</TYPE>
+<RANGE></RANGE>
+<FLAGS>rw</FLAGS>
+<NICK>Enable 8x8 Transform for I Frame</NICK>
+<BLURB>Enable 8x8 Transform for I Frame (only for High Profile).</BLURB>
+<DEFAULT>TRUE</DEFAULT>
+</ARG>
+
+<ARG>
+<NAME>GstCeAacEnc::downmix</NAME>
+<TYPE>gboolean</TYPE>
+<RANGE></RANGE>
+<FLAGS>rw</FLAGS>
+<NICK>Downmix</NICK>
+<BLURB>Option to enable downmix.</BLURB>
+<DEFAULT>FALSE</DEFAULT>
+</ARG>
+
+<ARG>
+<NAME>GstCeAacEnc::full-bandwidth</NAME>
+<TYPE>gboolean</TYPE>
+<RANGE></RANGE>
+<FLAGS>rw</FLAGS>
+<NICK>Enable full bandwidth</NICK>
+<BLURB>Flag to enable full bandwidth.</BLURB>
+<DEFAULT>FALSE</DEFAULT>
+</ARG>
+
+<ARG>
+<NAME>GstCeAacEnc::inv-quant</NAME>
+<TYPE>gint</TYPE>
+<RANGE>[0,2]</RANGE>
+<FLAGS>rw</FLAGS>
+<NICK>Inverse quantization level</NICK>
+<BLURB>Inverse quantization level.</BLURB>
+<DEFAULT>0</DEFAULT>
+</ARG>
+
+<ARG>
+<NAME>GstCeAacEnc::stereo-preprocessing</NAME>
+<TYPE>gboolean</TYPE>
+<RANGE></RANGE>
+<FLAGS>rw</FLAGS>
+<NICK>Use stereo preprocessing</NICK>
+<BLURB>Use stereo preprocessing flag: Only applicable when sampleRate <24000 Hz and bitRate < 60000 bps.</BLURB>
+<DEFAULT>FALSE</DEFAULT>
+</ARG>
+
+<ARG>
+<NAME>GstCeAacEnc::tns</NAME>
+<TYPE>gboolean</TYPE>
+<RANGE></RANGE>
+<FLAGS>rw</FLAGS>
+<NICK>TNS enable</NICK>
+<BLURB>Flag for TNS enable.</BLURB>
+<DEFAULT>TRUE</DEFAULT>
+</ARG>
+

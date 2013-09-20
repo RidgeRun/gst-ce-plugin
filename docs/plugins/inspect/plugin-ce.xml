@@ -1,0 +1,76 @@
+<plugin>
+  <name>ce</name>
+  <description>GStreamer Plugin for codecs based on CodecEngine API for Texas Instruments SoC</description>
+  <filename>/usr/lib/gstreamer-1.0/libgstce.so</filename>
+  <basename>libgstce.so</basename>
+  <version>0.0</version>
+  <license>LGPL</license>
+  <source>gst-ce-plugins</source>
+  <package>gst-ce-plugin</package>
+  <origin>RidgeRun</origin>
+  <elements>
+    <element>
+      <name>ce_aacenc</name>
+      <longname>CE AAC-LC audio encoder</longname>
+      <class>Codec/Encoder/Audio</class>
+      <description>Encode audio in AAC-LC format</description>
+      <author>Melissa Montero &lt;melissa.montero@ridgerun.com&gt;</author>
+      <pads>
+        <caps>
+          <name>sink</name>
+          <direction>sink</direction>
+          <presence>always</presence>
+          <details>audio/x-raw, format=(string)S16LE, layout=(string)interleaved, channels=(int)[ 1, 2 ], rate=(int){ 8000, 11025, 12000, 16000, 22050, 24000, 32000, 44100, 48000, 88200, 96000 }</details>
+        </caps>
+        <caps>
+          <name>src</name>
+          <direction>source</direction>
+          <presence>always</presence>
+          <details>audio/mpeg, mpegversion=(int){ 2, 4 }, channels=(int)[ 1, 2 ], rate=(int){ 8000, 11025, 12000, 16000, 22050, 24000, 32000, 44100, 48000, 88200, 96000 }, stream-format=(string){ raw, adts, adif }, base-profile=(string)lc</details>
+        </caps>
+      </pads>
+    </element>
+    <element>
+      <name>ce_h264enc</name>
+      <longname>CE H.264 video encoder</longname>
+      <class>Codec/Encoder/Video</class>
+      <description>Encode video in H.264 format</description>
+      <author>Melissa Montero &lt;melissa.montero@ridgerun.com&gt;</author>
+      <pads>
+        <caps>
+          <name>sink</name>
+          <direction>sink</direction>
+          <presence>always</presence>
+          <details>video/x-raw, format=(string)NV12, framerate=(fraction)[ 0/1, 120/1 ], width=(int)[ 128, 4080 ], height=(int)[ 96, 4096 ]</details>
+        </caps>
+        <caps>
+          <name>src</name>
+          <direction>source</direction>
+          <presence>always</presence>
+          <details>video/x-h264, framerate=(fraction)[ 0/1, 120/1 ], width=(int)[ 128, 4080 ], height=(int)[ 96, 4096 ], stream-format=(string){ avc, byte-stream }</details>
+        </caps>
+      </pads>
+    </element>
+    <element>
+      <name>ce_jpegenc</name>
+      <longname>CE JPEG image/video encoder</longname>
+      <class>Codec/Encoder/Image</class>
+      <description>Encode image in JPEG format</description>
+      <author>Carlos Gomez &lt;carlos.gomez@ridgerun.com&gt;</author>
+      <pads>
+        <caps>
+          <name>sink</name>
+          <direction>sink</direction>
+          <presence>always</presence>
+          <details>video/x-raw, format=(string){ NV12, UYVY }, framerate=(fraction)[ 0/1, 120/1 ], width=(int)[ 97, 4080 ], height=(int)[ 16, 4096 ]</details>
+        </caps>
+        <caps>
+          <name>src</name>
+          <direction>source</direction>
+          <presence>always</presence>
+          <details>image/jpeg, framerate=(fraction)[ 0/1, 120/1 ], width=(int)[ 97, 4080 ], height=(int)[ 16, 4096 ]</details>
+        </caps>
+      </pads>
+    </element>
+  </elements>
+</plugin>

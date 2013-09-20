@@ -1,0 +1,35 @@
+GObject
+  GInitiallyUnowned
+    GstObject
+      GstAllocator
+        GstCMemAllocator
+        GstDefaultAllocator
+      GstBus
+      GstClock
+      GstControlBinding
+      GstControlSource
+      GstElement
+        GstAudioEncoder
+          GstCeAudEnc
+            GstCeAacEnc
+        GstBin
+          GstPipeline
+        GstVideoEncoder
+          GstCeImgEnc
+            GstCeJpegEnc
+          GstCeVidEnc
+            GstCeH264Enc
+      GstPad
+      GstPadTemplate
+      GstPlugin
+      GstPluginFeature
+        GstElementFactory
+        GstTypeFindFactory
+      GstRegistry
+      GstTask
+      GstTaskPool
+GInterface
+  GTypePlugin
+  GstChildProxy
+  GstPreset
+  GstURIHandler
