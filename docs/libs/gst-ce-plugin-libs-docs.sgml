@@ -1,0 +1,62 @@
+<?xml version="1.0"?>
+<!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook XML V4.3//EN"
+               "http://www.oasis-open.org/docbook/xml/4.3/docbookx.dtd" [
+<!ENTITY % version-entities SYSTEM "version.entities">
+%version-entities;
+]>
+<book id="index" xmlns:xi="http://www.w3.org/2003/XInclude">
+  <bookinfo>
+    <title>GStreamer CE Plugins &GST_API_VERSION; Library Reference Manual</title>
+    <releaseinfo>
+      for GStreamer CE Library &GST_API_VERSION; (&GST_VERSION;)
+      <ulink role="online-location" url="http://[SERVER]/gst-ce-plugin-libs/index.html">http://[SERVER]/gst-ce-plugin-libs/</ulink>.
+    </releaseinfo>
+  </bookinfo>
+
+  <part id="gstreamer-ce-plugins">
+    <title>GStreamer CE Plugins Libraries</title>
+    <para>
+      This manual describes the libraries provided by the GStreamer CE Plugins
+      package.
+    </para>
+    <xi:include href="compiling.sgml" />
+
+    <chapter id="gstreamer-allocators">
+      <title>CMEM Library</title>
+      <para>
+        This library should be linked to by getting cflags and libs from
+        <filename>gstreamer-cmem-&GST_API_VERSION;.pc</filename>.
+      </para>
+      <xi:include href="xml/gstcmemallocator.xml"/>
+      <xi:include href="xml/gstceslicepool.xml"/>
+    </chapter>
+
+    <chapter id="gstreamer-ce">
+      <title>CE base Library</title>
+      <para>
+        This library should be linked to by getting cflags and libs from
+
+      </para>
+      <xi:include href="xml/gstceaudenc.xml"/>
+      <xi:include href="xml/gstceimgenc.xml"/>
+      <xi:include href="xml/gstcevidenc.xml"/>
+    </chapter>
+
+  </part>
+
+  <part id="gstreamer-libs-hierarchy">
+    <title>Object Hierarchy</title>
+    <xi:include href="xml/tree_index.sgml" />
+  </part>
+
+  <index id="api-index-full">
+    <title>Index</title>
+    <xi:include href="xml/api-index-full.xml"><xi:fallback /></xi:include>
+  </index>
+  <index id="api-index-deprecated" role="deprecated">
+    <title>Index of deprecated API</title>
+    <xi:include href="xml/api-index-deprecated.xml"><xi:fallback /></xi:include>
+  </index>
+
+  <xi:include href="xml/annotation-glossary.xml"><xi:fallback /></xi:include>
+</book>
