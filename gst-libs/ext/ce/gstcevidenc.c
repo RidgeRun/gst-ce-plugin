@@ -345,7 +345,7 @@ gst_ce_videnc_finalize (GObject * object)
   G_OBJECT_CLASS (parent_class)->finalize (object);
 }
 
-/**
+/*
  * gst_ce_videnc_configure_codec:
  * Based on the negotiated format, create and initialize the 
  * codec instance*/

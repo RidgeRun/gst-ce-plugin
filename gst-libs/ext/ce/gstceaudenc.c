@@ -229,7 +229,7 @@ gst_ce_audenc_finalize (GObject * object)
   G_OBJECT_CLASS (parent_class)->finalize (object);
 }
 
-/**
+/*
  * gst_ce_audenc_configure_codec:
  * Based on the negotiated format, create and initialize the 
  * codec instance */
@@ -871,11 +871,9 @@ gst_ce_audenc_get_buffer_info (GstCeAudEnc * ceaudenc)
 
 /**
  * gst_ce_audenc_set_frame_samples:
- * @cevidenc: a #GstCeAudEnc
- * @min_samples: the #GstBuffer containing the 
- *        encoding header.
- * @max_samples: maximum number of samples per frame that can be handed by the codec.
+ * @ceaudenc: a #GstCeAudEnc
  * @min_samples: minimum number of samples per frame that can be handed by the codec.
+ * @max_samples: maximum number of samples per frame that can be handed by the codec.
  * 
  * Lets #GstCeAudEnc sub-classes to set the audio codec samples per buffer 
  * capabilities. If @max_samples is equal to @min_samples, means the codec

@@ -41,6 +41,10 @@ struct _GstCeSliceBufferPool
   GstCeSliceBufferPoolPrivate *priv;
 };
 
+/**
+ * GstCeSliceBufferPoolClass
+ * @parent_class:   Element parent class
+ */
 struct _GstCeSliceBufferPoolClass
 {
   GstBufferPoolClass parent_class;

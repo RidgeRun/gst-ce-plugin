@@ -583,7 +583,7 @@ gst_ce_slice_buffer_pool_new (void)
 
 /**
  * gst_ce_slice_buffer_resize:
- * @pool: a #GstCeSliceBufferPool
+ * @spool: a #GstCeSliceBufferPool
  * @buffer: buffer to resize.
  * @size: new buffer size.
  * 
@@ -665,8 +665,8 @@ fail:
 }
 
 /**
- * gst_ce_slice_buffer_resize:
- * @pool: a #GstCeSliceBufferPool
+ * gst_ce_slice_buffer_pool_set_min_size:
+ * @spool: a #GstCeSliceBufferPool
  * @size: minimum buffer size value or percentage of the buffer size.
  * @is_percentange: indicates if @size is a percentage
  * 

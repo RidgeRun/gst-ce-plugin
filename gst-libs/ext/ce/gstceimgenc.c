@@ -123,7 +123,7 @@ static gboolean gst_ce_imgenc_get_buffer_info (GstCeImgEnc * ce_imgenc);
 #define gst_ce_imgenc_parent_class parent_class
 G_DEFINE_TYPE (GstCeImgEnc, gst_ce_imgenc, GST_TYPE_VIDEO_ENCODER);
 
-/**
+/*
  * Image encoder class initialization function
  */
 static void
@@ -176,7 +176,7 @@ gst_ce_imgenc_class_init (GstCeImgEncClass * klass)
       GST_DEBUG_FUNCPTR (gst_ce_imgenc_decide_allocation);
 }
 
-/**
+/*
  * Image encoder initialization function
  */
 static void
@@ -218,7 +218,7 @@ gst_ce_imgenc_init (GstCeImgEnc * ce_imgenc)
   gst_ce_imgenc_reset (GST_VIDEO_ENCODER (ce_imgenc));
 }
 
-/**
+/*
  * Image encoder class finalization function
  */
 static void
@@ -241,7 +241,7 @@ gst_ce_imgenc_finalize (GObject * object)
   G_OBJECT_CLASS (parent_class)->finalize (object);
 }
 
-/**
+/*
  * Based on the negotiated format, creates and initializes the 
  * codec instance
  */
@@ -331,7 +331,7 @@ fail_out:
   }
 }
 
-/**
+/*
  * Gets the format of input video data from GstVideoEncoder class and setup
  * the image encoder
  */
@@ -419,7 +419,7 @@ fail_set_output_state:
   return FALSE;
 }
 
-/**
+/*
  * Suggest allocation parameters
  */
 static gboolean
@@ -446,7 +446,7 @@ gst_ce_imgenc_propose_allocation (GstVideoEncoder * encoder, GstQuery * query)
       query);
 }
 
-/**
+/*
  * Setup the allocation parameters for allocating output buffers
  */
 static gboolean
@@ -503,7 +503,7 @@ gst_ce_imgenc_decide_allocation (GstVideoEncoder * encoder, GstQuery * query)
   return TRUE;
 }
 
-/**
+/*
  * Allocates a CMEM output buffer 
  */
 static gboolean
@@ -526,7 +526,7 @@ gst_ce_imgenc_allocate_output_frame (GstCeImgEnc * ce_imgenc, GstBuffer ** buf)
   return TRUE;
 }
 
-/**
+/*
  *  Encodes the input data from GstVideoEncoder class
  */
 static GstFlowReturn
@@ -681,7 +681,7 @@ fail_post_encode:
   }
 }
 
-/**
+/*
  * Sets custom properties to image encoder
  */
 static void
@@ -746,7 +746,7 @@ gst_ce_imgenc_set_property (GObject * object,
   return;
 }
 
-/**
+/*
  * Gets custom properties from image encoder
  */
 static void
@@ -788,7 +788,7 @@ gst_ce_imgenc_get_property (GObject * object,
   GST_OBJECT_UNLOCK (ce_imgenc);
 }
 
-/**
+/*
  * Open Codec Engine
  */
 static gboolean
@@ -839,7 +839,7 @@ fail_pool:
   return TRUE;
 }
 
-/**
+/*
  * Close Codec Engine
  */
 static gboolean
@@ -868,7 +868,7 @@ gst_ce_imgenc_close (GstVideoEncoder * encoder)
   return TRUE;
 }
 
-/**
+/*
  * Stop Codec Engine
  */
 static gboolean
@@ -877,7 +877,7 @@ gst_ce_imgenc_stop (GstVideoEncoder * encoder)
   return gst_ce_imgenc_reset (encoder);
 }
 
-/**
+/*
  * Reset image encoder
  */
 static gboolean
@@ -929,7 +929,7 @@ gst_ce_imgenc_reset (GstVideoEncoder * encoder)
   return TRUE;
 }
 
-/**
+/*
  * Set current dynamic parameters 
  */
 static gboolean
@@ -955,7 +955,7 @@ gst_ce_imgenc_set_dynamic_params (GstCeImgEnc * ce_imgenc)
   return TRUE;
 }
 
-/**
+/*
  * Get buffer information from video codec 
  */
 static gboolean

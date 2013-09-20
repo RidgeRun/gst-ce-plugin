@@ -79,12 +79,11 @@ struct _GstCeVidEncClass
 
   /* virtual methods for subclasses */
   void (*reset) (GstCeVidEnc * ce_videnc);
-    gboolean (*set_src_caps) (GstCeVidEnc * ce_videnc,
-      GstCaps ** src_caps, GstBuffer ** codec_data);
-
-    gboolean (*pre_process) (GstCeVidEnc * ce_videnc, GstBuffer * input_buffer);
-    gboolean (*post_process) (GstCeVidEnc * ce_videnc,
-      GstBuffer * output_buffer);
+  gboolean (*set_src_caps) (GstCeVidEnc * ce_videnc,
+    GstCaps ** src_caps, GstBuffer ** codec_data);
+  gboolean (*pre_process) (GstCeVidEnc * ce_videnc, GstBuffer * input_buffer);
+  gboolean (*post_process) (GstCeVidEnc * ce_videnc,
+    GstBuffer * output_buffer);
 
   /*< private > */
   gpointer _gst_reserved[GST_PADDING_LARGE];
