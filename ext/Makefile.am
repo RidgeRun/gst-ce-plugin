@@ -5,6 +5,7 @@ libgstce_la_SOURCES = \
 	gstce.c \
 	gstceh264enc.c \
 	gstcejpegenc.c \
+	gstcemp3enc.c \
 	gstceaacenc.c
 
 # compiler and linker flags used to compile this plugin
@@ -23,4 +24,5 @@ libgstce_la_LIBTOOLFLAGS = --tag=disable-static
 noinst_HEADERS = \
 	gstceh264enc.h \
 	gstcejpegenc.h \
+	gstcemp3enc.h \
 	gstceaacenc.h
