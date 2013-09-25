@@ -500,8 +500,13 @@ gst_ce_audenc_handle_frame (GstAudioEncoder * encoder, GstBuffer * buffer)
     gst_audio_encoder_negotiate (GST_AUDIO_ENCODER (encoder));
   /* Allocate an output buffer */
   if (gst_buffer_pool_acquire_buffer (GST_BUFFER_POOL_CAST (priv->outbuf_pool),
-          &outbuf, NULL) != GST_FLOW_OK)
+          &outbuf, NULL) != GST_FLOW_OK) {
+    outbuf = NULL;
+    GstFlowReturn ret = gst_audio_encoder_finish_frame (GST_AUDIO_ENCODER (ceaudenc), outbuf,
+      priv->samples);
+    GST_WARNING("Dropping samples %d", ret);
     goto fail_outbuf_alloc;
+  }
 
   gst_buffer_map (outbuf, &info_out, GST_MAP_WRITE);
   priv->outbuf_desc.descs[0].buf = (XDAS_Int8 *) info_out.data;
@@ -545,6 +550,7 @@ gst_ce_audenc_handle_frame (GstAudioEncoder * encoder, GstBuffer * buffer)
   gst_ce_slice_buffer_resize (GST_CE_SLICE_BUFFER_POOL_CAST (priv->outbuf_pool),
       outbuf, out_args.bytesGenerated);
 
+  GST_WARNING("Sending buffer");  
   return gst_audio_encoder_finish_frame (GST_AUDIO_ENCODER (ceaudenc), outbuf,
       priv->samples);
 
@@ -556,8 +562,8 @@ fail_inbuf_alloc:
 fail_outbuf_alloc:
   {
     gst_buffer_unmap (priv->inbuf, &info_in);
-    GST_ERROR_OBJECT (ceaudenc, "failed to allocate output buffer");
-    return GST_FLOW_ERROR;
+    GST_INFO_OBJECT (ceaudenc, "failed to allocate output buffer");
+    return GST_FLOW_OK;
   }
 fail_encode:
   {
@@ -607,6 +613,7 @@ gst_ce_audenc_set_property (GObject * object,
       GST_LOG_OBJECT (ceaudenc,
           "setting number of output buffers to %d",
           ceaudenc->priv->num_out_buffers);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
