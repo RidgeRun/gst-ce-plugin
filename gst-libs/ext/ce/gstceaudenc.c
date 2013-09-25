@@ -607,6 +607,7 @@ gst_ce_audenc_set_property (GObject * object,
       GST_LOG_OBJECT (ceaudenc,
           "setting number of output buffers to %d",
           ceaudenc->priv->num_out_buffers);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
