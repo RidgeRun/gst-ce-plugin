@@ -44,9 +44,10 @@
 
 #include <gst/gst.h>
 #include <gst/video/gstvideometa.h>
+#include <ext/cmem/gstceslicepool.h>
 
 #include "gstcevidenc.h"
-#include <gstceslicepool.h>
+
 #include <ti/sdo/ce/osal/Memory.h>
 
 GST_DEBUG_CATEGORY_STATIC (gst_ce_videnc_debug);

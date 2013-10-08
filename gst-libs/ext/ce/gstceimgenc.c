@@ -46,9 +46,9 @@
 
 #include <gst/gst.h>
 #include <gst/video/gstvideometa.h>
+#include <ext/cmem/gstceslicepool.h>
 
 #include "gstceimgenc.h"
-#include "gstceslicepool.h"
 
 #include <ti/sdo/ce/osal/Memory.h>
 

@@ -43,9 +43,10 @@
 #include <errno.h>
 
 #include <gst/gst.h>
+#include <ext/cmem/gstceslicepool.h>
 
 #include "gstceaudenc.h"
-#include <gstceslicepool.h>
+
 #include <ti/sdo/ce/osal/Memory.h>
 #include <ittiam/codecs/aaclc_enc/ieaacplusenc.h>
 
@@ -502,9 +503,10 @@ gst_ce_audenc_handle_frame (GstAudioEncoder * encoder, GstBuffer * buffer)
   if (gst_buffer_pool_acquire_buffer (GST_BUFFER_POOL_CAST (priv->outbuf_pool),
           &outbuf, NULL) != GST_FLOW_OK) {
     outbuf = NULL;
-    GstFlowReturn ret = gst_audio_encoder_finish_frame (GST_AUDIO_ENCODER (ceaudenc), outbuf,
-      priv->samples);
-    GST_WARNING("Dropping samples %d", ret);
+    GstFlowReturn ret =
+        gst_audio_encoder_finish_frame (GST_AUDIO_ENCODER (ceaudenc), outbuf,
+        priv->samples);
+    GST_WARNING ("Dropping samples %d", ret);
     goto fail_outbuf_alloc;
   }
 
@@ -550,7 +552,7 @@ gst_ce_audenc_handle_frame (GstAudioEncoder * encoder, GstBuffer * buffer)
   gst_ce_slice_buffer_resize (GST_CE_SLICE_BUFFER_POOL_CAST (priv->outbuf_pool),
       outbuf, out_args.bytesGenerated);
 
-  GST_WARNING("Sending buffer");  
+  GST_WARNING ("Sending buffer");
   return gst_audio_encoder_finish_frame (GST_AUDIO_ENCODER (ceaudenc), outbuf,
       priv->samples);
 
