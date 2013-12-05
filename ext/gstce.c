@@ -21,7 +21,7 @@
 #include <string.h>
 #include <xdc/std.h>
 #include <ti/sdo/ce/Engine.h>
-#include <gst/cmem/gstcmemallocator.h>
+#include <ext/cmem/gstcmemallocator.h>
 
 #include "gstce.h"
 #include "gstceh264enc.h"

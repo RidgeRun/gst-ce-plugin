@@ -23,7 +23,7 @@
 #endif
 
 #include <gst/check/gstcheck.h>
-#include <gst/cmem/gstcmemallocator.h>
+#include <ext/cmem/gstcmemallocator.h>
 #include <gst/gst.h>
 
 
