@@ -84,7 +84,7 @@ AC_PATH_PROG(VALGRIND_PATH, valgrind, no)
 AM_CONDITIONAL(HAVE_VALGRIND, test ! "x$VALGRIND_PATH" = "xno")
 
 dnl check for documentation tools
-GTK_DOC_CHECK([1.12])
+GST_GTK_DOC_CHECK([1.12])
 AG_GST_PLUGIN_DOCS([1.12])
 
 dnl checks for gstreamer
