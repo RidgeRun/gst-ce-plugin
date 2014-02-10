@@ -5,7 +5,7 @@
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
- * by the Free Software Foundation, either version 3 of the License, or
+ * by the Free Software Foundation, either version 2 of the License, or
  * (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
@@ -678,7 +678,8 @@ fail:
  * set to 100 means a smaller buffer is not acceptable (this is the 
  * default value)
  *  
- * Returns: FALSE if the given value in @size is invalid. 
+ * Returns: FALSE if the given value in @size is invalid or the
+ * buffer pool is not configured.
  */
 gboolean
 gst_ce_slice_buffer_pool_set_min_size (GstCeSliceBufferPool * spool,
@@ -687,12 +688,17 @@ gst_ce_slice_buffer_pool_set_min_size (GstCeSliceBufferPool * spool,
   GstCeSliceBufferPoolPrivate *priv;
   gboolean ret = TRUE;
 
-  GST_SLICE_POOL_LOCK (spool);
-
   g_return_val_if_fail (GST_IS_CE_SLICE_BUFFER_POOL (spool), FALSE);
-  g_return_val_if_fail (!priv->buffer_size, FALSE);
 
+  GST_SLICE_POOL_LOCK (spool);
   priv = spool->priv;
+
+  if (priv->buffer_size <= 0) {
+    GST_WARNING_OBJECT (spool,
+        "The CE slice pool must be configured before you can define the"
+        "minimum buffer size acceptable for this pool");
+    return FALSE;
+  }
 
   if (is_percentange)
     priv->min_buffer_size = (priv->buffer_size * size) / 100;

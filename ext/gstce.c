@@ -5,7 +5,7 @@
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
- * by the Free Software Foundation, either version 3 of the License, or
+ * by the Free Software Foundation, either version 2 of the License, or
  * (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
@@ -21,7 +21,7 @@
 #include <string.h>
 #include <xdc/std.h>
 #include <ti/sdo/ce/Engine.h>
-#include <gst/cmem/gstcmemallocator.h>
+#include <ext/cmem/gstcmemallocator.h>
 
 #include "gstce.h"
 #include "gstceh264enc.h"
