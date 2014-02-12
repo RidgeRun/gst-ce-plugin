@@ -42,9 +42,7 @@ struct _GstCeMp3Enc
   GstCeAudEnc encoder;
   /* Audio info */
   gint rate;
-  gint profile;
   gint channels;
-
 };
 
 struct _GstCeMp3EncClass
