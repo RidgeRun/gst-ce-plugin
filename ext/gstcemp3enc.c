@@ -21,7 +21,11 @@
 #include <xdc/std.h>
 #include <string.h>
 #include <ti/sdo/ce/audio1/audenc1.h>
-#include <ittiam/codecs/mp3_enc/imp3enc.h>
+// Needed to change the path where the imp3enc.h header file is
+// located, as in the current dm365_mp3enc_3_5_00_production package
+// this header file is not found where it normally does.
+// #include <ittiam/codecs/mp3_enc/imp3enc.h>
+#include <ittiam/app/mp3_enc_app/imp3enc.h>
 
 #include "gstcemp3enc.h"
 
