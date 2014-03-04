@@ -27,7 +27,9 @@
 #include "gstceh264enc.h"
 #include "gstcejpegenc.h"
 #include "gstceaacenc.h"
+#ifdef MP3_ENCODER
 #include "gstcemp3enc.h"
+#endif
 
 GST_DEBUG_CATEGORY (ce_debug);
 
@@ -42,7 +44,9 @@ static CeElement gst_ce_element_list[] = {
   {"ce_h264enc", GST_RANK_PRIMARY, gst_ce_h264enc_get_type},
   {"ce_jpegenc", GST_RANK_PRIMARY, gst_ce_jpegenc_get_type},
   {"ce_aacenc", GST_RANK_PRIMARY, gst_ce_aacenc_get_type},
+#ifdef MP3_ENCODER
   {"ce_mp3enc", GST_RANK_PRIMARY, gst_ce_mp3enc_get_type},
+#endif
 };
 
 /* Register of all the elements of the plugin */

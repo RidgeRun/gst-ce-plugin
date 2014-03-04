@@ -18,6 +18,8 @@
  *
  */
 
+#ifdef MP3_ENCODER
+
 #include <xdc/std.h>
 #include <string.h>
 #include <ti/sdo/ce/audio1/audenc1.h>
@@ -269,3 +271,5 @@ gst_ce_mp3enc_get_property (GObject * object, guint prop_id,
       break;
   }
 }
+
+#endif
