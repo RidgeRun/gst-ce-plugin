@@ -18,6 +18,19 @@
  *
  */
 
+/**
+ * SECTION:gstcemp3enc
+ * @short_description: The Codec Engine mp3 audio encoder element
+ * @see_also:
+ *
+ * This is the mp3 audio encoder element. This element encodes
+ * raw audio into encoded audio using TI mp3 encoder codec.
+ * 
+ * This codec can be obtained downloading it from:
+ * http://software-dl.ti.com/dsps/dsps_public_sw/codecs/DM36x/index_FDS.html
+ * 
+ */
+
 #include <xdc/std.h>
 #include <string.h>
 #include <ti/sdo/ce/audio1/audenc1.h>
