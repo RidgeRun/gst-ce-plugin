@@ -75,6 +75,7 @@ enum
   PROP_PACKET,
 };
 
+#define PROP_PACKET_DEFAULT FALSE
 
 static void gst_ce_mp3_enc_reset (GstCeAudEnc * ceaudenc);
 static gboolean gst_ce_mp3_enc_set_src_caps (GstCeAudEnc * ceaudenc,
@@ -112,7 +113,7 @@ gst_ce_mp3_enc_class_init (GstCeMp3EncClass * klass)
           "Packet",
           "Switch to enable or disable packetization."
           " If this switch is enabled then the encoder "
-          "gives constant number of bytes in the output.", FALSE,
+          "gives constant number of bytes in the output.", PROP_PACKET_DEFAULT,
           G_PARAM_READWRITE));
 
   /* pad templates */
