@@ -25,8 +25,8 @@
 
 #include "gstcemp3enc.h"
 
-GST_DEBUG_CATEGORY_STATIC (gst_ce_mp3enc_debug);
-#define GST_CAT_DEFAULT gst_ce_mp3enc_debug
+GST_DEBUG_CATEGORY_STATIC (gst_ce_mp3_enc_debug);
+#define GST_CAT_DEFAULT gst_ce_mp3_enc_debug
 
 #define SAMPLE_RATES "16000, " \
                     "22050, " \
@@ -35,7 +35,7 @@ GST_DEBUG_CATEGORY_STATIC (gst_ce_mp3enc_debug);
                     "44100, " \
                     "48000"
 
-static GstStaticPadTemplate gst_ce_mp3enc_sink_pad_template =
+static GstStaticPadTemplate gst_ce_mp3_enc_sink_pad_template =
 GST_STATIC_PAD_TEMPLATE ("sink",
     GST_PAD_SINK,
     GST_PAD_ALWAYS,
@@ -45,7 +45,7 @@ GST_STATIC_PAD_TEMPLATE ("sink",
         "rate = (int) {" SAMPLE_RATES "}, " "channels=(int)[ 1, 2 ]")
     );
 
-static GstStaticPadTemplate gst_ce_mp3enc_src_pad_template =
+static GstStaticPadTemplate gst_ce_mp3_enc_src_pad_template =
 GST_STATIC_PAD_TEMPLATE ("src",
     GST_PAD_SRC,
     GST_PAD_ALWAYS,
@@ -63,20 +63,20 @@ enum
 };
 
 
-static void gst_ce_mp3enc_reset (GstCeAudEnc * ceaudenc);
-static gboolean gst_ce_mp3enc_set_src_caps (GstCeAudEnc * ceaudenc,
+static void gst_ce_mp3_enc_reset (GstCeAudEnc * ceaudenc);
+static gboolean gst_ce_mp3_enc_set_src_caps (GstCeAudEnc * ceaudenc,
     GstAudioInfo * info, GstCaps ** caps, GstBuffer ** codec_data);
 
-static void gst_ce_mp3enc_get_property (GObject * object, guint prop_id,
+static void gst_ce_mp3_enc_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec);
-static void gst_ce_mp3enc_set_property (GObject * object, guint prop_id,
+static void gst_ce_mp3_enc_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec);
 
-#define gst_ce_mp3enc_parent_class parent_class
-G_DEFINE_TYPE (GstCeMp3Enc, gst_ce_mp3enc, GST_TYPE_CEAUDENC);
+#define gst_ce_mp3_enc_parent_class parent_class
+G_DEFINE_TYPE (GstCeMp3Enc, gst_ce_mp3_enc, GST_TYPE_CEAUDENC);
 
 static void
-gst_ce_mp3enc_class_init (GstCeMp3EncClass * klass)
+gst_ce_mp3_enc_class_init (GstCeMp3EncClass * klass)
 {
   GObjectClass *gobject_class;
   GstElementClass *element_class;
@@ -86,13 +86,13 @@ gst_ce_mp3enc_class_init (GstCeMp3EncClass * klass)
   element_class = GST_ELEMENT_CLASS (klass);
   ceaudenc_class = GST_CEAUDENC_CLASS (klass);
 
-  GST_DEBUG_CATEGORY_INIT (gst_ce_mp3enc_debug, "ce_mp3enc", 0,
+  GST_DEBUG_CATEGORY_INIT (gst_ce_mp3_enc_debug, "ce_mp3enc", 0,
       "CE MP3 encoding element");
 
   parent_class = g_type_class_peek_parent (klass);
 
-  gobject_class->set_property = gst_ce_mp3enc_set_property;
-  gobject_class->get_property = gst_ce_mp3enc_get_property;
+  gobject_class->set_property = gst_ce_mp3_enc_set_property;
+  gobject_class->get_property = gst_ce_mp3_enc_get_property;
 
   g_object_class_install_property (gobject_class, PROP_PACKET,
       g_param_spec_boolean ("packet",
@@ -104,9 +104,9 @@ gst_ce_mp3enc_class_init (GstCeMp3EncClass * klass)
 
   /* pad templates */
   gst_element_class_add_pad_template (element_class,
-      gst_static_pad_template_get (&gst_ce_mp3enc_sink_pad_template));
+      gst_static_pad_template_get (&gst_ce_mp3_enc_sink_pad_template));
   gst_element_class_add_pad_template (element_class,
-      gst_static_pad_template_get (&gst_ce_mp3enc_src_pad_template));
+      gst_static_pad_template_get (&gst_ce_mp3_enc_src_pad_template));
 
   gst_element_class_set_static_metadata (element_class,
       "CE MP3 audio encoder", "Codec/Encoder/Audio",
@@ -114,13 +114,13 @@ gst_ce_mp3enc_class_init (GstCeMp3EncClass * klass)
       "Diego Benavides <diego.benavides@ridgerun.com>");
 
   ceaudenc_class->codec_name = "mp3enc";
-  ceaudenc_class->reset = gst_ce_mp3enc_reset;
-  ceaudenc_class->set_src_caps = gst_ce_mp3enc_set_src_caps;
+  ceaudenc_class->reset = gst_ce_mp3_enc_reset;
+  ceaudenc_class->set_src_caps = gst_ce_mp3_enc_set_src_caps;
 
 }
 
 static void
-gst_ce_mp3enc_init (GstCeMp3Enc * mp3enc)
+gst_ce_mp3_enc_init (GstCeMp3Enc * mp3enc)
 {
   GstCeAudEnc *ceaudenc = GST_CEAUDENC (mp3enc);
   ITTIAM_MP3ENC_Params *mp3_params = NULL;
@@ -142,7 +142,7 @@ gst_ce_mp3enc_init (GstCeMp3Enc * mp3enc)
   /* Add the extends params to the original params */
   ceaudenc->codec_params->size = sizeof (ITTIAM_MP3ENC_Params);
 
-  gst_ce_mp3enc_reset (ceaudenc);
+  gst_ce_mp3_enc_reset (ceaudenc);
 
   return;
 fail_alloc:
@@ -155,7 +155,7 @@ fail_alloc:
 }
 
 static gboolean
-gst_ce_mp3enc_set_src_caps (GstCeAudEnc * ceaudenc, GstAudioInfo * info,
+gst_ce_mp3_enc_set_src_caps (GstCeAudEnc * ceaudenc, GstAudioInfo * info,
     GstCaps ** caps, GstBuffer ** codec_data)
 {
   GstCeMp3Enc *mp3enc = GST_CE_MP3ENC (ceaudenc);
@@ -178,7 +178,7 @@ gst_ce_mp3enc_set_src_caps (GstCeAudEnc * ceaudenc, GstAudioInfo * info,
 }
 
 static void
-gst_ce_mp3enc_reset (GstCeAudEnc * ceaudenc)
+gst_ce_mp3_enc_reset (GstCeAudEnc * ceaudenc)
 {
   GstCeMp3Enc *mp3enc = GST_CE_MP3ENC (ceaudenc);
   ITTIAM_MP3ENC_Params *mp3_params;
@@ -218,7 +218,7 @@ gst_ce_mp3enc_reset (GstCeAudEnc * ceaudenc)
 }
 
 static void
-gst_ce_mp3enc_set_property (GObject * object, guint prop_id,
+gst_ce_mp3_enc_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec)
 {
   GstCeAudEnc *ceaudenc = GST_CEAUDENC (object);
@@ -243,7 +243,7 @@ gst_ce_mp3enc_set_property (GObject * object, guint prop_id,
 }
 
 static void
-gst_ce_mp3enc_get_property (GObject * object, guint prop_id,
+gst_ce_mp3_enc_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec)
 {
   GstCeAudEnc *ceaudenc = GST_CEAUDENC (object);

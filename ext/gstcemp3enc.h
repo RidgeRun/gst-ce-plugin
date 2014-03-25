@@ -25,7 +25,7 @@
 
 G_BEGIN_DECLS
 #define GST_TYPE_CE_MP3ENC \
-  (gst_ce_mp3enc_get_type())
+  (gst_ce_mp3_enc_get_type())
 #define GST_CE_MP3ENC(obj) \
   (G_TYPE_CHECK_INSTANCE_CAST((obj),GST_TYPE_CE_MP3ENC,GstCeMp3Enc))
 #define GST_CE_MP3ENC_CLASS(klass) \
@@ -50,7 +50,7 @@ struct _GstCeMp3EncClass
   GstCeAudEncClass parent_class;
 };
 
-GType gst_ce_mp3enc_get_type (void);
+GType gst_ce_mp3_enc_get_type (void);
 
 G_END_DECLS
 #endif /* __GST_CE_MP3ENC_H__ */
