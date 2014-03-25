@@ -45,7 +45,7 @@ static CeElement gst_ce_element_list[] = {
   {"ce_jpegenc", GST_RANK_PRIMARY, gst_ce_jpegenc_get_type},
   {"ce_aacenc", GST_RANK_PRIMARY, gst_ce_aacenc_get_type},
 #ifdef MP3_ENCODER
-  {"ce_mp3enc", GST_RANK_PRIMARY, gst_ce_mp3enc_get_type},
+  {"ce_mp3enc", GST_RANK_PRIMARY, gst_ce_mp3_enc_get_type},
 #endif
 };
 
