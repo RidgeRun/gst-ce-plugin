@@ -177,6 +177,9 @@ if test "x$HAVE_CODECS" = "xno" ; then
   AC_MSG_ERROR([no DM36x codec libraries found (libdm36x-codecs)])
 fi
 
+AM_CONDITIONAL([HAVE_MP3_ENCODER], [echo "$CODECS_CFLAGS" | grep "MP3_ENCODER"])
+# AM_CONDITIONAL([HAVE_MP3_DECODER], [echo "$CODECS_CFLAGS" | grep "MP3_DECODER"])
+
 AC_SUBST(CODECS_CFLAGS)
 AC_SUBST(CODECS_LIBS)
   

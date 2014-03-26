@@ -5,8 +5,12 @@ libgstce_la_SOURCES = \
 	gstce.c \
 	gstceh264enc.c \
 	gstcejpegenc.c \
-	gstcemp3enc.c \
 	gstceaacenc.c
+
+#agrego condicionalemente a mp3 if talcosa libgstce_la_SOURCES+=gstcemp3enc.c
+if HAVE_MP3_ENCODER
+libgstce_la_SOURCES+=gstcemp3enc.c
+endif
 
 # compiler and linker flags used to compile this plugin
 libgstce_la_CFLAGS = $(GST_CE_CFLAGS) $(CODECS_CFLAGS) \
@@ -24,5 +28,9 @@ libgstce_la_LIBTOOLFLAGS = --tag=disable-static
 noinst_HEADERS = \
 	gstceh264enc.h \
 	gstcejpegenc.h \
-	gstcemp3enc.h \
 	gstceaacenc.h
+
+#agrego condicionalemente a mp3 if talcosa libgstce_la_SOURCES+=gstcemp3enc.c
+if HAVE_MP3_ENCODER
+noinst_HEADERS+=gstcemp3enc.h
+endif
