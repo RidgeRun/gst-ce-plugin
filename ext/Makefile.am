@@ -7,7 +7,8 @@ libgstce_la_SOURCES = \
 	gstcejpegenc.c \
 	gstceaacenc.c
 
-#agrego condicionalemente a mp3 if talcosa libgstce_la_SOURCES+=gstcemp3enc.c
+# conditionally adding the mp3 encoder element source code depending if
+# codec was found in configure
 if HAVE_MP3_ENCODER
 libgstce_la_SOURCES+=gstcemp3enc.c
 endif
@@ -30,7 +31,8 @@ noinst_HEADERS = \
 	gstcejpegenc.h \
 	gstceaacenc.h
 
-#agrego condicionalemente a mp3 if talcosa libgstce_la_SOURCES+=gstcemp3enc.c
+# conditionally adding the mp3 encoder element header depending if codec 
+# was found in configure
 if HAVE_MP3_ENCODER
 noinst_HEADERS+=gstcemp3enc.h
 endif
