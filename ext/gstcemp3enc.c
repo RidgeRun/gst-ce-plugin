@@ -217,7 +217,7 @@ gst_ce_mp3_enc_reset (GstCeAudEnc * ceaudenc)
       ceaudenc->codec_params->inputBitsPerSample;
 
   mp3_params = (ITTIAM_MP3ENC_Params *) ceaudenc->codec_params;
-  mp3_params->packet = 0;
+  mp3_params->packet = PROP_PACKET_DEFAULT ? 1 : 0;
 
   mp3enc->rate = ceaudenc->codec_params->sampleRate;
   mp3enc->channels = 2;
