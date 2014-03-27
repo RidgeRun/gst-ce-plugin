@@ -552,16 +552,12 @@ gst_ce_audenc_handle_frame (GstAudioEncoder * encoder, GstBuffer * buffer)
   gst_ce_slice_buffer_resize (GST_CE_SLICE_BUFFER_POOL_CAST (priv->outbuf_pool),
       outbuf, out_args.bytesGenerated);
 
-  if (gst_buffer_get_size (outbuf) > 0) {
-    GST_WARNING ("Sending buffer");
-    return gst_audio_encoder_finish_frame (GST_AUDIO_ENCODER (ceaudenc), outbuf,
-        priv->samples);
-  } else {
-    GST_WARNING ("Got buffer of size 0, discarding it.");
-    gst_buffer_unref (outbuf);
-    return GST_FLOW_OK;
-  }
+  if (gst_buffer_get_size (outbuf) == 0)
+    goto fail_outbuf_size;
 
+  GST_LOG_OBJECT (ceaudenc, "Sending buffer");
+  return gst_audio_encoder_finish_frame (GST_AUDIO_ENCODER (ceaudenc), outbuf,
+      priv->samples);
 
 fail_inbuf_alloc:
   {
@@ -583,6 +579,12 @@ fail_encode:
         (gint) out_args.extendedError, status);
 
     return GST_FLOW_ERROR;
+  }
+fail_outbuf_size:
+  {
+    gst_buffer_unref (outbuf);
+    GST_WARNING_OBJECT (ceaudenc, "Got buffer of size 0, discarding it.");
+    return GST_FLOW_OK;
   }
 }
 
