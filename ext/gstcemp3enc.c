@@ -103,8 +103,6 @@ gst_ce_mp3_enc_class_init (GstCeMp3EncClass * klass)
   GST_DEBUG_CATEGORY_INIT (gst_ce_mp3_enc_debug, "ce_mp3enc", 0,
       "CE MP3 encoding element");
 
-  parent_class = g_type_class_peek_parent (klass);
-
   gobject_class->set_property = gst_ce_mp3_enc_set_property;
   gobject_class->get_property = gst_ce_mp3_enc_get_property;
 
@@ -162,8 +160,6 @@ gst_ce_mp3_enc_init (GstCeMp3Enc * mp3enc)
 fail_alloc:
   {
     GST_WARNING_OBJECT (ceaudenc, "failed to allocate MP3 params");
-    if (mp3_params)
-      g_free (mp3_params);
     return;
   }
 }
@@ -199,10 +195,8 @@ gst_ce_mp3_enc_reset (GstCeAudEnc * ceaudenc)
 
   GST_DEBUG_OBJECT (mp3enc, "Mp3 reset");
 
-  if (ceaudenc->codec_params->size != sizeof (ITTIAM_MP3ENC_Params)) {
-    GST_DEBUG_OBJECT (mp3enc, "Wrong codec_params size for MP3 enc");
-    return;
-  }
+  if (ceaudenc->codec_params->size != sizeof (ITTIAM_MP3ENC_Params))
+    goto wrong_params_size;
 
   ceaudenc->codec_params->sampleRate = 44100;
   ceaudenc->codec_params->bitRate = 192000;
@@ -228,6 +222,10 @@ gst_ce_mp3_enc_reset (GstCeAudEnc * ceaudenc)
   mp3enc->rate = ceaudenc->codec_params->sampleRate;
   mp3enc->channels = 2;
 
+  return;
+
+wrong_params_size:
+  GST_WARNING_OBJECT (mp3enc, "Wrong codec_params size for MP3 enc");
   return;
 }
 
