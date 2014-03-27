@@ -1,17 +1,17 @@
 plugin_LTLIBRARIES = libgstce.la
 
+if HAVE_MP3_ENCODER
+MP3_ENCODER_ELEMENT_SOURCE=gstcemp3enc.c
+MP3_ENCODER_ELEMENT_HEADER=gstcemp3enc.h
+endif
+
 # sources used to compile this plugin
 libgstce_la_SOURCES = \
 	gstce.c \
 	gstceh264enc.c \
 	gstcejpegenc.c \
+	$(MP3_ENCODER_ELEMENT_SOURCE) \
 	gstceaacenc.c
-
-# conditionally adding the mp3 encoder element source code depending if
-# codec was found in configure
-if HAVE_MP3_ENCODER
-libgstce_la_SOURCES+=gstcemp3enc.c
-endif
 
 # compiler and linker flags used to compile this plugin
 libgstce_la_CFLAGS = $(GST_CE_CFLAGS) $(CODECS_CFLAGS) \
@@ -29,10 +29,5 @@ libgstce_la_LIBTOOLFLAGS = --tag=disable-static
 noinst_HEADERS = \
 	gstceh264enc.h \
 	gstcejpegenc.h \
+	$(MP3_ENCODER_ELEMENT_HEADER) \
 	gstceaacenc.h
-
-# conditionally adding the mp3 encoder element header depending if codec 
-# was found in configure
-if HAVE_MP3_ENCODER
-noinst_HEADERS+=gstcemp3enc.h
-endif
