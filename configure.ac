@@ -190,6 +190,7 @@ Makefile
 common/Makefile
 common/m4/Makefile
 gst/Makefile
+gst/perf/Makefile
 ext/Makefile
 gst-libs/Makefile
 gst-libs/gst/Makefile
