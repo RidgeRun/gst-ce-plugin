@@ -15,10 +15,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses>.
  */
 /**
- * SECTION:element-dmaiperf
+ * SECTION:element-perf
  *
- * DmaiPerf can be used to capture pipeline performance data.  Each 
- * second dmaiperf sends a frames per second and bytes per second data 
+ * Perf plugin can be used to capture pipeline performance data.  Each 
+ * second perf plugin sends frames per second and bytes per second data 
  * using gst_element_post_message.
  */
 
