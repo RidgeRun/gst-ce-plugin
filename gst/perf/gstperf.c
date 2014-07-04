@@ -114,6 +114,7 @@ gst_perf_init (GstPerf * perf)
   perf->prev_cpu_idle = 0;
   perf->print_arm_load = FALSE;
   gst_base_transform_set_gap_aware (GST_BASE_TRANSFORM_CAST (perf), TRUE);
+  gst_base_transform_set_passthrough (GST_BASE_TRANSFORM_CAST (perf), TRUE);
 }
 
 void
