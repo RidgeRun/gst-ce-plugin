@@ -1,1 +1,1 @@
-SUBDIRS = perf
+SUBDIRS = perf priority
