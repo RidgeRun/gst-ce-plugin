@@ -106,6 +106,8 @@ GType gst_ce_videnc_get_type (void);
 gboolean gst_ce_videnc_get_header (GstCeVidEnc * ce_videnc,
     GstBuffer ** buf, gint * header_size);
 
+void gst_ce_videnc_set_interlace (GstCeVidEnc *ce_videnc, 
+			          gboolean interlace);
 
 G_END_DECLS
 #endif /* __GST_CE_VIDENC_H__ */
