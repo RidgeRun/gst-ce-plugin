@@ -866,11 +866,13 @@ gst_ce_videnc_set_property (GObject * object,
       GST_LOG_OBJECT (ce_videnc,
           "setting number of output buffers to %d",
           ce_videnc->priv->num_out_buffers);
+      break;
     case PROP_MIN_SIZE_PERCENTAGE:
       ce_videnc->priv->outbuf_size_percentage = g_value_get_int (value);
       GST_LOG_OBJECT (ce_videnc,
           "setting min output buffer size percentage to %d",
           ce_videnc->priv->outbuf_size_percentage);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
