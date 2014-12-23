@@ -46,6 +46,7 @@ struct _GstCeH264Enc
   gboolean headers;
   gboolean single_nalu;
   gint header_size;
+  gboolean interlace;
 
 };
 

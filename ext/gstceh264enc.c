@@ -74,6 +74,8 @@ enum
   PROP_RCALGO,
   PROP_AIRRATE,
   PROP_IDRINTERVAL,
+  PROP_INTERLACE,
+  PROP_INTERLACE_MODE,
 };
 
 enum
@@ -130,6 +132,8 @@ typedef struct
 #define PROP_RCALGO_DEFAULT               1
 #define PROP_AIRRATE_DEFAULT              0
 #define PROP_IDRINTERVAL_DEFAULT          0
+#define PROP_INTERLACE_DEFAULT            FALSE
+#define PROP_INTERLACE_MODE_DEFAULT       0
 
 enum
 {
@@ -364,6 +368,33 @@ gst_ce_h264enc_rcalgo_get_type (void)
   return rcalgo_type;
 }
 
+enum {
+  GST_CE_H264ENC_INTERLACE_ARF = 0,
+  GST_CE_H264ENC_INTERLACE_SPF,
+  GST_CE_H264ENC_INTERLACE_MRCF,
+};
+
+#define GST_CE_H264ENC_INTERLACE_MODE_TYPE (gst_ce_h264enc_interlace_mode_get_type())
+static GType
+gst_ce_h264enc_interlace_mode_get_type (void)
+{
+  static GType interlace_mode_type = 0;
+
+  static const GEnumValue interlace_mode_types[] = {
+    {GST_CE_H264ENC_INTERLACE_ARF, "Adaptive reference field", "arf"},
+    {GST_CE_H264ENC_INTERLACE_SPF, "Same parity field", "spf"},
+    {GST_CE_H264ENC_INTERLACE_MRCF, "Most recent coded field", "mrcf"},
+    {0, NULL, NULL}
+  };
+
+  if (!interlace_mode_type) {
+    interlace_mode_type =
+        g_enum_register_static ("GstCeH264EncInterlaceMode", interlace_mode_types);
+  }
+  return interlace_mode_type;
+}
+
+
 static void gst_ce_h264enc_reset (GstCeVidEnc * ce_videnc);
 static gboolean gst_ce_h264enc_set_src_caps (GstCeVidEnc * ce_videnc,
     GstCaps ** caps, GstBuffer ** codec_data);
@@ -513,6 +544,18 @@ gst_ce_h264enc_class_init (GstCeH264EncClass * klass)
           "Interval between two consecutive IDR frames",
           "Interval between two consecutive IDR frames",
           0, G_MAXINT32, PROP_IDRINTERVAL_DEFAULT, G_PARAM_READWRITE));
+
+  g_object_class_install_property (gobject_class, PROP_INTERLACE,
+      g_param_spec_boolean ("interlace",
+          "Interlace",
+          "Enable/Disable interlace encoding",
+          PROP_T8X8INTRA_DEFAULT, G_PARAM_READWRITE));
+
+  g_object_class_install_property (gobject_class, PROP_INTERLACE_MODE,
+      g_param_spec_enum ("interlace-mode", "Interlace Reference Mode",
+          "Control the reference picture selection in case of interlaced encoding", 
+	  GST_CE_H264ENC_INTERLACE_MODE_TYPE,
+          PROP_INTERLACE_MODE_DEFAULT, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
   /* pad templates */
   gst_element_class_add_pad_template (element_class,
@@ -799,6 +842,7 @@ gst_ce_h264enc_reset (GstCeVidEnc * ce_videnc)
   h264enc->byte_stream = PROP_BYTESTREAM_DEFAULT;
   h264enc->single_nalu = PROP_SINGLE_NALU_DEFAULT;
   h264enc->headers = PROP_HEADERS_DEFAULT;
+  h264enc->interlace = PROP_INTERLACE_DEFAULT;
 
   h264_params->profileIdc = PROP_PROFILE_DEFAULT;
   h264_params->levelIdc = PROP_LEVEL_DEFAULT;
@@ -817,6 +861,9 @@ gst_ce_h264enc_reset (GstCeVidEnc * ce_videnc)
   h264_dyn_params->interPFrameQP = PROP_QPINTER_DEFAULT;
   h264_dyn_params->rcAlgo = PROP_RCALGO_DEFAULT;
   h264_dyn_params->idrFrameInterval = PROP_IDRINTERVAL_DEFAULT;
+  h264_dyn_params->interlaceRefMode = PROP_INTERLACE_MODE_DEFAULT;
+
+  gst_ce_videnc_set_interlace (ce_videnc, h264enc->interlace);
 
   return;
 }
@@ -1033,6 +1080,18 @@ gst_ce_h264enc_set_property (GObject * object, guint prop_id,
       dyn_params->idrFrameInterval = g_value_get_int (value);
       set_params = TRUE;
       break;
+    case PROP_INTERLACE:
+      if (!ce_videnc->codec_handle) {
+	h264enc->interlace = g_value_get_boolean(value);
+	gst_ce_videnc_set_interlace (ce_videnc, h264enc->interlace);
+      } else {
+	goto fail_static_prop;
+      }
+      break;
+    case PROP_INTERLACE_MODE:
+      dyn_params->interlaceRefMode = g_value_get_enum (value);
+      set_params = TRUE;
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
@@ -1132,6 +1191,12 @@ gst_ce_h264enc_get_property (GObject * object, guint prop_id,
       break;
     case PROP_IDRINTERVAL:
       g_value_set_int (value, dyn_params->idrFrameInterval);
+      break;
+    case PROP_INTERLACE:
+      g_value_set_boolean (value, h264enc->interlace);
+      break;
+    case PROP_INTERLACE_MODE:
+      g_value_set_enum (value, dyn_params->interlaceRefMode);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
