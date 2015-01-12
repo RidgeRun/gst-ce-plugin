@@ -144,8 +144,14 @@ gst_ce_videnc_force_frame_get_type (void)
 
 struct _GstCeVidEncPrivate
 {
+  /*Flags */
   gboolean first_buffer;
   gboolean interlace;
+  gboolean allow_padding;
+  gboolean need_padding;
+
+  /*Settings */
+  unsigned int height_align;
 
   /* Video Data */
   gint fps_num;
@@ -325,6 +331,8 @@ gst_ce_videnc_init (GstCeVidEnc * ce_videnc)
   priv->engine_handle = NULL;
   priv->allocator = NULL;
   priv->interlace = FALSE;
+  priv->height_align = 0;
+  priv->allow_padding = FALSE;
 
   gst_ce_videnc_reset ((GstVideoEncoder *) ce_videnc);
 }
@@ -390,11 +398,6 @@ gst_ce_videnc_configure_codec (GstCeVidEnc * ce_videnc)
       return FALSE;
   }
 
-  if (priv->interlace) {
-    params->inputContentType = IVIDEO_INTERLACED;
-    dyn_params->captureWidth = dyn_params->captureWidth << 1;
-  }
-
   fps = (priv->fps_num * 1000) / priv->fps_den;
 
   params->maxWidth = priv->inbuf_desc.frameWidth;
@@ -405,6 +408,26 @@ gst_ce_videnc_configure_codec (GstCeVidEnc * ce_videnc)
   dyn_params->inputHeight = priv->inbuf_desc.frameHeight;
   dyn_params->refFrameRate = dyn_params->targetFrameRate = fps;
 
+  if (priv->interlace) {
+    params->inputContentType = IVIDEO_INTERLACED;
+    dyn_params->captureWidth = dyn_params->captureWidth << 1;
+  }
+
+  if (priv->height_align) {
+    priv->inbuf_desc.frameHeight =
+        (priv->inbuf_desc.frameHeight + priv->height_align -
+        1) & ~(priv->height_align - 1);
+  }
+
+  if (priv->inbuf_desc.frameHeight != dyn_params->inputHeight) {
+    priv->need_padding = priv->allow_padding ? TRUE : FALSE;
+
+    if (!priv->need_padding)
+      goto wrong_height;
+  }
+
+
+  GST_ERROR_OBJECT (ce_videnc, "Frame Height %d", priv->inbuf_desc.frameHeight);
   if (ce_videnc->codec_handle) {
     /* TODO: test this use case to verify its properly handled */
     GST_DEBUG_OBJECT (ce_videnc, "Closing old codec session");
@@ -430,7 +453,13 @@ gst_ce_videnc_configure_codec (GstCeVidEnc * ce_videnc)
   GST_OBJECT_UNLOCK (ce_videnc);
 
   return TRUE;
-
+wrong_height:
+  {
+    GST_ERROR_OBJECT (ce_videnc, "image height should be multiple of %d",
+        priv->height_align);
+    GST_OBJECT_UNLOCK (ce_videnc);
+    return FALSE;
+  }
 fail_open_codec:
   {
     GST_ERROR_OBJECT (ce_videnc, "failed to open codec %s", klass->codec_name);
@@ -632,8 +661,9 @@ gst_ce_videnc_allocate_output_frame (GstCeVidEnc * ce_videnc, GstBuffer ** buf)
   return TRUE;
 }
 
-static GstFlowReturn 
-gst_ce_videnc_encode_buffer (GstCeVidEnc *ce_videnc, GstBuffer **outbuf, VIDENC1_OutArgs *out_args) 
+static GstFlowReturn
+gst_ce_videnc_encode_buffer (GstCeVidEnc * ce_videnc, GstBuffer ** outbuf,
+    VIDENC1_OutArgs * out_args)
 {
   GstCeVidEncPrivate *priv = ce_videnc->priv;
 
@@ -679,8 +709,7 @@ gst_ce_videnc_encode_buffer (GstCeVidEnc *ce_videnc, GstBuffer **outbuf, VIDENC1
 
   return GST_FLOW_OK;
 
-  /*ERRORS*/
-fail_alloc:
+ /*ERRORS*/ fail_alloc:
   {
     GST_INFO_OBJECT (ce_videnc, "Failed to get output buffer, frame dropped");
     return GST_FLOW_ERROR;
@@ -699,6 +728,7 @@ fail_encode:
     return GST_FLOW_ERROR;
   }
 }
+
 static GstFlowReturn
 gst_ce_videnc_handle_frame (GstVideoEncoder * encoder,
     GstVideoCodecFrame * frame)
@@ -713,7 +743,7 @@ gst_ce_videnc_handle_frame (GstVideoEncoder * encoder,
   GstFlowReturn ret;
   VIDENC1_OutArgs out_args;
 
-  gint i,j;
+  gint i, j;
   gint fields;
   gint current_pitch;
 
@@ -747,7 +777,8 @@ gst_ce_videnc_handle_frame (GstVideoEncoder * encoder,
     }
 
     if (ce_videnc->codec_params->inputContentType) {
-      ce_videnc->codec_dyn_params->captureWidth = ce_videnc->codec_dyn_params->captureWidth << 1;
+      ce_videnc->codec_dyn_params->captureWidth =
+          ce_videnc->codec_dyn_params->captureWidth << 1;
     }
 
     if (!gst_ce_videnc_set_dynamic_params (ce_videnc))
@@ -769,6 +800,20 @@ gst_ce_videnc_handle_frame (GstVideoEncoder * encoder,
   /* Encode process */
   for (i = 0; i < GST_VIDEO_FRAME_N_PLANES (&vframe); i++) {
     priv->inbuf_desc.bufDesc[i].buf = GST_VIDEO_FRAME_PLANE_DATA (&vframe, i);
+
+    if (priv->need_padding) {
+      int bufsize;
+      if (i < (GST_VIDEO_FRAME_N_PLANES (&vframe) - 1))
+        bufsize =
+            GST_VIDEO_FRAME_PLANE_OFFSET (&vframe,
+            i + 1) - GST_VIDEO_FRAME_PLANE_OFFSET (&vframe, i);
+      else
+        bufsize =
+            vframe.map[i].maxsize - GST_VIDEO_FRAME_PLANE_OFFSET (&vframe, i);
+
+      if (bufsize < priv->inbuf_desc.bufDesc[i].bufSize)
+        goto fail_padding;
+    }
   }
 
   /* Get oldest frame */
@@ -776,10 +821,11 @@ gst_ce_videnc_handle_frame (GstVideoEncoder * encoder,
   frame = gst_video_encoder_get_oldest_frame (encoder);
 
   fields = 1 << (ce_videnc->codec_params->inputContentType);
-  for (j=1; j <= fields; j++) {
-    if (gst_ce_videnc_encode_buffer(ce_videnc, &outbuf, &out_args) != GST_FLOW_OK) {
+  for (j = 1; j <= fields; j++) {
+    if (gst_ce_videnc_encode_buffer (ce_videnc, &outbuf,
+            &out_args) != GST_FLOW_OK) {
       if (outbuf == NULL) {
-	goto drop_buffer;
+        goto drop_buffer;
       }
       goto fail_encode;
     }
@@ -795,16 +841,16 @@ gst_ce_videnc_handle_frame (GstVideoEncoder * encoder,
 
     /* Mark I and IDR frames */
     if ((out_args.encodedFrameType == IVIDEO_I_FRAME) ||
-	(out_args.encodedFrameType == IVIDEO_IDR_FRAME)) {
+        (out_args.encodedFrameType == IVIDEO_IDR_FRAME)) {
       GST_VIDEO_CODEC_FRAME_SET_SYNC_POINT (frame);
     }
 
     if (j != fields) {
-      /* Initialize odd field process*/
+      /* Initialize odd field process */
       for (i = 0; i < GST_VIDEO_FRAME_N_PLANES (&vframe); i++) {
-	priv->inbuf_desc.bufDesc[i].buf += current_pitch;
+        priv->inbuf_desc.bufDesc[i].buf += current_pitch;
       }
-      gst_video_codec_frame_ref(frame);
+      gst_video_codec_frame_ref (frame);
 
     }
 
@@ -820,12 +866,13 @@ gst_ce_videnc_handle_frame (GstVideoEncoder * encoder,
 out:
   return ret;
 
- drop_buffer:
+drop_buffer:
   {
     frame->output_buffer = NULL;
-    gst_video_encoder_finish_frame (encoder, frame); 
+    gst_video_encoder_finish_frame (encoder, frame);
 
-    GST_WARNING_OBJECT (ce_videnc, "Couldn't get output memory, dropping buffer");
+    GST_WARNING_OBJECT (ce_videnc,
+        "Couldn't get output memory, dropping buffer");
     return GST_FLOW_OK;
   }
 fail_map:
@@ -842,6 +889,13 @@ fail_no_contiguous_buffer:
   {
     GST_ERROR_OBJECT (encoder, "Input buffer should be contiguous");
     return GST_FLOW_ERROR;
+  }
+fail_padding:
+  {
+    GST_ERROR_OBJECT (ce_videnc, "Input buffer's height should be multiple "
+        "of %d or the input buffer should be padded to the "
+        "nearest multiple of %d at the bottom of the frame",
+        priv->height_align, priv->height_align);
   }
 fail_pre_encode:
   {
@@ -1127,6 +1181,7 @@ gst_ce_videnc_reset (GstVideoEncoder * encoder)
 
   GST_OBJECT_LOCK (ce_videnc);
 
+  priv->need_padding = FALSE;
   priv->num_out_buffers = PROP_NUM_OUT_BUFFERS_DEFAULT;
   priv->outbuf_size_percentage = PROP_MIN_SIZE_PERCENTAGE_DEFAULT;
   /* Set default values for codec static params */
@@ -1323,9 +1378,9 @@ fail_out:
  * output buffers for each input buffer. 
  */
 void
-gst_ce_videnc_set_interlace (GstCeVidEnc *ce_videnc, gboolean interlace)
+gst_ce_videnc_set_interlace (GstCeVidEnc * ce_videnc, gboolean interlace)
 {
-  g_return_if_fail (GST_IS_CEVIDENC(ce_videnc));
+  g_return_if_fail (GST_IS_CEVIDENC (ce_videnc));
 
   GST_OBJECT_LOCK (ce_videnc);
 
@@ -1333,4 +1388,18 @@ gst_ce_videnc_set_interlace (GstCeVidEnc *ce_videnc, gboolean interlace)
 
   GST_DEBUG_OBJECT (ce_videnc, "set interlace %d", ce_videnc->priv->interlace);
   GST_OBJECT_UNLOCK (ce_videnc);
+}
+
+
+void
+gst_ce_videnc_set_height_alignment (GstCeVidEnc * ce_videnc, unsigned int align,
+    gboolean allow_padding)
+{
+  g_return_if_fail (GST_IS_CEVIDENC (ce_videnc));
+
+  GST_OBJECT_LOCK (ce_videnc);
+  ce_videnc->priv->height_align = align;
+  ce_videnc->priv->allow_padding = allow_padding;
+  GST_OBJECT_UNLOCK (ce_videnc);
+
 }
