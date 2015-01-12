@@ -108,6 +108,8 @@ gboolean gst_ce_videnc_get_header (GstCeVidEnc * ce_videnc,
 
 void gst_ce_videnc_set_interlace (GstCeVidEnc *ce_videnc, 
 			          gboolean interlace);
-
+void gst_ce_videnc_set_height_alignment (GstCeVidEnc *ce_videnc,
+					 unsigned int align,
+					 gboolean allow_padding);
 G_END_DECLS
 #endif /* __GST_CE_VIDENC_H__ */
