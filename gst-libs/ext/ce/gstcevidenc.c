@@ -798,7 +798,6 @@ gst_ce_videnc_handle_frame (GstVideoEncoder * encoder,
     /* Mark I and IDR frames */
     if ((out_args.encodedFrameType == IVIDEO_I_FRAME) ||
 	(out_args.encodedFrameType == IVIDEO_IDR_FRAME)) {
-      GST_ERROR_OBJECT (ce_videnc, "frame type %li", out_args.encodedFrameType);
       GST_VIDEO_CODEC_FRAME_SET_SYNC_POINT (frame);
     }
 
