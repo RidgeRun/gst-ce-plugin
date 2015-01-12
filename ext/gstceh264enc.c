@@ -368,7 +368,8 @@ gst_ce_h264enc_rcalgo_get_type (void)
   return rcalgo_type;
 }
 
-enum {
+enum
+{
   GST_CE_H264ENC_INTERLACE_ARF = 0,
   GST_CE_H264ENC_INTERLACE_SPF,
   GST_CE_H264ENC_INTERLACE_MRCF,
@@ -389,7 +390,8 @@ gst_ce_h264enc_interlace_mode_get_type (void)
 
   if (!interlace_mode_type) {
     interlace_mode_type =
-        g_enum_register_static ("GstCeH264EncInterlaceMode", interlace_mode_types);
+        g_enum_register_static ("GstCeH264EncInterlaceMode",
+        interlace_mode_types);
   }
   return interlace_mode_type;
 }
@@ -553,9 +555,10 @@ gst_ce_h264enc_class_init (GstCeH264EncClass * klass)
 
   g_object_class_install_property (gobject_class, PROP_INTERLACE_MODE,
       g_param_spec_enum ("interlace-mode", "Interlace Reference Mode",
-          "Control the reference picture selection in case of interlaced encoding", 
-	  GST_CE_H264ENC_INTERLACE_MODE_TYPE,
-          PROP_INTERLACE_MODE_DEFAULT, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+          "Control the reference picture selection in case of interlaced encoding",
+          GST_CE_H264ENC_INTERLACE_MODE_TYPE,
+          PROP_INTERLACE_MODE_DEFAULT,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
   /* pad templates */
   gst_element_class_add_pad_template (element_class,
@@ -863,6 +866,7 @@ gst_ce_h264enc_reset (GstCeVidEnc * ce_videnc)
   h264_dyn_params->idrFrameInterval = PROP_IDRINTERVAL_DEFAULT;
   h264_dyn_params->interlaceRefMode = PROP_INTERLACE_MODE_DEFAULT;
 
+  gst_ce_videnc_set_height_alignment (ce_videnc, 16, TRUE);
   gst_ce_videnc_set_interlace (ce_videnc, h264enc->interlace);
 
   return;
@@ -1082,10 +1086,11 @@ gst_ce_h264enc_set_property (GObject * object, guint prop_id,
       break;
     case PROP_INTERLACE:
       if (!ce_videnc->codec_handle) {
-	h264enc->interlace = g_value_get_boolean(value);
-	gst_ce_videnc_set_interlace (ce_videnc, h264enc->interlace);
+        h264enc->interlace = g_value_get_boolean (value);
+        gst_ce_videnc_set_interlace (ce_videnc, h264enc->interlace);
+        gst_ce_videnc_set_height_alignment (ce_videnc, 32, TRUE);
       } else {
-	goto fail_static_prop;
+        goto fail_static_prop;
       }
       break;
     case PROP_INTERLACE_MODE:
