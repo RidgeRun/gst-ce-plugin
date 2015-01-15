@@ -427,7 +427,6 @@ gst_ce_videnc_configure_codec (GstCeVidEnc * ce_videnc)
   }
 
 
-  GST_ERROR_OBJECT (ce_videnc, "Frame Height %d", priv->inbuf_desc.frameHeight);
   if (ce_videnc->codec_handle) {
     /* TODO: test this use case to verify its properly handled */
     GST_DEBUG_OBJECT (ce_videnc, "Closing old codec session");
