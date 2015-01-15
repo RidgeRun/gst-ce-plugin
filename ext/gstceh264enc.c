@@ -1088,7 +1088,11 @@ gst_ce_h264enc_set_property (GObject * object, guint prop_id,
       if (!ce_videnc->codec_handle) {
         h264enc->interlace = g_value_get_boolean (value);
         gst_ce_videnc_set_interlace (ce_videnc, h264enc->interlace);
-        gst_ce_videnc_set_height_alignment (ce_videnc, 32, TRUE);
+	if (h264enc->interlace)
+	  gst_ce_videnc_set_height_alignment (ce_videnc, 32, TRUE);
+	else
+	  gst_ce_videnc_set_height_alignment (ce_videnc, 16, TRUE);
+
       } else {
         goto fail_static_prop;
       }
