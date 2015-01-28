@@ -853,6 +853,11 @@ gst_ce_videnc_handle_frame (GstVideoEncoder * encoder,
 
     }
 
+    if (j > 1) {
+      frame->pts = frame->pts + frame->duration / fields;
+      frame->dts = frame->dts + frame->duration / fields;
+    }
+
     ret = gst_video_encoder_finish_frame (encoder, frame);
     if (ret != GST_FLOW_OK)
       goto out;
