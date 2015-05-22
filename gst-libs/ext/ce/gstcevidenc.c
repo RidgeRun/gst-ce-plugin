@@ -145,6 +145,7 @@ gst_ce_videnc_force_frame_get_type (void)
 struct _GstCeVidEncPrivate
 {
   gboolean first_buffer;
+  gboolean interlace;
 
   /* Video Data */
   gint fps_num;
@@ -323,6 +324,7 @@ gst_ce_videnc_init (GstCeVidEnc * ce_videnc)
   priv->first_buffer = TRUE;
   priv->engine_handle = NULL;
   priv->allocator = NULL;
+  priv->interlace = FALSE;
 
   gst_ce_videnc_reset ((GstVideoEncoder *) ce_videnc);
 }
@@ -386,6 +388,11 @@ gst_ce_videnc_configure_codec (GstCeVidEnc * ce_videnc)
           ("unsupported format in video stream: %d\n",
               priv->video_format), (NULL));
       return FALSE;
+  }
+
+  if (priv->interlace) {
+    params->inputContentType = IVIDEO_INTERLACED;
+    dyn_params->captureWidth = dyn_params->captureWidth << 1;
   }
 
   fps = (priv->fps_num * 1000) / priv->fps_den;
@@ -633,6 +640,73 @@ gst_ce_videnc_allocate_output_frame (GstCeVidEnc * ce_videnc, GstBuffer ** buf)
   return TRUE;
 }
 
+static GstFlowReturn 
+gst_ce_videnc_encode_buffer (GstCeVidEnc *ce_videnc, GstBuffer **outbuf, VIDENC1_OutArgs *out_args) 
+{
+  GstCeVidEncPrivate *priv = ce_videnc->priv;
+
+
+  GstMapInfo info_out;
+  VIDENC1_InArgs in_args;
+  gint ret = 0;
+
+  /* Allocate output buffer */
+  if (gst_buffer_pool_acquire_buffer (GST_BUFFER_POOL_CAST (priv->outbuf_pool),
+          outbuf, NULL) != GST_FLOW_OK) {
+    *outbuf = NULL;
+    goto fail_alloc;
+  }
+
+  if (!gst_buffer_map (*outbuf, &info_out, GST_MAP_WRITE))
+    goto fail_map;
+
+  priv->outbuf_desc.bufs = (XDAS_Int8 **) & (info_out.data);
+
+  /* Set output and input arguments for the encoding process */
+  in_args.size = sizeof (IVIDENC1_InArgs);
+  in_args.inputID = 1;
+  in_args.topFieldFirstFlag = 1;
+
+  out_args->size = sizeof (VIDENC1_OutArgs);
+
+  /* Encode process */
+  ret =
+      VIDENC1_process (ce_videnc->codec_handle, &priv->inbuf_desc,
+      &priv->outbuf_desc, &in_args, out_args);
+  if (ret != VIDENC1_EOK)
+    goto fail_encode;
+
+  GST_DEBUG_OBJECT (ce_videnc,
+      "encoded an output buffer %p of size %li at addr %p", outbuf,
+      out_args->bytesGenerated, *priv->outbuf_desc.bufs);
+
+  gst_buffer_unmap (*outbuf, &info_out);
+
+  gst_ce_slice_buffer_resize (GST_CE_SLICE_BUFFER_POOL_CAST (priv->outbuf_pool),
+      *outbuf, out_args->bytesGenerated);
+
+  return GST_FLOW_OK;
+
+  /*ERRORS*/
+fail_alloc:
+  {
+    GST_INFO_OBJECT (ce_videnc, "Failed to get output buffer, frame dropped");
+    return GST_FLOW_ERROR;
+  }
+fail_map:
+  {
+    GST_ERROR_OBJECT (ce_videnc, "Failed to map buffer");
+    return GST_FLOW_ERROR;
+  }
+fail_encode:
+  {
+    gst_buffer_unmap (*outbuf, &info_out);
+    GST_ERROR_OBJECT (ce_videnc,
+        "Failed encode process with extended error: 0x%x",
+        (unsigned int) out_args->extendedError);
+    return GST_FLOW_ERROR;
+  }
+}
 static GstFlowReturn
 gst_ce_videnc_handle_frame (GstVideoEncoder * encoder,
     GstVideoCodecFrame * frame)
@@ -640,15 +714,15 @@ gst_ce_videnc_handle_frame (GstVideoEncoder * encoder,
   GstCeVidEnc *ce_videnc = GST_CEVIDENC (encoder);
   GstCeVidEncPrivate *priv = ce_videnc->priv;
   GstCeVidEncClass *klass = GST_CEVIDENC_CLASS (G_OBJECT_GET_CLASS (ce_videnc));
+
   GstVideoInfo *info = &priv->input_state->info;
   GstVideoFrame vframe;
-  GstMapInfo info_out;
   GstBuffer *outbuf = NULL;
-  GstCeContigBufMeta *meta;
-  VIDENC1_InArgs in_args;
+  GstFlowReturn ret;
   VIDENC1_OutArgs out_args;
-  gint ret = 0;
-  gint i;
+
+  gint i,j;
+  gint fields;
   gint current_pitch;
 
   /* $
@@ -663,13 +737,7 @@ gst_ce_videnc_handle_frame (GstVideoEncoder * encoder,
   if (!gst_video_frame_map (&vframe, info, frame->input_buffer, GST_MAP_READ))
     goto fail_map;
 
-  for (i = 0; i < GST_VIDEO_FRAME_N_PLANES (&vframe); i++) {
-    priv->inbuf_desc.bufDesc[i].buf = GST_VIDEO_FRAME_PLANE_DATA (&vframe, i);
-  }
-
   current_pitch = GST_VIDEO_FRAME_PLANE_STRIDE (&vframe, 0);
-
-  gst_video_frame_unmap (&vframe);
 
   if (priv->inbuf_desc.framePitch != current_pitch) {
     priv->inbuf_desc.framePitch = current_pitch;
@@ -683,7 +751,13 @@ gst_ce_videnc_handle_frame (GstVideoEncoder * encoder,
         break;
       default:
         ce_videnc->codec_dyn_params->captureWidth = 0;
+
     }
+
+    if (ce_videnc->codec_params->inputContentType) {
+      ce_videnc->codec_dyn_params->captureWidth = ce_videnc->codec_dyn_params->captureWidth << 1;
+    }
+
     if (!gst_ce_videnc_set_dynamic_params (ce_videnc))
       goto fail_set_buffer_stride;
 
@@ -695,66 +769,73 @@ gst_ce_videnc_handle_frame (GstVideoEncoder * encoder,
   if (priv->first_buffer && gst_pad_check_reconfigure (encoder->srcpad))
     gst_video_encoder_negotiate (GST_VIDEO_ENCODER (encoder));
 
-  /* Allocate output buffer */
-  if (gst_buffer_pool_acquire_buffer (GST_BUFFER_POOL_CAST (priv->outbuf_pool),
-          &outbuf, NULL) != GST_FLOW_OK) {
-    frame->output_buffer = NULL;
-    gst_video_encoder_finish_frame (encoder, frame);
-    goto fail_alloc;
-  }
-
-  if (!gst_buffer_map (outbuf, &info_out, GST_MAP_WRITE))
-    goto fail_map;
-
-  priv->outbuf_desc.bufs = (XDAS_Int8 **) & (info_out.data);;
-
-  /* Set output and input arguments for the encoding process */
-  in_args.size = sizeof (IVIDENC1_InArgs);
-  in_args.inputID = 1;
-  in_args.topFieldFirstFlag = 1;
-
-  out_args.size = sizeof (VIDENC1_OutArgs);
-
   /* Pre-encode process */
   if (klass->pre_process
       && !klass->pre_process (ce_videnc, frame->input_buffer))
     goto fail_pre_encode;
 
   /* Encode process */
-  ret =
-      VIDENC1_process (ce_videnc->codec_handle, &priv->inbuf_desc,
-      &priv->outbuf_desc, &in_args, &out_args);
-  if (ret != VIDENC1_EOK)
-    goto fail_encode;
+  for (i = 0; i < GST_VIDEO_FRAME_N_PLANES (&vframe); i++) {
+    priv->inbuf_desc.bufDesc[i].buf = GST_VIDEO_FRAME_PLANE_DATA (&vframe, i);
+  }
 
-  GST_DEBUG_OBJECT (ce_videnc,
-      "encoded an output buffer %p of size %li at addr %p", outbuf,
-      out_args.bytesGenerated, *priv->outbuf_desc.bufs);
-
-  gst_buffer_unmap (outbuf, &info_out);
-
-  gst_ce_slice_buffer_resize (GST_CE_SLICE_BUFFER_POOL_CAST (priv->outbuf_pool),
-      outbuf, out_args.bytesGenerated);
-
-  /* Post-encode process */
-  if (klass->post_process && !klass->post_process (ce_videnc, outbuf))
-    goto fail_post_encode;
-
-  GST_DEBUG_OBJECT (ce_videnc, "frame encoded succesfully");
   /* Get oldest frame */
   gst_video_codec_frame_unref (frame);
   frame = gst_video_encoder_get_oldest_frame (encoder);
-  frame->output_buffer = outbuf;
 
-  /* Mark I and IDR frames */
-  if ((out_args.encodedFrameType == IVIDEO_I_FRAME) ||
-      (out_args.encodedFrameType == IVIDEO_IDR_FRAME)) {
-    GST_DEBUG_OBJECT (ce_videnc, "frame type %li", out_args.encodedFrameType);
-    GST_VIDEO_CODEC_FRAME_SET_SYNC_POINT (frame);
+  fields = 1 << (ce_videnc->codec_params->inputContentType);
+  for (j=1; j <= fields; j++) {
+    if (gst_ce_videnc_encode_buffer(ce_videnc, &outbuf, &out_args) != GST_FLOW_OK) {
+      if (outbuf == NULL) {
+	frame->output_buffer = NULL;
+	gst_video_encoder_finish_frame (encoder, frame); 
+	goto drop_buffer;
+      }
+      goto fail_encode;
+    }
+
+    /* Post-encode process */
+    if (klass->post_process && !klass->post_process (ce_videnc, outbuf))
+      goto fail_post_encode;
+
+    if (frame->output_buffer)
+      gst_buffer_unref (frame->output_buffer);
+
+    frame->output_buffer = outbuf;
+
+    /* Mark I and IDR frames */
+    if ((out_args.encodedFrameType == IVIDEO_I_FRAME) ||
+	(out_args.encodedFrameType == IVIDEO_IDR_FRAME)) {
+      GST_ERROR_OBJECT (ce_videnc, "frame type %li", out_args.encodedFrameType);
+      GST_VIDEO_CODEC_FRAME_SET_SYNC_POINT (frame);
+    }
+
+    if (j != fields) {
+      /* Initialize odd field process*/
+      for (i = 0; i < GST_VIDEO_FRAME_N_PLANES (&vframe); i++) {
+	priv->inbuf_desc.bufDesc[i].buf += current_pitch;
+      }
+      gst_video_codec_frame_ref(frame);
+
+    }
+
+    ret = gst_video_encoder_finish_frame (encoder, frame);
+    if (ret != GST_FLOW_OK)
+      goto out;
   }
 
-  return gst_video_encoder_finish_frame (encoder, frame);
+  gst_video_frame_unmap (&vframe);
 
+  GST_DEBUG_OBJECT (ce_videnc, "frame encoded succesfully");
+
+out:
+  return ret;
+
+ drop_buffer:
+  {
+    GST_WARNING_OBJECT (ce_videnc, "Couldn't get output memory, dropping buffer");
+    return GST_FLOW_OK;
+  }
 fail_map:
   {
     GST_ERROR_OBJECT (encoder, "Failed to map input buffer");
@@ -770,23 +851,14 @@ fail_no_contiguous_buffer:
     GST_ERROR_OBJECT (encoder, "Input buffer should be contiguous");
     return GST_FLOW_ERROR;
   }
-fail_alloc:
-  {
-    GST_INFO_OBJECT (ce_videnc, "Failed to get output buffer, frame dropped");
-    return GST_FLOW_ERROR;
-  }
 fail_pre_encode:
   {
-    gst_buffer_unmap (outbuf, &info_out);
     GST_ERROR_OBJECT (ce_videnc, "Failed pre-encode process");
     return GST_FLOW_ERROR;
   }
 fail_encode:
   {
-    gst_buffer_unmap (outbuf, &info_out);
-    GST_ERROR_OBJECT (ce_videnc,
-        "Failed encode process with extended error: 0x%x",
-        (unsigned int) out_args.extendedError);
+    GST_ERROR_OBJECT (ce_videnc, "Failed encode process");
     return GST_FLOW_ERROR;
   }
 fail_post_encode:
@@ -874,11 +946,13 @@ gst_ce_videnc_set_property (GObject * object,
       GST_LOG_OBJECT (ce_videnc,
           "setting number of output buffers to %d",
           ce_videnc->priv->num_out_buffers);
+      break;
     case PROP_MIN_SIZE_PERCENTAGE:
       ce_videnc->priv->outbuf_size_percentage = g_value_get_int (value);
       GST_LOG_OBJECT (ce_videnc,
           "setting min output buffer size percentage to %d",
           ce_videnc->priv->outbuf_size_percentage);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
@@ -1241,4 +1315,30 @@ fail_out:
       gst_buffer_unref (header_buf);
     return FALSE;
   }
+}
+
+/**
+ * gst_ce_videnc_set_interlace:
+ * @ce_videnc: a #GstCeVidEnc
+ * @interlace: boolean indicating interlace mode
+ * 
+ * Enables/Disables interlace encoding. This interlace setting
+ * takes effect until the next codec configuration. 
+ *
+ * When interlace is enabled, input buffers are processed as 
+ * interleaved fields, every alternate lines are read as top/bottom field.
+ * The codec encodes each field separately, so you will have two
+ * output buffers for each input buffer. 
+ */
+void
+gst_ce_videnc_set_interlace (GstCeVidEnc *ce_videnc, gboolean interlace)
+{
+  g_return_if_fail (GST_IS_CEVIDENC(ce_videnc));
+
+  GST_OBJECT_LOCK (ce_videnc);
+
+  ce_videnc->priv->interlace = interlace;
+
+  GST_DEBUG_OBJECT (ce_videnc, "set interlace %d", ce_videnc->priv->interlace);
+  GST_OBJECT_UNLOCK (ce_videnc);
 }
