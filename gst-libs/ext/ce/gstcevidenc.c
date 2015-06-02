@@ -787,8 +787,6 @@ gst_ce_videnc_handle_frame (GstVideoEncoder * encoder,
   for (j=1; j <= fields; j++) {
     if (gst_ce_videnc_encode_buffer(ce_videnc, &outbuf, &out_args) != GST_FLOW_OK) {
       if (outbuf == NULL) {
-	frame->output_buffer = NULL;
-	gst_video_encoder_finish_frame (encoder, frame); 
 	goto drop_buffer;
       }
       goto fail_encode;
@@ -806,7 +804,6 @@ gst_ce_videnc_handle_frame (GstVideoEncoder * encoder,
     /* Mark I and IDR frames */
     if ((out_args.encodedFrameType == IVIDEO_I_FRAME) ||
 	(out_args.encodedFrameType == IVIDEO_IDR_FRAME)) {
-      GST_ERROR_OBJECT (ce_videnc, "frame type %li", out_args.encodedFrameType);
       GST_VIDEO_CODEC_FRAME_SET_SYNC_POINT (frame);
     }
 
@@ -833,6 +830,9 @@ out:
 
  drop_buffer:
   {
+    frame->output_buffer = NULL;
+    gst_video_encoder_finish_frame (encoder, frame); 
+
     GST_WARNING_OBJECT (ce_videnc, "Couldn't get output memory, dropping buffer");
     return GST_FLOW_OK;
   }
