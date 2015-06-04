@@ -360,7 +360,7 @@ gst_ce_videnc_configure_codec (GstCeVidEnc * ce_videnc)
   VIDENC1_Status enc_status;
   VIDENC1_Params *params;
   VIDENC1_DynamicParams *dyn_params;
-  gint fps;
+  gint fps, fps_rem;
 
   klass = GST_CEVIDENC_CLASS (G_OBJECT_GET_CLASS (ce_videnc));
   priv = ce_videnc->priv;
@@ -396,6 +396,14 @@ gst_ce_videnc_configure_codec (GstCeVidEnc * ce_videnc)
   }
 
   fps = (priv->fps_num * 1000) / priv->fps_den;
+
+  /* maxFrameRate, refFrameRate, and targetFrameRate must be multiples of 500.
+   * Here we round to the nearest multiple of 500. */
+  fps_rem = fps % 500;
+  fps -= fps_rem;
+  if (fps_rem >= 250) {
+    fps += 500;
+  }
 
   params->maxWidth = priv->inbuf_desc.frameWidth;
   params->maxHeight = priv->inbuf_desc.frameHeight;
@@ -779,8 +787,6 @@ gst_ce_videnc_handle_frame (GstVideoEncoder * encoder,
   for (j=1; j <= fields; j++) {
     if (gst_ce_videnc_encode_buffer(ce_videnc, &outbuf, &out_args) != GST_FLOW_OK) {
       if (outbuf == NULL) {
-	frame->output_buffer = NULL;
-	gst_video_encoder_finish_frame (encoder, frame); 
 	goto drop_buffer;
       }
       goto fail_encode;
@@ -798,7 +804,6 @@ gst_ce_videnc_handle_frame (GstVideoEncoder * encoder,
     /* Mark I and IDR frames */
     if ((out_args.encodedFrameType == IVIDEO_I_FRAME) ||
 	(out_args.encodedFrameType == IVIDEO_IDR_FRAME)) {
-      GST_ERROR_OBJECT (ce_videnc, "frame type %li", out_args.encodedFrameType);
       GST_VIDEO_CODEC_FRAME_SET_SYNC_POINT (frame);
     }
 
@@ -825,6 +830,9 @@ out:
 
  drop_buffer:
   {
+    frame->output_buffer = NULL;
+    gst_video_encoder_finish_frame (encoder, frame); 
+
     GST_WARNING_OBJECT (ce_videnc, "Couldn't get output memory, dropping buffer");
     return GST_FLOW_OK;
   }
